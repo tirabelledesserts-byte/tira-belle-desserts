@@ -92,14 +92,14 @@
 
     <!-- Main Admin Layout (Revealed upon authentication) -->
     <div class="admin-mobile-header" id="adminMobileHeader">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <img src="assets/tira-belle-logo.png" alt="TIRA Belle" style="height: 32px;" data-brand="logo" id="adminMobileLogo">
-            <span class="brand-title"><span data-brand="name">TIRA Belle</span> Admin</span>
-        </div>
         <button type="button" class="btn btn-outline btn-sm admin-mobile-menu-btn" id="adminSidebarToggle" onclick="toggleAdminMobileNav()" aria-label="Toggle navigation menu" style="color: #fff; border-color: rgba(255,255,255,0.3);">
             <i data-lucide="menu" data-size="18"></i>
             <span>Menu</span>
         </button>
+        <div class="admin-mobile-brand">
+            <img src="assets/tira-belle-logo.png" alt="TIRA Belle" style="height: 32px;" data-brand="logo" id="adminMobileLogo">
+            <span class="brand-title"><span data-brand="name">TIRA Belle</span> Admin</span>
+        </div>
     </div>
     <div class="admin-sidebar-backdrop" id="adminSidebarBackdrop" onclick="closeAdminMobileNav()"></div>
 

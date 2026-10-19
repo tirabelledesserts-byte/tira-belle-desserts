@@ -80,6 +80,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.responses import JSONResponse
+from fastapi import Request
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    return JSONResponse(
+        status_code=500,
+        content={"error": str(exc), "type": type(exc).__name__, "traceback": traceback.format_exc()}
+    )
+
 # Mount API Routers
 app.include_router(auth.router)
 app.include_router(customers.router)
@@ -110,7 +121,7 @@ def health_check(db: Session = Depends(get_db)):
     return {
         "status": "ok",
         "app": "TIRA Belle",
-        "version": "2.0.2",
+        "version": "2.0.3",
         "database": db_status,
         "database_engine": engine.name,
         "database_driver": getattr(engine.dialect, "driver", None),

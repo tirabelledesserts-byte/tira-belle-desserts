@@ -38,11 +38,30 @@ if "sqlite" in DATABASE_URL:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+_tables_initialized = False
+
+def init_tables_if_needed():
+    global _tables_initialized
+    if not _tables_initialized:
+        try:
+            import backend.models  # noqa: F401
+            Base.metadata.create_all(bind=engine)
+            from backend.seed import seed_initial_data
+            db = SessionLocal()
+            try:
+                seed_initial_data(db)
+            finally:
+                db.close()
+            _tables_initialized = True
+        except Exception as e:
+            print(f"[Warning] Failed to auto-init tables: {e}")
+
 def get_db() -> Generator[Session, None, None]:
     """
     FastAPI Dependency that provides an isolated database session per request.
     Automatically closes the session when the request completes.
     """
+    init_tables_if_needed()
     db = SessionLocal()
     try:
         yield db

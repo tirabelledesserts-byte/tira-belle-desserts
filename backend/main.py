@@ -99,12 +99,23 @@ def health_check(db: Session = Depends(get_db)):
         db.execute(text("SELECT 1"))
     except Exception as e:
         db_status = f"error: {str(e)}"
+    url_obj = None
+    try:
+        from backend.config import DATABASE_URL
+        from sqlalchemy.engine.url import make_url
+        url_obj = make_url(DATABASE_URL)
+    except Exception:
+        pass
+
     return {
         "status": "ok",
         "app": "TIRA Belle",
-        "version": "2.0.0",
+        "version": "2.0.1",
         "database": db_status,
         "database_engine": engine.name,
+        "database_driver": getattr(engine.dialect, "driver", None),
+        "db_host": url_obj.host if url_obj else None,
+        "db_user": url_obj.username if url_obj else None,
         "timestamp": utcnow_iso()
     }
 

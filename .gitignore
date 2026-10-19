@@ -39,3 +39,4 @@ __pycache__/
 *.pyc
 .temp/
 tmp/
+scratch/

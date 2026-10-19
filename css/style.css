@@ -2649,19 +2649,11 @@ a {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
-.admin-mobile-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-}
-
 .admin-mobile-header .brand-title {
     font-family: var(--font-heading);
     font-size: 1.15rem;
     color: #fff;
     font-weight: 700;
-    white-space: nowrap;
 }
 
 .admin-mobile-menu-btn {
@@ -2669,22 +2661,6 @@ a {
     padding: 6px 14px;
     font-weight: 600;
     gap: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-pill);
-    transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
-    flex-shrink: 0;
-    cursor: pointer;
-}
-
-.admin-mobile-menu-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-
-.admin-mobile-menu-btn:active {
-    transform: scale(0.96);
 }
 
 .admin-sidebar-backdrop {
@@ -3905,18 +3881,6 @@ a {
     .container {
         padding: 0 12px;
     }
-    .admin-mobile-header {
-        padding: 8px 12px;
-        min-height: 52px;
-    }
-    .admin-mobile-header .brand-title {
-        font-size: 1.05rem;
-    }
-    .admin-mobile-menu-btn {
-        min-height: 36px;
-        padding: 5px 12px;
-        font-size: 0.85rem;
-    }
     .admin-main {
         padding: 14px 10px;
     }
@@ -3978,25 +3942,6 @@ a {
 
 /* Ultra-Compact Phones (<= 360px) */
 @media (max-width: 360px) {
-    .admin-mobile-header {
-        padding: 6px 10px;
-        gap: 8px;
-    }
-    .admin-mobile-header .brand-title {
-        font-size: 0.95rem;
-    }
-    .admin-mobile-brand {
-        gap: 6px;
-    }
-    .admin-mobile-brand img {
-        height: 28px !important;
-    }
-    .admin-mobile-menu-btn {
-        min-height: 32px;
-        padding: 4px 10px;
-        font-size: 0.8rem;
-        gap: 4px;
-    }
     .products-grid {
         gap: 8px !important;
     }

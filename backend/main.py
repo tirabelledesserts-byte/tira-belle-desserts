@@ -1,6 +1,13 @@
 import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# Ensure the parent directory is on sys.path so 'from backend...' imports work when running with root='backend'
+_pkg_root = Path(__file__).resolve().parent.parent
+if str(_pkg_root) not in sys.path:
+    sys.path.insert(0, str(_pkg_root))
+
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

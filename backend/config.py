@@ -2,21 +2,19 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    DATA_DIR = BASE_DIR / "data"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+except (OSError, PermissionError):
+    DATA_DIR = Path("/tmp") / "data"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
 DB_PATH = (DATA_DIR / "tirabelle.db").as_posix()
 
 # Database
 raw_db_url = os.getenv("DATABASE_URL", "")
 if not raw_db_url:
-    # Local fallback
-    try:
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        raw_db_url = f"sqlite:///{(DATA_DIR / 'tirabelle.db').as_posix()}"
-    except (OSError, PermissionError):
-        # Ephemeral serverless fallback (/tmp is writable in serverless)
-        tmp_db = Path("/tmp") / "tirabelle.db"
-        raw_db_url = f"sqlite:///{tmp_db.as_posix()}"
+    raw_db_url = f"sqlite:///{DB_PATH}"
 
 if raw_db_url.startswith("postgres://"):
     raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)

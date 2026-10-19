@@ -3,10 +3,22 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-# Ensure the parent directory is on sys.path so 'from backend...' imports work when running with root='backend'
-_pkg_root = Path(__file__).resolve().parent.parent
+# Ensure both package root and backend directory are in sys.path
+_this_dir = Path(__file__).resolve().parent
+_pkg_root = _this_dir.parent
+
 if str(_pkg_root) not in sys.path:
     sys.path.insert(0, str(_pkg_root))
+if str(_this_dir) not in sys.path:
+    sys.path.insert(0, str(_this_dir))
+
+# Ensure 'backend' module is always resolvable even if runtime root is 'backend'
+if "backend" not in sys.modules:
+    import types
+    _backend_pkg = types.ModuleType("backend")
+    _backend_pkg.__path__ = [str(_this_dir)]
+    _backend_pkg.__file__ = str(_this_dir / "__init__.py")
+    sys.modules["backend"] = _backend_pkg
 
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -92,6 +104,7 @@ def health_check(db: Session = Depends(get_db)):
         "app": "TIRA Belle",
         "version": "2.0.0",
         "database": db_status,
+        "database_engine": engine.name,
         "timestamp": utcnow_iso()
     }
 

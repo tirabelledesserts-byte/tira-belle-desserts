@@ -1171,7 +1171,7 @@ class TiraBelleDB {
     }
 
     // ----------------- REDEEM REWARD -----------------
-    redeemReward(phone, adminUser = 'admin', notes = '') {
+    async redeemReward(phone, adminUser = 'admin', notes = '') {
         const loyalty = this.getCustomerLoyalty(phone);
         if (!loyalty.isEligible) {
             return { success: false, message: 'Customer is not eligible for a free reward yet.' };
@@ -1188,23 +1188,36 @@ class TiraBelleDB {
             notes: notes || 'Redeemed over counter'
         };
 
-        this.data.redemptions.push(redemption);
-        this.save();
-
-        if (this.isBackendOnline) {
-            this.apiRequest('/redemptions', {
+        let apiError = null;
+        try {
+            const apiRes = await this.apiRequest('/redemptions', {
                 method: 'POST',
                 body: JSON.stringify({
                     customerPhone: loyalty.customer.phone,
                     adminUser: adminUser || 'admin',
                     notes: notes || 'Redeemed over counter'
                 })
-            }).then(res => {
-                if (res && res.ok && res.data && res.data.redemptionId) {
-                    redemption.id = res.data.redemptionId;
-                }
-            }).catch(e => console.warn('Redemption sync error:', e));
+            });
+            if (apiRes && apiRes.ok && apiRes.data && apiRes.data.redemptionId) {
+                redemption.id = apiRes.data.redemptionId;
+                this.isBackendOnline = true;
+            } else {
+                apiError = (apiRes && apiRes.data && apiRes.data.detail) || (apiRes && apiRes.error) || 'Failed to save redemption to database.';
+            }
+        } catch (e) {
+            apiError = e.message || 'Network error saving redemption to database.';
         }
+
+        if (apiError) {
+            console.error('[TIRA Belle] Redemption database error:', apiError);
+            return {
+                success: false,
+                message: `Database Error: ${apiError}`
+            };
+        }
+
+        this.data.redemptions.push(redemption);
+        this.save();
 
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('tira-sales-changed', { detail: this.data.sales }));
@@ -1238,7 +1251,7 @@ class TiraBelleDB {
         if (redeemFreeReward) {
             const currentLoyalty = this.getCustomerLoyalty(cleanPhone);
             if (currentLoyalty.isEligible) {
-                const rdmResult = this.redeemReward(cleanPhone, 'admin', 'Redeemed together with Sale POS');
+                const rdmResult = await this.redeemReward(cleanPhone, 'admin', 'Redeemed together with Sale POS');
                 if (rdmResult.success) {
                     redeemedItem = {
                         productId: 'prod-150',
@@ -1306,25 +1319,36 @@ class TiraBelleDB {
             rewardRedeemedInSale: !!redeemedItem
         };
 
-        if (this.isBackendOnline) {
-            try {
-                const apiRes = await this.apiRequest('/sales', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        customerPhone: cleanPhone,
-                        customerName: customer.name,
-                        items: processedItems,
-                        paymentMode: paymentMode || 'Cash',
-                        notes: notes || '',
-                        redeemFreeReward: !!redeemFreeReward
-                    })
-                });
-                if (apiRes.ok && apiRes.data && apiRes.data.saleId) {
-                    saleRecord.id = apiRes.data.saleId;
-                }
-            } catch (e) {
-                console.warn('Sale sync error:', e);
+        // Persist directly to Supabase via backend REST API
+        let apiError = null;
+        try {
+            const apiRes = await this.apiRequest('/sales', {
+                method: 'POST',
+                body: JSON.stringify({
+                    customerPhone: cleanPhone,
+                    customerName: customer.name,
+                    items: processedItems,
+                    paymentMode: paymentMode || 'Cash',
+                    notes: notes || '',
+                    redeemFreeReward: !!redeemFreeReward
+                })
+            });
+            if (apiRes && apiRes.ok && apiRes.data && apiRes.data.saleId) {
+                saleRecord.id = apiRes.data.saleId;
+                this.isBackendOnline = true;
+            } else {
+                apiError = (apiRes && apiRes.data && apiRes.data.detail) || (apiRes && apiRes.error) || 'Failed to save transaction to database.';
             }
+        } catch (e) {
+            apiError = e.message || 'Network error saving transaction to database.';
+        }
+
+        if (apiError) {
+            console.error('[TIRA Belle] Sale database error:', apiError);
+            return {
+                success: false,
+                message: `Database Error: ${apiError}`
+            };
         }
 
         this.data.sales.push(saleRecord);
@@ -1341,7 +1365,7 @@ class TiraBelleDB {
             success: true,
             sale: saleRecord,
             loyalty: updatedLoyalty,
-            message: 'Sale recorded successfully!'
+            message: 'Sale recorded and persisted successfully!'
         };
     }
 

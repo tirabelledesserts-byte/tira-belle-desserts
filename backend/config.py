@@ -1,7 +1,12 @@
 import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+_this_file = Path(__file__).resolve()
+if _this_file.parent.name == "backend":
+    BASE_DIR = _this_file.parent.parent
+else:
+    BASE_DIR = _this_file.parent
+
 try:
     DATA_DIR = BASE_DIR / "data"
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -11,17 +16,52 @@ except (OSError, PermissionError):
 
 DB_PATH = (DATA_DIR / "tirabelle.db").as_posix()
 
-# Database
-raw_db_url = os.getenv("DATABASE_URL", "")
+# Database - Support all common Supabase and PostgreSQL environment variable keys
+raw_db_url = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("SUPABASE_DATABASE_URL")
+    or os.getenv("POSTGRES_URL")
+    or os.getenv("SUPABASE_DB_URL")
+    or os.getenv("POSTGRES_PRISMA_URL")
+    or os.getenv("POSTGRES_URL_NON_POOLING")
+    or ""
+).strip()
+
 if not raw_db_url:
     raw_db_url = f"sqlite:///{DB_PATH}"
 
-if raw_db_url.startswith("postgres://"):
-    raw_db_url = raw_db_url.replace("postgres://", "postgresql+psycopg2://", 1)
-elif raw_db_url.startswith("postgresql://"):
-    raw_db_url = raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+def normalize_database_url(url: str) -> str:
+    if not url or url.startswith("sqlite"):
+        return url
 
-DATABASE_URL = raw_db_url
+    if url.startswith("postgres://") or url.startswith("postgresql://") or "postgres" in url:
+        # Detect available postgres driver in current Python runtime
+        driver = None
+        for d in ["psycopg2", "psycopg", "pg8000"]:
+            try:
+                __import__(d)
+                driver = d
+                break
+            except ImportError:
+                pass
+
+        import re
+        cleaned = re.sub(r"^postgres(ql)?(\+[a-zA-Z0-9_-]+)?://", "", url)
+
+        if driver:
+            new_url = f"postgresql+{driver}://{cleaned}"
+        else:
+            new_url = f"postgresql://{cleaned}"
+
+        # Ensure sslmode=require for Supabase / remote cloud connections
+        if ("supabase" in new_url or "pooler" in new_url or "aws" in new_url) and "sslmode" not in new_url:
+            sep = "&" if "?" in new_url else "?"
+            new_url = f"{new_url}{sep}sslmode=require"
+
+        return new_url
+    return url
+
+DATABASE_URL = normalize_database_url(raw_db_url)
 
 # Security
 SECRET_KEY = os.getenv("SECRET_KEY", "tirabelle_super_secret_jwt_key_2026_artisan_desserts")

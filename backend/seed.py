@@ -107,10 +107,11 @@ def migrate_database_schema(db: Session):
     """
     from sqlalchemy import text
     try:
-        cols = [row[1] for row in db.execute(text("PRAGMA table_info(products)")).fetchall()]
-        if "category_id" not in cols:
-            db.execute(text("ALTER TABLE products ADD COLUMN category_id VARCHAR(50) REFERENCES categories(id)"))
-            db.commit()
+        if db.bind and db.bind.dialect.name == "sqlite":
+            cols = [row[1] for row in db.execute(text("PRAGMA table_info(products)")).fetchall()]
+            if "category_id" not in cols:
+                db.execute(text("ALTER TABLE products ADD COLUMN category_id VARCHAR(50) REFERENCES categories(id)"))
+                db.commit()
     except Exception as e:
         db.rollback()
         print(f"[MIGRATION WARNING] {e}")

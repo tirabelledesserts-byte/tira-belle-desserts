@@ -1926,7 +1926,7 @@ window.triggerAdminRedemption = async function(phone) {
     }) : window.confirm('Confirm redemption of 1 Free 150g Tiramisu Cup for this customer?');
 
     if (confirmed) {
-        const res = window.TiraDB.redeemReward(phone, 'admin', 'Counter Claim');
+        const res = await window.TiraDB.redeemReward(phone, 'admin', 'Counter Claim');
         if (res.success) {
             showToast(res.message, 'success');
             renderAdminLoyaltyCard(phone);

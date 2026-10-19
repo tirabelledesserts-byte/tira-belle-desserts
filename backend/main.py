@@ -121,7 +121,7 @@ def health_check(db: Session = Depends(get_db)):
     return {
         "status": "ok",
         "app": "TIRA Belle",
-        "version": "2.0.3",
+        "version": "2.0.4",
         "database": db_status,
         "database_engine": engine.name,
         "database_driver": getattr(engine.dialect, "driver", None),

@@ -100,7 +100,8 @@ def normalize_database_url(url: str) -> str:
             else:
                 region = "ap-southeast-2"
         host = f"aws-0-{region}.pooler.supabase.com"
-        port = port or 5432
+        # Always use port 6543 (Transaction Mode) for serverless to bypass the 15-client session limit
+        port = 6543
         if not user.startswith(f"postgres.{project_ref}"):
             user = f"postgres.{project_ref}"
 

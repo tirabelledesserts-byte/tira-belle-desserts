@@ -15,10 +15,10 @@ if "sqlite" in DATABASE_URL:
         "timeout": 30
     }
 else:
-    # PostgreSQL / Supabase serverless settings
-    engine_kwargs["pool_recycle"] = 300
-    engine_kwargs["pool_size"] = 5
-    engine_kwargs["max_overflow"] = 10
+    # Serverless PostgreSQL settings: NullPool prevents connection leaks across Lambda instances
+    from sqlalchemy.pool import NullPool
+    engine_kwargs["poolclass"] = NullPool
+    engine_kwargs["connect_args"] = {"connect_timeout": 10}
 
 engine = create_engine(
     DATABASE_URL,

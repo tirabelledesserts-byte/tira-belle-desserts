@@ -149,10 +149,14 @@ def upsert_customer(cust_in: CustomerCreate, db: Session = Depends(get_db)):
             customer.updated_at = utcnow_iso()
             db.commit()
             db.refresh(customer)
+            from backend.routers.realtime import notify_change
+            notify_change("customers", "updated", {"phone": clean_phone})
         return customer
     else:
         new_cust = Customer(phone=clean_phone, name=name)
         db.add(new_cust)
         db.commit()
         db.refresh(new_cust)
+        from backend.routers.realtime import notify_change
+        notify_change("customers", "created", {"phone": clean_phone})
         return new_cust

@@ -80,6 +80,8 @@ def create_category(cat_in: CategoryCreate, db: Session = Depends(get_db)):
     db.add(new_cat)
     db.commit()
     db.refresh(new_cat)
+    from backend.routers.realtime import notify_change
+    notify_change("categories", "created", {"id": new_cat.id})
     return _format_category_response(new_cat, db)
 
 @router.put("/{category_id}", response_model=CategoryResponse)
@@ -106,6 +108,8 @@ def update_category(category_id: str, cat_in: CategoryUpdate, db: Session = Depe
     cat.updated_at = utcnow_iso()
     db.commit()
     db.refresh(cat)
+    from backend.routers.realtime import notify_change
+    notify_change("categories", "updated", {"id": cat.id})
     return _format_category_response(cat, db)
 
 @router.delete("/{category_id}")
@@ -121,4 +125,7 @@ def delete_category(category_id: str, db: Session = Depends(get_db)):
 
     db.delete(cat)
     db.commit()
+    from backend.routers.realtime import notify_change
+    notify_change("categories", "deleted", {"id": category_id})
+    notify_change("products", "updated")
     return {"success": True, "message": f"Category deleted successfully and {len(prods)} products unlinked"}

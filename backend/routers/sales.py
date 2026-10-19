@@ -147,6 +147,10 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
 
     db.commit()
 
+    from backend.routers.realtime import notify_change
+    notify_change("sales", "created", {"saleId": sale.id, "phone": clean_phone})
+    notify_change("customers", "updated", {"phone": clean_phone})
+
     updated_loyalty = calculate_customer_loyalty(clean_phone, db)
 
     return {

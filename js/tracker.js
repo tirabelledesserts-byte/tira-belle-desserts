@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let lastTrackedPhone = null;
 
-window.addEventListener('tira-settings-changed', () => {
+function refreshTrackerLoyalty() {
     if (window.TiraDB) {
         window.TiraDB.applyGlobalBranding();
     }
@@ -35,7 +35,11 @@ window.addEventListener('tira-settings-changed', () => {
         const loyalty = window.TiraDB.getCustomerLoyalty(lastTrackedPhone);
         if (loyalty) renderLoyaltyResult(loyalty);
     }
-});
+}
+
+window.addEventListener('tira-settings-changed', refreshTrackerLoyalty);
+window.addEventListener('tira-sales-changed', refreshTrackerLoyalty);
+window.addEventListener('tira-backend-synced', refreshTrackerLoyalty);
 
 function updateTrackerRuleText() {
     if (!window.TiraDB) return;

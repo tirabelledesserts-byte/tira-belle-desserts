@@ -1,6 +1,7 @@
 /**
  * TIRA Belle - Central Database & Business Rules Engine
- * Handles Data Persistence (localStorage), Transactions, Customers, Loyalty Calculations, and Settings.
+ * Handles Data Persistence via Supabase APIs, Real-Time Multi-Device Sync (SSE & Polling),
+ * Transactions, Customers, Loyalty Calculations, and Settings.
  */
 
 const STORAGE_KEY = 'TIRA_BELLE_DATA_V1';
@@ -169,18 +170,39 @@ const DEFAULT_REVIEWS = [];
 class TiraBelleDB {
     constructor() {
         this.isBackendOnline = false;
-        this.data = this.load();
+        this.localVersion = 0;
+        this.isSyncing = false;
+        this.pollTimer = null;
+        this.sseSource = null;
+        this.data = this.getDefaultState();
+
         if (typeof document !== 'undefined') {
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => {
-                    this.applyGlobalBranding();
-                    this.syncWithBackend();
-                });
-            } else {
+            const onReady = () => {
                 this.applyGlobalBranding();
-                this.syncWithBackend();
+                this.syncWithBackend().then(() => {
+                    this.migrateLegacyLocalStorageData();
+                });
+                this.initRealtimeSync();
+            };
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', onReady);
+            } else {
+                onReady();
             }
         }
+    }
+
+    getDefaultState() {
+        return {
+            settings: { ...DEFAULT_SETTINGS },
+            categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
+            products: JSON.parse(JSON.stringify(DEFAULT_PRODUCTS)),
+            customers: [],
+            sales: [],
+            redemptions: [],
+            reviews: []
+        };
     }
 
     getApiBase() {
@@ -208,7 +230,7 @@ class TiraBelleDB {
             headers['Authorization'] = `Bearer ${token}`;
         }
         const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-        const timeoutId = controller ? setTimeout(() => controller.abort(), options.timeout || 3500) : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), options.timeout || 4000) : null;
         try {
             const resp = await fetch(url, {
                 ...options,
@@ -239,13 +261,119 @@ class TiraBelleDB {
         }
     }
 
-    async syncWithBackend() {
-        const isOnline = await this.checkBackendOnline();
-        if (!isOnline) {
-            return false;
-        }
+    // ----------------- REAL-TIME MULTI-DEVICE SYNC ENGINE -----------------
+    initRealtimeSync() {
+        if (typeof window === 'undefined') return;
 
+        // 1. Establish Server-Sent Events (SSE) connection for instant push updates
+        this.connectEventSource();
+
+        // 2. Setup periodic lightweight version polling (2.5s active) for platforms/serverless where SSE might drop
+        if (this.pollTimer) clearInterval(this.pollTimer);
+        this.pollTimer = setInterval(() => {
+            this.checkVersionAndSync();
+        }, 2500);
+
+        // 3. Sync immediately on tab focus or visibility change
+        if (typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    this.checkVersionAndSync(true);
+                    if (!this.sseSource || this.sseSource.readyState === EventSource.CLOSED) {
+                        this.connectEventSource();
+                    }
+                }
+            });
+        }
+        window.addEventListener('focus', () => {
+            this.checkVersionAndSync(true);
+        });
+    }
+
+    connectEventSource() {
+        if (typeof window === 'undefined' || typeof EventSource === 'undefined') return;
         try {
+            if (this.sseSource) {
+                try { this.sseSource.close(); } catch (e) {}
+            }
+            const sseUrl = this.getApiBase() + '/realtime/stream';
+            this.sseSource = new EventSource(sseUrl);
+
+            this.sseSource.onmessage = (event) => {
+                try {
+                    if (!event.data || event.data.trim().startsWith(':')) return; // Heartbeat ping comment
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'connected') {
+                        this.isBackendOnline = true;
+                        if (data.version && data.version > this.localVersion) {
+                            this.localVersion = data.version;
+                            this.syncWithBackend();
+                        }
+                    } else if (data.type === 'change') {
+                        this.isBackendOnline = true;
+                        if (data.version) {
+                            this.localVersion = Math.max(this.localVersion, data.version);
+                        }
+                        this.handleRealtimeChange(data);
+                    }
+                } catch (err) {
+                    console.debug('[TIRA Belle Realtime] Parse error:', err);
+                }
+            };
+
+            this.sseSource.onerror = () => {
+                // EventSource will automatically attempt reconnection
+            };
+        } catch (err) {
+            console.debug('[TIRA Belle Realtime] SSE setup error:', err);
+        }
+    }
+
+    async checkVersionAndSync(force = false) {
+        if (this.isSyncing) return;
+        try {
+            const res = await this.apiRequest('/realtime/version', { timeout: 2000 });
+            if (res.ok && res.data && typeof res.data.version === 'number') {
+                this.isBackendOnline = true;
+                if (res.data.version > this.localVersion || force) {
+                    this.localVersion = res.data.version;
+                    await this.syncWithBackend();
+                }
+            }
+        } catch (e) {}
+    }
+
+    async handleRealtimeChange(changeData) {
+        // Re-synchronize data from backend
+        await this.syncWithBackend();
+        if (typeof window !== 'undefined') {
+            const entity = changeData.entity;
+            const payload = changeData.payload;
+            if (entity === 'sales') {
+                window.dispatchEvent(new CustomEvent('tira-sales-changed', { detail: payload }));
+            } else if (entity === 'products') {
+                window.dispatchEvent(new CustomEvent('tira-products-changed', { detail: payload }));
+            } else if (entity === 'categories') {
+                window.dispatchEvent(new CustomEvent('tira-categories-changed', { detail: payload }));
+            } else if (entity === 'reviews') {
+                window.dispatchEvent(new CustomEvent('tira-reviews-changed', { detail: payload }));
+            } else if (entity === 'settings') {
+                window.dispatchEvent(new CustomEvent('tira-settings-changed', { detail: payload }));
+            } else if (entity === 'customers') {
+                window.dispatchEvent(new CustomEvent('tira-customers-changed', { detail: payload }));
+            }
+        }
+    }
+
+    async syncWithBackend() {
+        if (this.isSyncing) return false;
+        this.isSyncing = true;
+        try {
+            const isOnline = await this.checkBackendOnline();
+            if (!isOnline) {
+                return false;
+            }
+
             const [settRes, prodRes, catRes, revRes, custRes, salesRes, rdmRes] = await Promise.all([
                 this.apiRequest('/settings'),
                 this.apiRequest('/products'),
@@ -292,7 +420,6 @@ class TiraBelleDB {
             }
 
             if (changed) {
-                this.save();
                 this.applyGlobalBranding();
                 if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('tira-backend-synced', { detail: this.data }));
@@ -300,83 +427,101 @@ class TiraBelleDB {
                     window.dispatchEvent(new CustomEvent('tira-categories-changed', { detail: this.data.categories }));
                     window.dispatchEvent(new CustomEvent('tira-products-changed', { detail: this.data.products }));
                     window.dispatchEvent(new CustomEvent('tira-reviews-changed', { detail: this.data.reviews }));
+                    window.dispatchEvent(new CustomEvent('tira-sales-changed', { detail: this.data.sales }));
+                    window.dispatchEvent(new CustomEvent('tira-customers-changed', { detail: this.data.customers }));
                 }
             }
             return true;
         } catch (e) {
             console.warn('[TIRA Belle] Background sync error:', e);
             return false;
+        } finally {
+            this.isSyncing = false;
         }
     }
 
+    // ----------------- DATA PERSISTENCE & MIGRATION -----------------
+    /**
+     * Data is held in-memory and persisted exclusively to the Supabase backend database via API.
+     * localStorage is intentionally NOT used for data persistence.
+     */
     load() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                const settings = { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) };
-
-                // Auto-upgrade old default credentials to requested credentials
-                if (settings.adminUsername === 'admin') {
-                    settings.adminUsername = 'tirabelle.desserts@gmail.com';
-                }
-                if (settings.adminPasswordHash === 'f2af6949747f4753b33ecc567ba642802ae0e95556ba8f865598d2c7e04cb630') {
-                    settings.adminPasswordHash = '2dbedb0613a00450077568d21baa5661ae3fba47257723b15627ba46b7cff28a';
-                }
-
-                // Purge any legacy PIN or plaintext keys so only adminPasswordHash remains
-                delete settings.adminPin;
-                delete settings.adminPinHash;
-                delete settings.adminPassword;
-
-                const loadedProds = parsed.products && parsed.products.length ? parsed.products : [...DEFAULT_PRODUCTS];
-                // Ensure every product is categorized
-                loadedProds.forEach(p => {
-                    if (!p.categoryId) {
-                        const nameLower = (p.name || '').toLowerCase();
-                        const imgLower = (p.image || '').toLowerCase();
-                        p.categoryId = (nameLower.includes('choco') || imgLower.includes('choco')) ? 'cat-chocolate' : 'cat-classic';
-                    }
-                });
-
-                return {
-                    settings: settings,
-                    categories: Array.isArray(parsed.categories) && parsed.categories.length ? parsed.categories : [...DEFAULT_CATEGORIES],
-                    products: loadedProds,
-                    customers: Array.isArray(parsed.customers) ? parsed.customers : [],
-                    sales: Array.isArray(parsed.sales) ? parsed.sales : [],
-                    redemptions: Array.isArray(parsed.redemptions) ? parsed.redemptions : [],
-                    reviews: Array.isArray(parsed.reviews) && parsed.reviews.length
-                        ? parsed.reviews.map(r => {
-                            const cleanP = r.phone ? String(r.phone).replace(/\D/g, '') : '';
-                            if (cleanP.length >= 7) r.verified = true;
-                            return r;
-                        })
-                        : [...DEFAULT_REVIEWS]
-                };
-            }
-        } catch (e) {
-            console.error('Error reading localStorage, using defaults', e);
-        }
-        const initial = {
-            settings: { ...DEFAULT_SETTINGS },
-            categories: [...DEFAULT_CATEGORIES],
-            products: [...DEFAULT_PRODUCTS],
-            customers: [],
-            sales: [],
-            redemptions: [],
-            reviews: [...DEFAULT_REVIEWS]
-        };
-        this.save(initial);
-        return initial;
+        return this.getDefaultState();
     }
 
     save(data = this.data) {
+        this.data = data;
+        // Data persistence is handled via Supabase API calls.
+        // localStorage is deliberately not used for business data.
+        return this.data;
+    }
+
+    /**
+     * Seamlessly migrates any legacy localStorage data to Supabase if the database is fresh,
+     * then permanently removes the legacy key from localStorage.
+     */
+    async migrateLegacyLocalStorageData() {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
         try {
-            this.data = data;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                const isOnline = await this.checkBackendOnline();
+                if (isOnline) {
+                    // Check if backend database already contains data
+                    const [catRes, prodRes, salesRes] = await Promise.all([
+                        this.apiRequest('/categories'),
+                        this.apiRequest('/products'),
+                        this.apiRequest('/sales')
+                    ]);
+                    const hasCategories = catRes.ok && Array.isArray(catRes.data) && catRes.data.length > 0;
+                    const hasProducts = prodRes.ok && Array.isArray(prodRes.data) && prodRes.data.length > 0;
+                    const hasSales = salesRes.ok && Array.isArray(salesRes.data) && salesRes.data.length > 0;
+
+                    // Migrate categories if needed
+                    if (!hasCategories && Array.isArray(parsed.categories)) {
+                        for (const cat of parsed.categories) {
+                            await this.apiRequest('/categories', { method: 'POST', body: JSON.stringify(cat) }).catch(() => {});
+                        }
+                    }
+                    // Migrate products if needed
+                    if (!hasProducts && Array.isArray(parsed.products)) {
+                        for (const prod of parsed.products) {
+                            await this.apiRequest('/products', { method: 'POST', body: JSON.stringify(prod) }).catch(() => {});
+                        }
+                    }
+                    // Migrate sales if needed
+                    if (!hasSales && Array.isArray(parsed.sales)) {
+                        for (const sale of parsed.sales) {
+                            await this.apiRequest('/sales', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    customerPhone: sale.customerPhone,
+                                    customerName: sale.customerName,
+                                    items: sale.items,
+                                    paymentMode: sale.paymentMode || 'Cash',
+                                    notes: sale.notes || ''
+                                })
+                            }).catch(() => {});
+                        }
+                    }
+                    // Migrate reviews if needed
+                    if (Array.isArray(parsed.reviews) && parsed.reviews.length > 0) {
+                        const revRes = await this.apiRequest('/reviews');
+                        if (revRes.ok && Array.isArray(revRes.data) && revRes.data.length === 0) {
+                            for (const r of parsed.reviews) {
+                                await this.apiRequest('/reviews', { method: 'POST', body: JSON.stringify(r) }).catch(() => {});
+                            }
+                        }
+                    }
+                }
+            }
+            // Permanently clear legacy key from localStorage
+            localStorage.removeItem(STORAGE_KEY);
         } catch (e) {
-            console.error('Failed to save to localStorage', e);
+            console.warn('[TIRA Belle] Legacy localStorage cleanup error:', e);
+            try { localStorage.removeItem(STORAGE_KEY); } catch (err) {}
         }
     }
 
@@ -1054,7 +1199,16 @@ class TiraBelleDB {
                     adminUser: adminUser || 'admin',
                     notes: notes || 'Redeemed over counter'
                 })
+            }).then(res => {
+                if (res && res.ok && res.data && res.data.redemptionId) {
+                    redemption.id = res.data.redemptionId;
+                }
             }).catch(e => console.warn('Redemption sync error:', e));
+        }
+
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('tira-sales-changed', { detail: this.data.sales }));
+            window.dispatchEvent(new CustomEvent('tira-backend-synced', { detail: this.data }));
         }
 
         return {
@@ -1175,6 +1329,11 @@ class TiraBelleDB {
 
         this.data.sales.push(saleRecord);
         this.save();
+
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('tira-sales-changed', { detail: this.data.sales }));
+            window.dispatchEvent(new CustomEvent('tira-backend-synced', { detail: this.data }));
+        }
 
         const updatedLoyalty = this.getCustomerLoyalty(cleanPhone);
 
@@ -1437,18 +1596,6 @@ if (typeof window !== 'undefined') {
     window.escapeHtml = escapeHtml;
     window.hashCredential = hashCredential;
     window.TiraDB = new TiraBelleDB();
-
-    // Cross-tab real-time sync for localStorage updates
-    window.addEventListener('storage', (e) => {
-        if (e.key === STORAGE_KEY && window.TiraDB) {
-            window.TiraDB.data = window.TiraDB.load();
-            window.TiraDB.applyGlobalBranding();
-            try {
-                window.dispatchEvent(new CustomEvent('tira-settings-changed', { detail: window.TiraDB.data.settings }));
-                window.dispatchEvent(new CustomEvent('tira-reviews-changed', { detail: window.TiraDB.data.reviews }));
-            } catch (err) {}
-        }
-    });
 }
 
 if (typeof module !== 'undefined' && module.exports) {

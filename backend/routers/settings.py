@@ -55,4 +55,6 @@ def update_settings(new_settings: SettingsSchema, db: Session = Depends(get_db))
 
     db.commit()
     db.refresh(settings)
+    from backend.routers.realtime import notify_change
+    notify_change("settings", "updated")
     return settings

@@ -241,7 +241,7 @@ window.switchAdminSection = function(sectionId) {
     if (window.lucide) window.lucide.createIcons();
 };
 
-function initAdminApp() {
+function initAdminApp(refreshSettings = true) {
     applySavedSidebarState();
     loadDashboardMetrics();
     renderPosCatalog();
@@ -249,16 +249,35 @@ function initAdminApp() {
     renderProductsTable();
     renderCustomersTable();
     renderCounterQr();
-    populateSettingsFields();
+    renderAdminReviews();
+    renderAdminLoyaltyAudit();
+
+    const activeLoyaltyInput = document.getElementById('adminLoyaltyPhoneInput');
+    if (activeLoyaltyInput && activeLoyaltyInput.value && activeLoyaltyInput.value.trim().length >= 4) {
+        renderAdminLoyaltyCard(activeLoyaltyInput.value.trim());
+    }
+
+    const activeEl = document.activeElement;
+    const isEditingSettings = activeEl && activeEl.closest && activeEl.closest('#section-settings');
+    if (refreshSettings || !isEditingSettings) {
+        populateSettingsFields();
+    }
     setupImageDropzones();
     if (window.lucide) window.lucide.createIcons();
 }
 
-window.addEventListener('tira-backend-synced', () => {
+function liveSyncAdminView(refreshSettings = false) {
     if (typeof isAuthenticated !== 'undefined' && isAuthenticated) {
-        initAdminApp();
+        initAdminApp(refreshSettings);
     }
-});
+}
+
+window.addEventListener('tira-backend-synced', () => liveSyncAdminView(false));
+window.addEventListener('tira-sales-changed', () => liveSyncAdminView(false));
+window.addEventListener('tira-products-changed', () => liveSyncAdminView(false));
+window.addEventListener('tira-categories-changed', () => liveSyncAdminView(false));
+window.addEventListener('tira-customers-changed', () => liveSyncAdminView(false));
+window.addEventListener('tira-settings-changed', () => liveSyncAdminView(true));
 
 // ----------------- SECTION 1: DASHBOARD METRICS -----------------
 window.loadDashboardMetrics = async function() {

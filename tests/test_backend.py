@@ -606,6 +606,14 @@ class TestFastAPIBackendSuite(unittest.TestCase):
         self.assertNotIn("\\", sanitize_filename("..\\..\\windows\\system32\\cmd.jpg"))
         self.assertEqual(sanitize_filename("my tiramisu photo #1.png"), "my_tiramisu_photo__1.png")
 
+    def test_realtime_version_tracking(self):
+        from backend.routers.realtime import get_current_version, notify_change, get_last_updated
+        v1 = get_current_version()
+        notify_change("sales", "created", {"test": True})
+        v2 = get_current_version()
+        self.assertGreater(v2, v1)
+        self.assertIsNotNone(get_last_updated())
+
 if __name__ == '__main__':
     unittest.main()
 

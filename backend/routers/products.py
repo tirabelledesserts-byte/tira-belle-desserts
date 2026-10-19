@@ -73,6 +73,8 @@ def create_product(prod_in: ProductCreate, db: Session = Depends(get_db)):
     db.add(new_prod)
     db.commit()
     db.refresh(new_prod)
+    from backend.routers.realtime import notify_change
+    notify_change("products", "created", {"id": new_prod.id})
     return _format_product_response(new_prod)
 
 @router.put("/{product_id}", response_model=ProductResponse)
@@ -105,6 +107,8 @@ def update_product(product_id: str, prod_in: ProductUpdate, db: Session = Depend
     prod.updated_at = utcnow_iso()
     db.commit()
     db.refresh(prod)
+    from backend.routers.realtime import notify_change
+    notify_change("products", "updated", {"id": prod.id})
     return _format_product_response(prod)
 
 @router.delete("/{product_id}")
@@ -114,4 +118,6 @@ def delete_product(product_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Product not found")
     db.delete(prod)
     db.commit()
+    from backend.routers.realtime import notify_change
+    notify_change("products", "deleted", {"id": product_id})
     return {"success": True, "message": "Product deleted successfully"}

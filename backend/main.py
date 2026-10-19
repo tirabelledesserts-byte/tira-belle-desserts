@@ -29,7 +29,8 @@ from backend.routers import (
     categories,
     upload,
     reviews,
-    settings
+    settings,
+    realtime
 )
 
 @asynccontextmanager
@@ -77,6 +78,7 @@ app.include_router(products.router)
 app.include_router(upload.router)
 app.include_router(reviews.router)
 app.include_router(settings.router)
+app.include_router(realtime.router)
 
 @app.get("/api/health", tags=["Health"])
 def health_check(db: Session = Depends(get_db)):

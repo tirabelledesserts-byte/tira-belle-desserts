@@ -543,11 +543,82 @@ a {
     box-shadow: 0 24px 48px rgba(36, 20, 14, 0.16);
 }
 
+.hero-slider-wrapper {
+    position: relative;
+    border-radius: calc(var(--radius-lg) - 6px);
+    overflow: hidden;
+    width: 100%;
+    background: var(--color-bg-alt);
+}
+
+.hero-slider {
+    display: grid;
+    grid-template-areas: "slide";
+    width: 100%;
+    position: relative;
+}
+
+.hero-slide {
+    grid-area: slide;
+    width: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), visibility 1s;
+    will-change: opacity;
+    pointer-events: none;
+    position: relative;
+}
+
+.hero-slide.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    z-index: 1;
+}
+
 .hero-poster-img {
     border-radius: calc(var(--radius-lg) - 6px);
     width: 100%;
     height: auto;
+    aspect-ratio: 1086 / 1448;
     object-fit: cover;
+    display: block;
+}
+
+/* Flavor Badge on Slide */
+.hero-slide-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: rgba(36, 20, 14, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--color-caramel-light, #dfa264);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    border: 1px solid rgba(223, 162, 100, 0.35);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    z-index: 2;
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    pointer-events: none;
+}
+
+.hero-slide-badge.choco-badge {
+    color: #f7d8ba;
+    border-color: rgba(247, 216, 186, 0.35);
+}
+
+@media (max-width: 768px) {
+    .hero-slide-badge {
+        font-size: 0.68rem;
+        padding: 4px 10px;
+        top: 10px;
+        left: 10px;
+    }
 }
 
 .hero-floating-card {

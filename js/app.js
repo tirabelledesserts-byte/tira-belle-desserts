@@ -5,6 +5,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     initMobileNav();
+    initHeroSlider();
     renderStorefrontBranding();
     renderPublicProducts();
     renderPublicLoyaltyInfo();
@@ -20,6 +21,71 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 200);
     }
 });
+
+/**
+ * Hero Dual-Flavor Presentation Slideshow
+ * Automatically and continuously crossfades between Classic and Chocolate Tiramisu posters every 3.5 seconds.
+ */
+function initHeroSlider() {
+    const slider = document.getElementById('heroSlider');
+    if (!slider) return;
+
+    const slides = slider.querySelectorAll('.hero-slide');
+    if (slides.length <= 1) return;
+
+    let currentIndex = 0;
+    let autoplayTimer = null;
+    const AUTOPLAY_INTERVAL = 3000; // 3 seconds continuous loop
+
+    function goToSlide(index) {
+        if (index < 0) {
+            currentIndex = slides.length - 1;
+        } else if (index >= slides.length) {
+            currentIndex = 0;
+        } else {
+            currentIndex = index;
+        }
+
+        slides.forEach((slide, idx) => {
+            const isActive = idx === currentIndex;
+            slide.classList.toggle('active', isActive);
+            slide.setAttribute('aria-hidden', !isActive);
+        });
+    }
+
+    function nextSlide() {
+        goToSlide(currentIndex + 1);
+    }
+
+    function startAutoplay() {
+        if (autoplayTimer) clearInterval(autoplayTimer);
+        autoplayTimer = setInterval(nextSlide, AUTOPLAY_INTERVAL);
+    }
+
+    // Touch swipe support for mobile
+    const card = document.getElementById('heroSliderCard');
+    if (card) {
+        let touchStartX = 0;
+        card.addEventListener('touchstart', (e) => {
+            if (e.touches && e.touches.length > 0) {
+                touchStartX = e.touches[0].clientX;
+            }
+        }, { passive: true });
+
+        card.addEventListener('touchend', (e) => {
+            if (e.changedTouches && e.changedTouches.length > 0) {
+                const diff = e.changedTouches[0].clientX - touchStartX;
+                if (Math.abs(diff) > 40) {
+                    goToSlide(diff > 0 ? currentIndex - 1 : currentIndex + 1);
+                    startAutoplay();
+                }
+            }
+        }, { passive: true });
+    }
+
+    // Start continuous automatic loop
+    startAutoplay();
+}
 
 // Re-render when business settings change centrally or cross-tab
 window.addEventListener('tira-settings-changed', () => {

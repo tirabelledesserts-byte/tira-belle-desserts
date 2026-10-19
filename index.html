@@ -222,9 +222,21 @@
 
             <!-- Hero Poster Presentation -->
             <div class="hero-visual">
-                <div class="hero-poster-card">
-                    <img src="assets/poster/tiramisu-classic-poster.png" alt="TIRA Belle Tiramisu Choco Cake Poster" class="hero-poster-img">
-                    
+                <div class="hero-poster-card" id="heroSliderCard">
+                    <!-- Dual Flavor Presentation Slider -->
+                    <div class="hero-slider-wrapper">
+                        <div class="hero-slider" id="heroSlider" aria-roledescription="carousel" aria-label="Featured Tiramisu Flavors">
+                            <div class="hero-slide active" data-slide="0" aria-hidden="false">
+                                <img src="assets/poster/tiramisu-classic-poster.png" alt="TIRA Belle Classic Tiramisu Handcrafted Poster" class="hero-poster-img" width="1086" height="1448" loading="eager">
+                                <span class="hero-slide-badge">Classic Tiramisu</span>
+                            </div>
+                            <div class="hero-slide" data-slide="1" aria-hidden="true">
+                                <img src="assets/poster/tiramisu-chocolate-poster.png" alt="TIRA Belle Chocolate Tiramisu Handcrafted Poster" class="hero-poster-img" width="1086" height="1448" loading="lazy">
+                                <span class="hero-slide-badge choco-badge">Chocolate Tiramisu</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="hero-floating-card">
                         <div class="floating-icon"><i data-lucide="award" data-size="20"></i></div>
                         <div>

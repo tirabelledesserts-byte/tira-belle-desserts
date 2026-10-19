@@ -3,8 +3,8 @@
   "services": {
     "app": {
       "root": ".",
-      "framework": null,
-      "cleanUrls": true
+      "framework": "fastapi",
+      "entrypoint": "backend.main:app"
     },
     "backend": {
       "root": "backend",

@@ -61,20 +61,54 @@ def normalize_database_url(url: str) -> str:
 
     # auth_host is user:password@host:port
     # A valid hostname can NEVER contain '@'. So the LAST '@' separates user:password from host:port
+    port = None
+    host = ""
+    user = ""
+    password = ""
+
     if "@" in auth_host:
         user_pass, host_port = auth_host.rsplit("@", 1)
         if ":" in user_pass:
             user, password = user_pass.split(":", 1)
-            # Unquote first to avoid double encoding, then quote
             user = urllib.parse.unquote(user)
             password = urllib.parse.unquote(password)
-            quoted_user = urllib.parse.quote(user, safe="")
-            quoted_pass = urllib.parse.quote(password, safe="")
-            auth_host = f"{quoted_user}:{quoted_pass}@{host_port}"
         else:
             user = urllib.parse.unquote(user_pass)
-            quoted_user = urllib.parse.quote(user, safe="")
-            auth_host = f"{quoted_user}@{host_port}"
+
+        if ":" in host_port:
+            host, port_str = host_port.split(":", 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                port = None
+        else:
+            host = host_port
+    else:
+        host = auth_host
+
+    # Automatic Supabase IPv6 -> IPv4 Pooler translation:
+    # Direct Supabase host 'db.<ref>.supabase.co' is IPv6-only.
+    # AWS Lambda / Vercel Serverless Functions do not have outbound IPv6 routing.
+    # We automatically route through the Supabase connection pooler with IPv4 support.
+    supabase_match = re.match(r"^db\.([a-zA-Z0-9_-]+)\.supabase\.co$", host)
+    if supabase_match:
+        project_ref = supabase_match.group(1)
+        region = os.getenv("SUPABASE_REGION")
+        if not region:
+            if project_ref == "nqdcbhfmomoascbfbnef":
+                region = "ap-southeast-2"
+            else:
+                region = "ap-southeast-2"
+        host = f"aws-0-{region}.pooler.supabase.com"
+        port = port or 5432
+        if not user.startswith(f"postgres.{project_ref}"):
+            user = f"postgres.{project_ref}"
+
+    quoted_user = urllib.parse.quote(user, safe="")
+    quoted_pass = urllib.parse.quote(password, safe="")
+    new_auth = f"{quoted_user}:{quoted_pass}@" if password else f"{quoted_user}@"
+    new_host_port = f"{host}:{port}" if port else host
+    auth_host = f"{new_auth}{new_host_port}"
 
     # Detect available postgres driver in current Python runtime
     driver = None

@@ -3,6 +3,7 @@
   "services": {
     "app": {
       "root": ".",
+      "framework": null,
       "cleanUrls": true
     },
     "backend": {

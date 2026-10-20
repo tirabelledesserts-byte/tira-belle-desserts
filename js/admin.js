@@ -1978,13 +1978,22 @@ window.renderCounterQr = function() {
     const qrContainer = document.getElementById('standeeQrContainer');
     if (!qrContainer) return;
 
-    // Target URL: tracker.html on the current origin/path
-    const trackerUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/')) + '/tracker.html';
+    // Target URL: main homepage (https://tirabelledesserts-byte-mubd.vercel.app/)
+    let homepageUrl = 'https://tirabelledesserts-byte-mubd.vercel.app/';
+    if (typeof window !== 'undefined' && window.location) {
+        const hostname = window.location.hostname;
+        // When running on a live domain (e.g. Vercel deployment or custom domain) and not local test/file
+        if (window.location.protocol.startsWith('http') && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+            homepageUrl = window.location.origin + '/';
+        }
+    }
 
     qrContainer.innerHTML = '';
+    qrContainer.title = homepageUrl;
+    qrContainer.setAttribute('data-target-url', homepageUrl);
     if (window.QRCode) {
         new window.QRCode(qrContainer, {
-            text: trackerUrl,
+            text: homepageUrl,
             width: 200,
             height: 200,
             colorDark: "#24140e",

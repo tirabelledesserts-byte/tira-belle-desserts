@@ -2117,7 +2117,9 @@ function populateSettingsFields() {
     const emailEl = document.getElementById('setEmail');
     if (emailEl) emailEl.value = s.email || '';
     const instaEl = document.getElementById('setInstagram');
-    if (instaEl) instaEl.value = s.instagram || '';
+    if (instaEl) instaEl.value = s.instagram || 'tirabelle.desserts';
+    const instaUrlEl = document.getElementById('setInstagramUrl');
+    if (instaUrlEl) instaUrlEl.value = s.instagramUrl || 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj';
     const addrEl = document.getElementById('setAddress');
     if (addrEl) addrEl.value = s.address || '';
     document.getElementById('setUpiId').value = s.upiId || '9373484198@upi';
@@ -2140,7 +2142,7 @@ function populateSettingsFields() {
     updateStandeeAndHelpTexts(threshold, rewardItem);
 }
 
-window.saveBusinessSettings = function() {
+window.saveBusinessSettings = async function() {
     const bizName = document.getElementById('setBusinessName').value.trim();
     if (!bizName) {
         showToast('Business name cannot be empty.', 'warning');
@@ -2150,7 +2152,28 @@ window.saveBusinessSettings = function() {
     const s = window.TiraDB.getSettings();
     const logoToSave = currentSettingsLogo || s.logo || 'assets/tira-belle-logo.png';
 
-    const updated = window.TiraDB.updateSettings({
+    const rawInsta = document.getElementById('setInstagram') ? document.getElementById('setInstagram').value.trim() : (s.instagram || '');
+    let rawInstaUrl = document.getElementById('setInstagramUrl') ? document.getElementById('setInstagramUrl').value.trim() : (s.instagramUrl || '');
+
+    // Validate Instagram URL if provided
+    if (rawInstaUrl) {
+        if (!/^https?:\/\//i.test(rawInstaUrl)) {
+            showToast('Instagram profile URL must start with https:// or http://', 'warning');
+            return;
+        }
+        try {
+            new URL(rawInstaUrl);
+        } catch (e) {
+            showToast('Please enter a valid Instagram profile URL.', 'warning');
+            return;
+        }
+    } else if (rawInsta) {
+        // Auto-construct Instagram URL from handle if URL was left empty
+        const clean = rawInsta.replace(/^@/, '');
+        rawInstaUrl = `https://instagram.com/${clean}`;
+    }
+
+    const updated = await window.TiraDB.updateSettings({
         businessName: bizName,
         tagline: document.getElementById('setTagline').value.trim(),
         slogan: document.getElementById('setSlogan') ? document.getElementById('setSlogan').value.trim() : (s.slogan || ''),
@@ -2159,7 +2182,8 @@ window.saveBusinessSettings = function() {
         phoneSecondary: document.getElementById('setPhoneSecondary') ? document.getElementById('setPhoneSecondary').value.trim() : (s.phoneSecondary || ''),
         whatsapp: document.getElementById('setPhone').value.trim(),
         email: document.getElementById('setEmail') ? document.getElementById('setEmail').value.trim() : (s.email || ''),
-        instagram: document.getElementById('setInstagram') ? document.getElementById('setInstagram').value.trim() : (s.instagram || ''),
+        instagram: rawInsta,
+        instagramUrl: rawInstaUrl,
         address: document.getElementById('setAddress') ? document.getElementById('setAddress').value.trim() : (s.address || ''),
         upiId: document.getElementById('setUpiId').value.trim(),
         currency: document.getElementById('setCurrency') ? (document.getElementById('setCurrency').value.trim() || '₹') : (s.currency || '₹'),
@@ -2171,7 +2195,7 @@ window.saveBusinessSettings = function() {
     showToast('Business details & logo updated! Centrally synchronized across application.', 'success');
 };
 
-window.saveLoyaltySettings = function() {
+window.saveLoyaltySettings = async function() {
     const rawThreshold = document.getElementById('setLoyaltyThreshold').value;
     const threshold = parseInt(rawThreshold, 10);
     if (isNaN(threshold) || threshold < 1 || threshold > 50) {
@@ -2184,7 +2208,7 @@ window.saveLoyaltySettings = function() {
         return;
     }
 
-    window.TiraDB.updateSettings({
+    await window.TiraDB.updateSettings({
         loyaltyThreshold: threshold,
         rewardItemName: rewardItem
     });

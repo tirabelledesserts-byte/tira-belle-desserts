@@ -196,6 +196,7 @@ class SettingsSchema(CamelModel):
     address: Optional[str] = None
     email: Optional[str] = None
     instagram: Optional[str] = None
+    instagram_url: Optional[str] = Field(default=None, alias="instagramUrl")
     upi_id: Optional[str] = Field(default=None, alias="upiId")
     currency: Optional[str] = "₹"
     loyalty_threshold: Optional[int] = Field(default=5, alias="loyaltyThreshold")

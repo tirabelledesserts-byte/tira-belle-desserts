@@ -42,6 +42,8 @@ def update_settings(new_settings: SettingsSchema, db: Session = Depends(get_db))
         settings.email = new_settings.email
     if new_settings.instagram is not None:
         settings.instagram = new_settings.instagram
+    if new_settings.instagram_url is not None:
+        settings.instagram_url = new_settings.instagram_url
     if new_settings.upi_id is not None:
         settings.upi_id = new_settings.upi_id
     if new_settings.currency is not None:

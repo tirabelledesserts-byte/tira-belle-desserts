@@ -1172,6 +1172,27 @@ a {
     font-size: 0.92rem;
 }
 
+a.footer-contact-item,
+.footer-contact-link {
+    text-decoration: none;
+    cursor: pointer;
+    width: fit-content;
+    transition: color var(--transition-fast, 0.2s ease), transform var(--transition-fast, 0.2s ease);
+}
+
+a.footer-contact-item:hover,
+.footer-contact-link:hover {
+    color: var(--color-caramel-light, #dfa264);
+    transform: translateX(2px);
+}
+
+a.footer-contact-item:hover i,
+.footer-contact-link:hover i,
+a.footer-contact-item:hover svg,
+.footer-contact-link:hover svg {
+    color: var(--color-caramel-light, #dfa264);
+}
+
 .footer-bottom {
     display: flex;
     align-items: center;

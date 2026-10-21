@@ -276,7 +276,8 @@ class TestTiraBelleBusinessLogic(unittest.TestCase):
             'whatsapp': '9373484198',
             'address': 'Physical Dessert Studio & Artisan Counter, Pune',
             'email': 'tirabelle.desserts@gmail.com',
-            'instagram': '@tirabelle',
+            'instagram': 'tirabelle.desserts',
+            'instagramUrl': 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj',
             'upiId': '9373484198@upi',
             'currency': '₹',
             'loyaltyThreshold': 5,
@@ -288,6 +289,7 @@ class TestTiraBelleBusinessLogic(unittest.TestCase):
         self.assertIn('phoneSecondary', default_settings)
         self.assertIn('email', default_settings)
         self.assertIn('instagram', default_settings)
+        self.assertIn('instagramUrl', default_settings)
         self.assertTrue(default_settings['logo'].endswith('.png'))
 
     def test_business_settings_update_and_merge(self):

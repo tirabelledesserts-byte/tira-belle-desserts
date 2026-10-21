@@ -5,6 +5,9 @@
  */
 
 const STORAGE_KEY = 'TIRA_BELLE_DATA_V1';
+const SETTINGS_CACHE_KEY = 'tira_settings_cache';
+const LOCAL_API_BASE = 'http://localhost:8001/api';
+const CLOUD_API_BASE = 'https://tirabelledesserts-byte-mubd.vercel.app/api';
 
 // Cryptographic Salt & Default Credential Hashes
 const CREDENTIAL_SALT = 'TIRABELLE_SALT_2026';
@@ -54,7 +57,8 @@ const DEFAULT_SETTINGS = {
     whatsapp: '9373484198',
     address: 'Physical Dessert Studio & Artisan Counter, Pune',
     email: 'tirabelle.desserts@gmail.com',
-    instagram: '@tirabelle',
+    instagram: 'tirabelle.desserts',
+    instagramUrl: 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj',
     upiId: '9373484198@upi',
     currency: '₹',
     loyaltyThreshold: 5,
@@ -176,6 +180,41 @@ class TiraBelleDB {
         this.sseSource = null;
         this.data = this.getDefaultState();
 
+        // Cross-tab broadcast channel for instant real-time settings synchronization
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+            try {
+                this.syncChannel = new BroadcastChannel('tira_belle_sync_channel');
+                this.syncChannel.onmessage = (event) => {
+                    if (event.data && event.data.type === 'settings-updated') {
+                        this.data.settings = { ...this.data.settings, ...event.data.settings };
+                        try {
+                            if (typeof localStorage !== 'undefined') {
+                                localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(this.data.settings));
+                            }
+                        } catch (e) {}
+                        this.applyGlobalBranding(this.data.settings);
+                        window.dispatchEvent(new CustomEvent('tira-settings-changed', { detail: this.data.settings }));
+                    }
+                };
+            } catch (e) {}
+        }
+
+        // Cross-tab storage event listener for instant sync across tabs on same origin
+        if (typeof window !== 'undefined') {
+            window.addEventListener('storage', (e) => {
+                if (e.key === SETTINGS_CACHE_KEY && e.newValue) {
+                    try {
+                        const parsed = JSON.parse(e.newValue);
+                        if (parsed && typeof parsed === 'object') {
+                            this.data.settings = { ...this.data.settings, ...parsed };
+                            this.applyGlobalBranding(this.data.settings);
+                            window.dispatchEvent(new CustomEvent('tira-settings-changed', { detail: this.data.settings }));
+                        }
+                    } catch (err) {}
+                }
+            });
+        }
+
         if (typeof document !== 'undefined') {
             const onReady = () => {
                 this.applyGlobalBranding();
@@ -194,8 +233,24 @@ class TiraBelleDB {
     }
 
     getDefaultState() {
+        let cachedSettings = null;
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const raw = localStorage.getItem(SETTINGS_CACHE_KEY);
+                if (raw) cachedSettings = JSON.parse(raw);
+            }
+        } catch (e) {}
+        if (!cachedSettings) {
+            try {
+                if (typeof sessionStorage !== 'undefined') {
+                    const raw = sessionStorage.getItem(SETTINGS_CACHE_KEY);
+                    if (raw) cachedSettings = JSON.parse(raw);
+                }
+            } catch (e) {}
+        }
+
         return {
-            settings: { ...DEFAULT_SETTINGS },
+            settings: { ...DEFAULT_SETTINGS, ...(cachedSettings || {}) },
             categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
             products: JSON.parse(JSON.stringify(DEFAULT_PRODUCTS)),
             customers: [],
@@ -209,10 +264,17 @@ class TiraBelleDB {
         if (typeof window !== 'undefined' && window.TIRA_API_BASE) {
             return window.TIRA_API_BASE;
         }
+        if (this.preferredApiBase) {
+            return this.preferredApiBase;
+        }
         if (typeof window !== 'undefined' && window.location) {
             // When opened directly via file:// or non-backend dev ports (e.g. Live Server :5500)
             if (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port !== '8001' && window.location.port !== '')) {
-                return 'http://localhost:8001/api';
+                try {
+                    const cachedBase = sessionStorage.getItem('tira_preferred_api');
+                    if (cachedBase) return cachedBase;
+                } catch (e) {}
+                return LOCAL_API_BASE;
             }
         }
         return '/api';
@@ -220,7 +282,7 @@ class TiraBelleDB {
 
     // ----------------- HYBRID REST API CLIENT -----------------
     async apiRequest(endpoint, options = {}) {
-        const url = this.getApiBase() + endpoint;
+        let currentBase = this.getApiBase();
         const headers = {
             'Content-Type': 'application/json',
             ...(options.headers || {})
@@ -229,28 +291,77 @@ class TiraBelleDB {
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
-        const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-        const timeoutId = controller ? setTimeout(() => controller.abort(), options.timeout || 4000) : null;
-        try {
-            const resp = await fetch(url, {
-                ...options,
-                headers,
-                signal: controller ? controller.signal : undefined
-            });
-            if (timeoutId) clearTimeout(timeoutId);
-            if (!resp.ok) {
-                const errData = await resp.json().catch(() => ({}));
-                return { ok: false, status: resp.status, data: errData };
+
+        const executeFetch = async (base) => {
+            const url = base + endpoint;
+            const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            const timeoutId = controller ? setTimeout(() => controller.abort(), options.timeout || 4000) : null;
+            try {
+                const resp = await fetch(url, {
+                    ...options,
+                    headers,
+                    signal: controller ? controller.signal : undefined
+                });
+                if (timeoutId) clearTimeout(timeoutId);
+                if (!resp.ok) {
+                    const errData = await resp.json().catch(() => ({}));
+                    return { ok: false, status: resp.status, data: errData };
+                }
+                const data = await resp.json().catch(() => ({}));
+                return { ok: true, status: resp.status, data };
+            } catch (e) {
+                if (timeoutId) clearTimeout(timeoutId);
+                return { ok: false, error: e.message || 'Network error' };
             }
-            const data = await resp.json().catch(() => ({}));
-            return { ok: true, status: resp.status, data };
-        } catch (e) {
-            if (timeoutId) clearTimeout(timeoutId);
-            return { ok: false, error: e.message || 'Network error' };
+        };
+
+        let result = await executeFetch(currentBase);
+
+        // Transparent failover for file:// or dev ports when local port 8001 is offline
+        const isFileOrDev = typeof window !== 'undefined' && window.location && (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port !== '8001' && window.location.port !== ''));
+        if (!result.ok && isFileOrDev && currentBase === LOCAL_API_BASE) {
+            const cloudResult = await executeFetch(CLOUD_API_BASE);
+            if (cloudResult.ok) {
+                this.preferredApiBase = CLOUD_API_BASE;
+                this.isBackendOnline = true;
+                try { sessionStorage.setItem('tira_preferred_api', CLOUD_API_BASE); } catch (e) {}
+                return cloudResult;
+            }
         }
+
+        return result;
     }
 
     async checkBackendOnline() {
+        const isFileOrDev = typeof window !== 'undefined' && window.location && (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port !== '8001' && window.location.port !== ''));
+
+        if (isFileOrDev) {
+            // Probe local dev server first
+            const localRes = await this.apiRequest('/health', { timeout: 1200 });
+            if (localRes.ok && localRes.data && localRes.data.status === 'ok') {
+                this.preferredApiBase = LOCAL_API_BASE;
+                this.isBackendOnline = true;
+                return true;
+            }
+
+            // Fallback probe to cloud backend
+            try {
+                const cloudRes = await fetch(CLOUD_API_BASE + '/health', { method: 'GET' });
+                if (cloudRes.ok) {
+                    const d = await cloudRes.json().catch(() => ({}));
+                    if (d.status === 'ok') {
+                        this.preferredApiBase = CLOUD_API_BASE;
+                        this.isBackendOnline = true;
+                        try { sessionStorage.setItem('tira_preferred_api', CLOUD_API_BASE); } catch (e) {}
+                        return true;
+                    }
+                }
+            } catch (e) {}
+
+            this.isBackendOnline = false;
+            return false;
+        }
+
         try {
             const res = await this.apiRequest('/health', { timeout: 2500 });
             this.isBackendOnline = !!(res.ok && res.data && res.data.status === 'ok');
@@ -388,6 +499,11 @@ class TiraBelleDB {
 
             if (settRes.ok && settRes.data) {
                 this.data.settings = { ...this.data.settings, ...settRes.data };
+                try {
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(this.data.settings));
+                    }
+                } catch (e) {}
                 changed = true;
             }
             if (catRes.ok && Array.isArray(catRes.data) && catRes.data.length) {
@@ -525,29 +641,65 @@ class TiraBelleDB {
         }
     }
 
-    // ----------------- SETTINGS & AUTHENTICATION -----------------
     getSettings() {
+        if (!this.data.settings) {
+            this.data.settings = { ...DEFAULT_SETTINGS };
+        }
+        // Normalize default Instagram details if legacy placeholder or missing
+        if (!this.data.settings.instagram || this.data.settings.instagram === '@tirabelle') {
+            this.data.settings.instagram = 'tirabelle.desserts';
+        }
+        if (!this.data.settings.instagramUrl) {
+            this.data.settings.instagramUrl = 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj';
+        }
         return this.data.settings;
     }
 
-    updateSettings(newSettings) {
+    async updateSettings(newSettings) {
         if (newSettings && newSettings.loyaltyThreshold !== undefined) {
             newSettings.loyaltyThreshold = Math.max(1, parseInt(newSettings.loyaltyThreshold, 10) || 5);
         }
         this.data.settings = { ...this.data.settings, ...newSettings };
+
+        // Cache settings synchronously in localStorage and sessionStorage for instant offline & reload persistence
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(this.data.settings));
+            }
+        } catch (e) {}
+        try {
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(this.data.settings));
+            }
+        } catch (e) {}
+
         this.save();
         this.applyGlobalBranding();
         try {
             if (typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('tira-settings-changed', { detail: this.data.settings }));
             }
+            if (this.syncChannel) {
+                this.syncChannel.postMessage({ type: 'settings-updated', settings: this.data.settings });
+            }
         } catch (e) {}
 
-        if (this.isBackendOnline) {
-            this.apiRequest('/settings', {
+        // Always sync with active backend API (local server or cloud fallback)
+        try {
+            const apiRes = await this.apiRequest('/settings', {
                 method: 'PUT',
                 body: JSON.stringify(this.data.settings)
-            }).catch(e => console.warn('Background settings sync error:', e));
+            });
+            if (apiRes.ok && apiRes.data) {
+                this.data.settings = { ...this.data.settings, ...apiRes.data };
+                try {
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(this.data.settings));
+                    }
+                } catch (e) {}
+            }
+        } catch (e) {
+            console.warn('Background settings sync error:', e);
         }
 
         return this.data.settings;
@@ -633,15 +785,56 @@ class TiraBelleDB {
             if (parentRow) parentRow.style.display = email ? 'flex' : 'none';
         });
 
-        // 10. Instagram
-        document.querySelectorAll('[data-brand="instagram"]').forEach(el => {
-            const cleanInsta = instagram.replace(/^@/, '');
-            if (el.tagName === 'A') {
-                el.href = `https://instagram.com/${cleanInsta}`;
+        // 10. Instagram (100% Dynamic from Admin Settings)
+        const rawHandle = (settings.instagram || '').trim();
+        let rawUrl = (settings.instagramUrl || settings.instagram_url || '').trim();
+        const cleanHandle = rawHandle.replace(/^@/, '');
+
+        // If URL is missing, derive it from handle
+        if (!rawUrl && cleanHandle) {
+            rawUrl = `https://instagram.com/${cleanHandle}`;
+        }
+
+        // Format display text as @handle
+        let displayHandle = '';
+        if (cleanHandle) {
+            displayHandle = `@${cleanHandle}`;
+        } else if (rawUrl) {
+            try {
+                const parsed = new URL(rawUrl);
+                const pathParts = parsed.pathname.split('/').filter(Boolean);
+                if (pathParts.length > 0) {
+                    displayHandle = `@${pathParts[0]}`;
+                }
+            } catch (e) {}
+        }
+
+        // Update clickable Instagram links (e.g. #footerInstaRow or elements with data-brand="instagram-link")
+        document.querySelectorAll('[data-brand="instagram-link"]').forEach(el => {
+            if (rawUrl) {
+                el.href = rawUrl;
+                el.target = '_blank';
+                el.rel = 'noopener noreferrer';
+                el.style.display = 'inline-flex';
+                el.setAttribute('aria-label', `Visit ${displayHandle || 'TIRA Belle'} on Instagram`);
+            } else {
+                el.href = '#';
+                el.style.display = 'none';
             }
-            el.textContent = instagram.startsWith('@') ? instagram : (instagram ? `@${instagram}` : '');
+        });
+
+        // Update handle text and any direct Instagram anchor elements
+        document.querySelectorAll('[data-brand="instagram"]').forEach(el => {
+            if (el.tagName === 'A') {
+                el.href = rawUrl || '#';
+                el.target = '_blank';
+                el.rel = 'noopener noreferrer';
+            }
+            el.textContent = displayHandle;
             const parentRow = el.closest('#footerInstaRow');
-            if (parentRow) parentRow.style.display = instagram ? 'flex' : 'none';
+            if (parentRow && !parentRow.matches('[data-brand="instagram-link"]')) {
+                parentRow.style.display = (displayHandle || rawUrl) ? 'flex' : 'none';
+            }
         });
 
         // 11. UPI ID

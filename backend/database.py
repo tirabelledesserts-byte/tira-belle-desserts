@@ -46,6 +46,14 @@ def init_tables_if_needed():
         try:
             import backend.models  # noqa: F401
             Base.metadata.create_all(bind=engine)
+            # Automatic column migration for existing database tables
+            from sqlalchemy import text
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE settings ADD COLUMN instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj'"))
+                    conn.commit()
+            except Exception:
+                pass
             from backend.seed import seed_initial_data
             db = SessionLocal()
             try:

@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderPublicProducts();
     renderPublicLoyaltyInfo();
     renderPublicReviews();
+    initScrollToTop();
 
     // Auto-scroll smoothly to review section if redirected with #reviews hash
     if (window.location.hash === '#reviews') {
@@ -153,6 +154,10 @@ function initMobileNav() {
         }
     }
 
+    // Expose closeMobileNav globally for inline onclick and external callers
+    window.closeMobileNav = closeDrawer;
+    window.openMobileNav = openDrawer;
+
     if (toggle) {
         toggle.addEventListener('click', (e) => {
             e.preventDefault();
@@ -178,7 +183,26 @@ function initMobileNav() {
             e.preventDefault();
             closeDrawer();
         });
+        backdrop.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            closeDrawer();
+        });
     }
+
+    // Automatically close drawer when clicking or tapping anywhere outside the drawer
+    document.addEventListener('click', (e) => {
+        if (!drawer || !drawer.classList.contains('mobile-open')) return;
+        if (!drawer.contains(e.target) && (!toggle || !toggle.contains(e.target))) {
+            closeDrawer();
+        }
+    });
+
+    document.addEventListener('touchend', (e) => {
+        if (!drawer || !drawer.classList.contains('mobile-open')) return;
+        if (!drawer.contains(e.target) && (!toggle || !toggle.contains(e.target))) {
+            closeDrawer();
+        }
+    }, { passive: true });
 
     if (drawer) {
         drawer.querySelectorAll('a').forEach(a => {
@@ -371,6 +395,7 @@ function renderPublicProducts() {
                 ? (is350 ? 'Best Value • Sharing Tub' : 'Chocolate Single Serve')
                 : (is350 ? 'Best Value • Sharing Tub' : 'Classic Single Serve');
         }
+
         return `
         <div class="product-card">
             <div class="product-media">
@@ -859,4 +884,49 @@ function stopReviewsAutoPlay() {
         reviewsAutoPlayTimer = null;
     }
 }
+
+/**
+ * Floating "Scroll to Top" Controller
+ * Appears dynamically when scrolling down past 280px, smoothly scrolls back to the top when clicked.
+ */
+function initScrollToTop() {
+    const scrollBtn = document.getElementById('scrollToTopBtn');
+    if (!scrollBtn) return;
+
+    let ticking = false;
+
+    const checkScroll = () => {
+        if (window.scrollY > 280) {
+            scrollBtn.classList.add('visible');
+        } else {
+            scrollBtn.classList.remove('visible');
+        }
+        ticking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(checkScroll);
+            ticking = true;
+        }
+    }, { passive: true });
+
+    // Initial check
+    checkScroll();
+
+    scrollBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+}
+
+window.scrollToTop = function() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+};
 

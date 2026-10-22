@@ -2872,7 +2872,7 @@ a.footer-contact-item:hover svg,
     }
 
     .mobile-nav-backdrop {
-        display: block;
+        display: block !important;
         position: fixed;
         inset: 0;
         background: rgba(20, 10, 6, 0.58);
@@ -2885,12 +2885,12 @@ a.footer-contact-item:hover svg,
     }
     .mobile-nav-backdrop.active {
         opacity: 1;
-        pointer-events: auto;
+        pointer-events: auto !important;
+        cursor: pointer;
     }
 
     body.mobile-nav-active {
         overflow: hidden !important;
-        touch-action: none;
     }
 
     .nav-drawer {
@@ -5373,5 +5373,851 @@ textarea:focus-visible {
         justify-content: flex-start;
     }
 }
+
+/* ==========================================================================
+   ENHANCED ARTISANAL UI SYSTEM (Storefront, Loyalty Tracker & Admin)
+   ========================================================================== */
+
+/* Floating Scroll to Top Button */
+.scroll-to-top-btn {
+    position: fixed;
+    bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+    right: calc(20px + env(safe-area-inset-right, 0px));
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--color-espresso) 0%, #3e2216 100%);
+    color: #ffffff;
+    border: 1.5px solid rgba(223, 162, 100, 0.45);
+    box-shadow: 0 6px 20px rgba(36, 20, 14, 0.28);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 995;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(14px) scale(0.92);
+    transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+.scroll-to-top-btn i,
+.scroll-to-top-btn svg {
+    color: var(--color-caramel-light);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+}
+
+.scroll-to-top-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+.scroll-to-top-btn:hover {
+    background: linear-gradient(135deg, var(--color-caramel) 0%, #8c5324 100%);
+    border-color: var(--color-caramel);
+    box-shadow: 0 8px 24px rgba(183, 121, 61, 0.42);
+    transform: translateY(-3px) scale(1.04);
+}
+
+.scroll-to-top-btn:hover i,
+.scroll-to-top-btn:hover svg {
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.scroll-to-top-btn:active {
+    transform: translateY(0) scale(0.92);
+    box-shadow: 0 3px 10px rgba(36, 20, 14, 0.25);
+}
+
+@media (max-width: 768px) {
+    .scroll-to-top-btn {
+        width: 44px;
+        height: 44px;
+        bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+        right: 16px;
+        border-radius: 11px;
+    }
+}
+
+/* 1. STOREFRONT: Product Card Enhanced Elevation & Typography */
+.product-card {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 36px rgba(36, 20, 14, 0.12);
+    border-color: rgba(183, 121, 61, 0.45);
+}
+
+.product-name {
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+}
+
+.product-price {
+    font-feature-settings: "tnum";
+    letter-spacing: -0.02em;
+}
+
+/* 2. STOREFRONT: Hero Featured Slider Polish */
+.hero-slider-wrapper {
+    box-shadow: 0 14px 34px rgba(36, 20, 14, 0.16);
+    border: 1px solid rgba(232, 219, 203, 0.8);
+}
+
+.hero-slide {
+    transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    transform: scale(0.985);
+}
+
+.hero-slide.active {
+    transform: scale(1);
+}
+
+.hero-slide-badge {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(223, 162, 100, 0.35);
+}
+
+/* 3. STOREFRONT: Customer Reviews Refinement */
+.review-card {
+    border: 1.5px solid rgba(183, 121, 61, 0.18);
+    background: linear-gradient(180deg, #ffffff 0%, #fffdfa 100%);
+    box-shadow: 0 6px 20px rgba(36, 20, 14, 0.05);
+}
+
+.review-card:hover {
+    border-color: var(--color-caramel);
+    box-shadow: 0 14px 32px rgba(183, 121, 61, 0.16);
+}
+
+.review-stars-wrap .star-icon.filled {
+    color: #e67e22;
+    text-shadow: 0 1px 3px rgba(230, 126, 34, 0.25);
+}
+
+/* 4. STOREFRONT: Mobile Navigation Drawer Animation & Frosted Blur */
+@media (max-width: 991px) {
+    .nav-drawer {
+        background: rgba(252, 248, 243, 0.98) !important;
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        box-shadow: -8px 0 32px rgba(36, 20, 14, 0.24) !important;
+        border-left: 1px solid var(--color-border);
+    }
+
+    .nav-drawer-link {
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        border-radius: var(--radius-md);
+        transition: background 0.18s ease, transform 0.18s ease, color 0.18s ease;
+    }
+
+    .nav-drawer-link:hover, .nav-drawer-link:active {
+        background: rgba(183, 121, 61, 0.08);
+        color: var(--color-espresso);
+        transform: translateX(4px);
+    }
+}
+
+/* 5. LOYALTY TRACKER: Next Cup Pulse & Celebratory Slot */
+@keyframes targetPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(183, 121, 61, 0.45);
+        border-color: var(--color-caramel);
+    }
+    70% {
+        box-shadow: 0 0 0 9px rgba(183, 121, 61, 0);
+        border-color: var(--color-caramel-light);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(183, 121, 61, 0);
+        border-color: var(--color-caramel);
+    }
+}
+
+.stamp-box-large.next-target-pulse {
+    border: 2px solid var(--color-caramel);
+    background: #fffbf5;
+    animation: targetPulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.stamp-box-large.next-target-pulse .stamp-num-badge {
+    background: var(--color-caramel);
+    color: #ffffff;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    box-shadow: 0 2px 6px rgba(183, 121, 61, 0.3);
+}
+
+.stamp-box-large.filled-reward {
+    animation: rewardGlow 2.5s infinite alternate ease-in-out;
+}
+
+@keyframes rewardGlow {
+    0% {
+        box-shadow: 0 4px 14px rgba(39, 174, 96, 0.25);
+    }
+    100% {
+        box-shadow: 0 8px 24px rgba(39, 174, 96, 0.45);
+    }
+}
+
+/* 6. LOYALTY TRACKER: Loading Skeleton Shimmer */
+.tracker-loading-skeleton {
+    padding: 24px 0 12px;
+}
+
+.skeleton-shimmer {
+    background: linear-gradient(90deg, #ede3d7 25%, #f5ece0 50%, #ede3d7 75%);
+    background-size: 200% 100%;
+    animation: shimmerSlide 1.5s infinite linear;
+    border-radius: var(--radius-md);
+}
+
+@keyframes shimmerSlide {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.skeleton-header-block {
+    height: 48px;
+    width: 70%;
+    margin: 0 auto 16px;
+    border-radius: var(--radius-pill);
+}
+
+.skeleton-banner-block {
+    height: 90px;
+    width: 100%;
+    margin-bottom: 24px;
+}
+
+.skeleton-grid-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+}
+
+.skeleton-stamp-slot {
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+}
+
+/* 7. LOYALTY TRACKER: Purchase Visit History Item Cards */
+.purchase-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.history-purchase-item {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    gap: 16px;
+}
+
+.history-purchase-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(36, 20, 14, 0.06);
+    border-color: var(--color-caramel-light);
+}
+
+.history-item-left {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.history-item-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.history-date-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-espresso);
+    background: var(--color-bg-alt);
+    padding: 3px 9px;
+    border-radius: var(--radius-pill);
+}
+
+.history-pay-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    letter-spacing: 0.5px;
+}
+
+.history-item-summary {
+    font-size: 0.84rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.history-item-right {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.history-amount {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--color-espresso);
+    font-feature-settings: "tnum";
+}
+
+.history-stamps-earned {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--color-caramel);
+    margin-top: 2px;
+}
+
+/* 8. ADMIN DASHBOARD: POS High-Contrast Inputs & Quick Logging Polish */
+.pos-catalog .product-card:hover {
+    border-color: var(--color-caramel);
+}
+
+.pos-cart-panel input.form-input:focus,
+.pos-cart-panel select.form-select:focus {
+    border-color: var(--color-caramel);
+    box-shadow: 0 0 0 3px rgba(183, 121, 61, 0.22);
+    background: #fff;
+}
+
+/* 9. ADMIN DASHBOARD: Settings Section Subgroups */
+.settings-subgroup {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-subgroup:hover {
+    border-color: var(--color-caramel-light);
+    box-shadow: 0 4px 16px rgba(36, 20, 14, 0.04);
+}
+
+.settings-subgroup-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-heading);
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--color-espresso);
+    border-bottom: 1px solid var(--color-border-light);
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+}
+
+.settings-subgroup-title i {
+    color: var(--color-caramel);
+}
+
+/* 10. ADMIN DASHBOARD: Redesigned Business Logo Section (Left Square Preview + Right 3 Vertical Rectangles) */
+.logo-setting-section {
+    background: var(--color-bg);
+    border: 1.5px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 16px 18px;
+    margin-bottom: 22px;
+}
+
+.logo-section-label {
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--color-espresso);
+}
+
+.logo-setting-layout {
+    display: flex;
+    align-items: stretch;
+    gap: 14px;
+}
+
+.logo-preview-box {
+    width: 126px;
+    height: 126px;
+    min-width: 126px;
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    border: 1.5px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 8px;
+    box-shadow: 0 2px 8px rgba(36, 20, 14, 0.05);
+    flex-shrink: 0;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.logo-preview-box:hover {
+    border-color: var(--color-caramel);
+    box-shadow: 0 4px 14px rgba(183, 121, 61, 0.15);
+}
+
+.logo-preview-box img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.logo-controls-column {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.logo-control-btn {
+    width: 100%;
+    height: 36px;
+    min-height: 36px !important;
+    padding: 0 12px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    box-sizing: border-box;
+    white-space: nowrap;
+    border-radius: var(--radius-sm);
+    margin: 0;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.logo-path-wrapper {
+    width: 100%;
+    display: flex;
+}
+
+.logo-path-input {
+    width: 100%;
+    height: 36px;
+    min-height: 36px !important;
+    padding: 6px 10px !important;
+    font-size: 0.80rem !important;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    color: var(--color-espresso);
+    background: #ffffff;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.logo-path-input:focus {
+    border-color: var(--color-caramel);
+    box-shadow: 0 0 0 2px rgba(183, 121, 61, 0.18);
+    background: #ffffff;
+}
+
+.logo-help-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+    color: var(--color-text-muted);
+    margin-top: 12px;
+    line-height: 1.4;
+}
+
+.logo-help-text i,
+.logo-help-text svg {
+    color: var(--color-caramel);
+    flex-shrink: 0;
+}
+
+/* 11. ADMIN DASHBOARD: Customer Table Pagination Bar */
+.admin-table-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-top: 1px solid var(--color-border-light);
+    background: var(--color-surface);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.pagination-info {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+.pagination-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-page-label {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: var(--color-espresso);
+    padding: 0 6px;
+}
+
+/* 11. ADMIN DASHBOARD: Install App (PWA) Card */
+.pwa-install-card {
+    border: 1.5px solid rgba(183, 121, 61, 0.25);
+    background: linear-gradient(180deg, #ffffff 0%, #fffdfa 100%);
+    box-shadow: 0 4px 16px rgba(36, 20, 14, 0.05);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pwa-install-card:hover {
+    border-color: var(--color-caramel);
+    box-shadow: 0 8px 24px rgba(183, 121, 61, 0.12);
+}
+
+.install-app-action-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.install-app-action-box .btn {
+    padding: 10px 20px;
+    font-weight: 600;
+}
+
+/* 12. ADMIN DASHBOARD: Mobile-Friendly Settings Redesign */
+.settings-mobile-tabs {
+    display: none;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    gap: 8px;
+    padding: 4px 2px 14px;
+    margin-bottom: 8px;
+    scrollbar-width: none;
+}
+
+.settings-mobile-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.settings-tab-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    border: 1.5px solid var(--color-border);
+    color: var(--color-text-main);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.settings-tab-pill:hover {
+    border-color: var(--color-caramel);
+    background: var(--color-bg);
+}
+
+.settings-tab-pill.active {
+    background: var(--color-espresso);
+    color: #ffffff;
+    border-color: var(--color-espresso);
+    box-shadow: 0 4px 12px rgba(36, 20, 14, 0.22);
+}
+
+.settings-tab-pill.active i {
+    color: var(--color-caramel-light);
+}
+
+.settings-card-pane {
+    scroll-margin-top: 115px;
+}
+
+.settings-card-pane.settings-pane-hidden {
+    display: none !important;
+}
+
+@media (max-width: 991px) {
+    .settings-mobile-tabs {
+        display: flex;
+        position: sticky;
+        top: 56px;
+        z-index: 40;
+        background: rgba(253, 248, 242, 0.96);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 10px 12px 12px;
+        margin-left: -12px;
+        margin-right: -12px;
+        border-bottom: 1px solid rgba(223, 162, 100, 0.22);
+        box-shadow: 0 4px 14px rgba(36, 20, 14, 0.04);
+    }
+
+    .settings-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    .settings-subgroup {
+        padding: 16px 14px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .settings-subgroup-title {
+        font-size: 0.98rem !important;
+        margin-bottom: 14px !important;
+    }
+
+    /* Touch-friendly inputs & larger tap targets on mobile */
+    #sec-settings .form-input,
+    #sec-settings .form-select {
+        font-size: 16px !important; /* Prevents auto-zoom on iOS */
+        min-height: 48px;
+        padding: 10px 14px;
+    }
+
+    #sec-settings .password-input-wrapper .form-input {
+        padding-right: 48px !important;
+    }
+
+    #sec-settings .password-toggle-btn {
+        width: 44px;
+        height: 44px;
+        right: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #sec-settings .form-row-2col {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    #sec-settings .btn {
+        min-height: 48px;
+        font-size: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Mobile Business Logo Layout: Left Square Preview + Right 3 Vertical Rectangles */
+    .logo-setting-section {
+        padding: 14px 12px !important;
+        margin-bottom: 18px !important;
+    }
+
+    .logo-setting-layout {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+
+    .logo-preview-box {
+        width: 118px !important;
+        height: 118px !important;
+        min-width: 118px !important;
+        padding: 8px !important;
+    }
+
+    .logo-controls-column {
+        flex: 1;
+        min-width: 0;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
+    }
+
+    #sec-settings .logo-control-btn {
+        width: 100% !important;
+        height: 35px !important;
+        min-height: 35px !important;
+        font-size: 0.78rem !important;
+        padding: 0 8px !important;
+        gap: 5px !important;
+    }
+
+    #sec-settings .logo-path-input {
+        width: 100% !important;
+        height: 35px !important;
+        min-height: 35px !important;
+        font-size: 0.76rem !important;
+        padding: 4px 8px !important;
+    }
+
+    .install-help-notes {
+        padding: 14px !important;
+        font-size: 0.82rem !important;
+    }
+}
+
+@media (max-width: 380px) {
+    .logo-setting-layout {
+        gap: 8px !important;
+    }
+
+    .logo-preview-box {
+        width: 100px !important;
+        height: 100px !important;
+        min-width: 100px !important;
+        padding: 6px !important;
+    }
+
+    #sec-settings .logo-control-btn {
+        height: 30px !important;
+        min-height: 30px !important;
+        font-size: 0.72rem !important;
+        padding: 0 4px !important;
+    }
+
+    #sec-settings .logo-path-input {
+        height: 30px !important;
+        min-height: 30px !important;
+        font-size: 0.70rem !important;
+        padding: 2px 6px !important;
+    }
+}
+
+/* ==========================================================================
+   Floating "Scroll to Top" Button
+   ========================================================================== */
+.scroll-to-top-btn {
+    position: fixed;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    right: calc(24px + env(safe-area-inset-right, 0px));
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-espresso, #2D1A12) 0%, #1A0E08 100%);
+    color: var(--color-caramel-light, #F5D3A9);
+    border: 1.5px solid rgba(223, 162, 100, 0.45);
+    box-shadow: 0 8px 24px rgba(26, 14, 8, 0.35), 0 2px 8px rgba(223, 162, 100, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(16px) scale(0.9);
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                visibility 0.3s,
+                background 0.2s,
+                box-shadow 0.2s,
+                border-color 0.2s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    padding: 0;
+    outline: none;
+}
+
+.scroll-to-top-btn.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+.scroll-to-top-btn:hover {
+    background: linear-gradient(135deg, #3D2418 0%, #24130A 100%);
+    color: #FFFFFF;
+    border-color: var(--color-caramel, #DFA264);
+    box-shadow: 0 12px 28px rgba(26, 14, 8, 0.45), 0 4px 12px rgba(223, 162, 100, 0.35);
+    transform: translateY(-3px) scale(1.06);
+}
+
+.scroll-to-top-btn:active {
+    transform: translateY(0) scale(0.96);
+    box-shadow: 0 4px 12px rgba(26, 14, 8, 0.3);
+}
+
+.scroll-to-top-btn:focus-visible {
+    outline: 2px solid var(--color-caramel, #DFA264);
+    outline-offset: 3px;
+}
+
+.scroll-to-top-btn svg,
+.scroll-to-top-btn i {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    stroke-width: 2.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.2s ease;
+    display: block;
+}
+
+.scroll-to-top-btn:hover svg,
+.scroll-to-top-btn:hover i {
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .scroll-to-top-btn {
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        right: calc(18px + env(safe-area-inset-right, 0px));
+        width: 44px;
+        height: 44px;
+    }
+
+    .scroll-to-top-btn svg,
+    .scroll-to-top-btn i {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+
 
 

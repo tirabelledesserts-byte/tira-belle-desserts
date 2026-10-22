@@ -36,6 +36,51 @@
 
     // 2. Install Prompt Handling
     let deferredPrompt = null;
+
+    // Check if app is already running in standalone PWA mode
+    function checkStandaloneMode() {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        const notice = document.getElementById('pwaInstalledNotice');
+        const badge = document.getElementById('pwaInstallStatusBadge');
+        const btn = document.getElementById('btnSettingsInstallApp');
+        if (isStandalone) {
+            if (notice) notice.style.display = 'inline-flex';
+            if (badge) {
+                badge.textContent = 'Installed';
+                badge.style.background = 'var(--color-success-bg)';
+                badge.style.color = 'var(--color-success)';
+            }
+            if (btn) btn.style.display = 'none';
+        }
+    }
+
+    window.triggerPwaInstall = function() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(choiceResult => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the TIRA Belle PWA prompt');
+                    if (window.showToast) window.showToast('TIRA Belle App installed successfully!', 'success');
+                }
+                deferredPrompt = null;
+                document.querySelectorAll('.pwa-install-btn').forEach(b => b.style.display = 'none');
+                checkStandaloneMode();
+            });
+        } else {
+            // Check if already running standalone
+            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+                if (window.showToast) window.showToast('TIRA Belle is already installed and running!', 'info');
+                return;
+            }
+            // Guide user for manual browser install
+            if (window.showToast) {
+                window.showToast('To install, click the install icon in your browser address bar or use "Add to Home Screen" in your browser menu.', 'info');
+            } else {
+                alert('To install TIRA Belle, click the install icon in your browser address bar or use "Add to Home Screen" from your browser menu.');
+            }
+        }
+    };
+
     window.addEventListener('beforeinstallprompt', e => {
         // Prevent default mini-infobar
         e.preventDefault();
@@ -44,23 +89,8 @@
         // Show install button if present on page
         const installBtns = document.querySelectorAll('.pwa-install-btn');
         installBtns.forEach(btn => {
-            if (window.innerWidth > 768 || !btn.closest('.nav-actions')) {
-                btn.style.display = 'inline-flex';
-            } else {
-                btn.style.display = 'none';
-            }
-            btn.onclick = () => {
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then(choiceResult => {
-                        if (choiceResult.outcome === 'accepted') {
-                            console.log('User accepted the TIRA Belle PWA prompt');
-                        }
-                        deferredPrompt = null;
-                        installBtns.forEach(b => b.style.display = 'none');
-                    });
-                }
-            };
+            btn.style.display = 'inline-flex';
+            btn.onclick = () => window.triggerPwaInstall();
         });
     });
 
@@ -70,7 +100,10 @@
         document.querySelectorAll('.pwa-install-btn').forEach(btn => {
             btn.style.display = 'none';
         });
+        checkStandaloneMode();
     });
+
+    document.addEventListener('DOMContentLoaded', checkStandaloneMode);
 
     // 3. Online/Offline Network Status Notifications
     function updateOnlineStatus() {

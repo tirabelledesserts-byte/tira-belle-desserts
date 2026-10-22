@@ -76,6 +76,20 @@
                 </div>
             </form>
 
+            <!-- Search Loading Skeleton -->
+            <div id="trackerLoadingSkeleton" class="tracker-loading-skeleton" style="display: none;">
+                <div class="skeleton-shimmer skeleton-header-block"></div>
+                <div class="skeleton-shimmer skeleton-banner-block"></div>
+                <div class="skeleton-grid-row">
+                    <div class="skeleton-shimmer skeleton-stamp-slot"></div>
+                    <div class="skeleton-shimmer skeleton-stamp-slot"></div>
+                    <div class="skeleton-shimmer skeleton-stamp-slot"></div>
+                    <div class="skeleton-shimmer skeleton-stamp-slot"></div>
+                    <div class="skeleton-shimmer skeleton-stamp-slot"></div>
+                    <div class="skeleton-shimmer skeleton-stamp-slot"></div>
+                </div>
+            </div>
+
             <!-- Ambiguous Name Results Selector (if multiple matching names) -->
             <div id="ambiguousCustomersList" style="display: none; margin-bottom: 24px; padding: 16px; background: var(--color-bg); border-radius: var(--radius-md); border: 1px solid var(--color-border);">
                 <p style="font-weight: 600; font-size: 0.9rem; margin-bottom: 10px; color: var(--color-espresso);">
@@ -163,11 +177,20 @@
                     </div>
                 </div>
 
+                <!-- Purchase Visit History -->
+                <div class="history-section" id="resPurchasesSection" style="display: none;">
+                    <div class="history-heading">
+                        <i data-lucide="shopping-bag" data-size="18"></i>
+                        <span>Recent In-Store Visits & Purchases</span>
+                    </div>
+                    <div id="resPurchasesList" class="purchase-history-list"></div>
+                </div>
+
                 <!-- Redemption Instructions & Claim History -->
                 <div class="history-section" id="resRedemptionSection" style="display: none;">
                     <div class="history-heading">
-                        <i data-lucide="history" data-size="18"></i>
-                        <span>Previous Reward Redemptions</span>
+                        <i data-lucide="gift" data-size="18"></i>
+                        <span>Free Reward Redemptions</span>
                     </div>
                     <div id="resRedemptionsList"></div>
                 </div>
@@ -286,6 +309,14 @@
 
     <!-- Toast Notification Container -->
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Floating Scroll to Top Button -->
+    <button type="button" class="scroll-to-top-btn" id="scrollToTopBtn" onclick="scrollToTop()" aria-label="Scroll to top of page" title="Scroll to top">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m5 12 7-7 7 7"/>
+            <path d="M12 19V5"/>
+        </svg>
+    </button>
 
     <!-- Scripts -->
     <script src="js/icons.js?v=37"></script>

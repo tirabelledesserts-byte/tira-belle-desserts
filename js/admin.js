@@ -1626,6 +1626,33 @@ window.renderCustomersTable = function() {
         return true;
     });
 
+    // Pagination state
+    if (typeof window.adminCustCurrentPage === 'undefined') {
+        window.adminCustCurrentPage = 1;
+    }
+    const pageSize = 10;
+    const totalCount = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    if (window.adminCustCurrentPage > totalPages) window.adminCustCurrentPage = totalPages;
+    if (window.adminCustCurrentPage < 1) window.adminCustCurrentPage = 1;
+
+    const startIdx = (window.adminCustCurrentPage - 1) * pageSize;
+    const pageItems = filtered.slice(startIdx, startIdx + pageSize);
+
+    // Update pagination controls
+    const pagInfo = document.getElementById('customerPaginationInfo');
+    const pagLabel = document.getElementById('custCurrentPageLabel');
+    const btnPrev = document.getElementById('btnCustPagePrev');
+    const btnNext = document.getElementById('btnCustPageNext');
+    if (pagInfo) {
+        pagInfo.textContent = totalCount === 0 ? 'No customers to display' : `Showing ${startIdx + 1}–${Math.min(startIdx + pageSize, totalCount)} of ${totalCount} customers`;
+    }
+    if (pagLabel) {
+        pagLabel.textContent = `Page ${window.adminCustCurrentPage} of ${totalPages}`;
+    }
+    if (btnPrev) btnPrev.disabled = (window.adminCustCurrentPage <= 1);
+    if (btnNext) btnNext.disabled = (window.adminCustCurrentPage >= totalPages);
+
     tbody.innerHTML = '';
     if (!filtered.length) {
         let emptyMsg = 'No customer records found matching search query.';
@@ -1643,7 +1670,7 @@ window.renderCustomersTable = function() {
         return;
     }
 
-    filtered.forEach(item => {
+    pageItems.forEach(item => {
         const c = item.customer;
         const loyalty = item.loyalty;
         const totalSpend = item.totalSpend;
@@ -1677,6 +1704,11 @@ window.renderCustomersTable = function() {
         tbody.appendChild(tr);
     });
     if (window.lucide) window.lucide.createIcons();
+};
+
+window.changeCustomerPage = function(delta) {
+    window.adminCustCurrentPage = (window.adminCustCurrentPage || 1) + delta;
+    renderCustomersTable();
 };
 
 window.viewCustomerHistory = function(phone) {
@@ -2048,7 +2080,7 @@ window.handleLogoFileSelect = function(input) {
             const preview = document.getElementById('setLogoPreview');
             if (preview) preview.src = dataUrl;
             const urlInput = document.getElementById('setLogoUrl');
-            if (urlInput) urlInput.value = '';
+            if (urlInput) urlInput.value = file.name ? file.name : 'custom-uploaded-logo.png';
             showToast('Logo image loaded! Click "Save Business Information" to apply.', 'info');
         };
         img.onerror = function() {
@@ -2103,7 +2135,7 @@ function populateSettingsFields() {
     if (preview) preview.src = currentSettingsLogo;
     const urlInput = document.getElementById('setLogoUrl');
     if (urlInput) {
-        urlInput.value = s.logo && !s.logo.startsWith('data:') ? s.logo : '';
+        urlInput.value = s.logo && !s.logo.startsWith('data:') ? s.logo : (s.logo && s.logo.startsWith('data:') ? 'custom-uploaded-logo.png' : 'assets/tira-belle-logo.png');
     }
 
     document.getElementById('setBusinessName').value = s.businessName || 'TIRA Belle';
@@ -2297,6 +2329,44 @@ window.saveCredentialsSettings = async function() {
             if (window.lucide) window.lucide.createIcons();
         }
     }
+};
+
+window.switchSettingsTab = function(tabKey) {
+    const pills = document.querySelectorAll('.settings-tab-pill');
+    pills.forEach(p => p.classList.remove('active'));
+
+    const clickedPill = Array.from(pills).find(p => p.getAttribute('onclick') && p.getAttribute('onclick').includes(`'${tabKey}'`));
+    if (clickedPill) clickedPill.classList.add('active');
+
+    const paneMap = {
+        'branding': ['paneSettingsBranding'],
+        'loyalty': ['paneSettingsLoyalty'],
+        'security': ['paneSettingsSecurity'],
+        'install': ['paneSettingsInstall']
+    };
+
+    const allPanes = document.querySelectorAll('.settings-card-pane');
+    if (tabKey === 'all') {
+        allPanes.forEach(pane => {
+            pane.classList.remove('settings-pane-hidden');
+        });
+    } else {
+        const allowedIds = paneMap[tabKey] || [];
+        allPanes.forEach(pane => {
+            if (allowedIds.includes(pane.id)) {
+                pane.classList.remove('settings-pane-hidden');
+                // Smooth scroll into view on mobile
+                if (window.innerWidth <= 991) {
+                    setTimeout(() => {
+                        pane.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 50);
+                }
+            } else {
+                pane.classList.add('settings-pane-hidden');
+            }
+        });
+    }
+    if (window.lucide) window.lucide.createIcons();
 };
 
 // ==========================================================================

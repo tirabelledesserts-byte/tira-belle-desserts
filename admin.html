@@ -592,6 +592,21 @@
                             </tbody>
                         </table>
                     </div>
+                    <!-- Customers Table Pagination Bar -->
+                    <div class="admin-table-pagination" id="customerTablePagination">
+                        <div class="pagination-info" id="customerPaginationInfo">Showing 0 of 0 customers</div>
+                        <div class="pagination-controls" id="customerPaginationControls">
+                            <button type="button" class="btn btn-outline btn-xs" id="btnCustPagePrev" onclick="changeCustomerPage(-1)">
+                                <i data-lucide="chevron-left" data-size="14"></i>
+                                <span>Previous</span>
+                            </button>
+                            <span class="pagination-page-label" id="custCurrentPageLabel">Page 1</span>
+                            <button type="button" class="btn btn-outline btn-xs" id="btnCustPageNext" onclick="changeCustomerPage(1)">
+                                <span>Next</span>
+                                <i data-lucide="chevron-right" data-size="14"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -739,118 +754,167 @@
                 <div class="admin-topbar">
                     <div>
                         <h1 class="admin-page-title">Store & Program Settings</h1>
-                        <p class="admin-page-subtitle">Configure business details, loyalty threshold, credentials, and backups</p>
+                        <p class="admin-page-subtitle">Configure business details, loyalty threshold, credentials, and app install</p>
                     </div>
+                </div>
+
+                <!-- Settings Mobile Navigation Pills (Fast jumping between cards) -->
+                <div class="settings-mobile-tabs" id="settingsMobileTabs">
+                    <button type="button" class="settings-tab-pill active" onclick="switchSettingsTab('all')">
+                        <i data-lucide="sliders-horizontal" data-size="14"></i>
+                        <span>All</span>
+                    </button>
+                    <button type="button" class="settings-tab-pill" onclick="switchSettingsTab('branding')">
+                        <i data-lucide="store" data-size="14"></i>
+                        <span>Brand &amp; Info</span>
+                    </button>
+                    <button type="button" class="settings-tab-pill" onclick="switchSettingsTab('loyalty')">
+                        <i data-lucide="award" data-size="14"></i>
+                        <span>Loyalty Rules</span>
+                    </button>
+                    <button type="button" class="settings-tab-pill" onclick="switchSettingsTab('security')">
+                        <i data-lucide="shield-check" data-size="14"></i>
+                        <span>Admin Security</span>
+                    </button>
+                    <button type="button" class="settings-tab-pill" onclick="switchSettingsTab('install')">
+                        <i data-lucide="download" data-size="14"></i>
+                        <span>Install App</span>
+                    </button>
                 </div>
 
                 <div class="settings-grid">
                     <!-- Business Info -->
-                    <div class="card">
+                    <div class="card settings-card-pane" id="paneSettingsBranding">
                         <div class="card-title">Business Information &amp; Branding</div>
                         <form id="settingsBusinessForm" onsubmit="event.preventDefault(); saveBusinessSettings();">
                             
-                            <!-- Business Logo Uploader & Preview -->
-                            <div class="logo-setting-section" style="background: var(--color-bg); border: 1.5px dashed var(--color-border); border-radius: var(--radius-md); padding: 18px; margin-bottom: 22px;">
-                                <label class="form-label" style="font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                            <!-- Business Logo Uploader & Preview (Redesigned: Left Square Preview, Right 3 Vertical Rectangles) -->
+                            <div class="logo-setting-section">
+                                <label class="form-label logo-section-label">
                                     <i data-lucide="image" data-size="16" style="color: var(--color-caramel);"></i>
                                     <span>Business Logo</span>
                                 </label>
                                 
-                                <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
-                                    <!-- Logo Preview Box -->
-                                    <div style="width: 100px; height: 100px; border-radius: var(--radius-md); background: #fff; border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); flex-shrink: 0;">
-                                        <img id="setLogoPreview" src="assets/tira-belle-logo.png" alt="Current Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                <div class="logo-setting-layout">
+                                    <!-- Left: Square Container with Logo Preview -->
+                                    <div class="logo-preview-box">
+                                        <img id="setLogoPreview" src="assets/tira-belle-logo.png" alt="Business Logo Preview">
                                     </div>
 
-                                    <!-- Logo Controls -->
-                                    <div style="flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 10px;">
-                                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                            <label class="btn btn-primary btn-sm" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                                                <i data-lucide="upload" data-size="14"></i>
-                                                <span>Upload Logo Image</span>
-                                                <input type="file" id="setLogoFileInput" accept="image/*" style="display: none;" onchange="handleLogoFileSelect(this)">
-                                            </label>
-                                            <button type="button" class="btn btn-outline btn-sm" onclick="resetLogoToDefault()">
-                                                <i data-lucide="rotate-ccw" data-size="14"></i>
-                                                <span>Reset to Default</span>
-                                            </button>
-                                        </div>
-                                        <div class="form-group" style="margin-bottom: 0;">
-                                            <input type="text" id="setLogoUrl" class="form-input" placeholder="Enter image URL or asset path" oninput="handleLogoUrlInput(this.value)" style="font-size: 0.85rem;">
-                                        </div>
-                                        <div style="font-size: 0.78rem; color: var(--color-text-muted);">
-                                            Supports PNG, JPG, WebP, SVG. Changes reflect across storefront, admin sidebar, standee, and receipts.
+                                    <!-- Right: Three Rectangular Elements Arranged Vertically -->
+                                    <div class="logo-controls-column">
+                                        <!-- (1) Upload Logo Button -->
+                                        <label class="btn btn-primary logo-control-btn" for="setLogoFileInput" id="lblUploadLogo">
+                                            <i data-lucide="upload" data-size="14"></i>
+                                            <span>Upload Logo Image</span>
+                                            <input type="file" id="setLogoFileInput" accept="image/*" style="display: none;" onchange="handleLogoFileSelect(this)">
+                                        </label>
+
+                                        <!-- (2) Reset to Default Button -->
+                                        <button type="button" class="btn btn-outline logo-control-btn" onclick="resetLogoToDefault()" id="btnResetLogo">
+                                            <i data-lucide="rotate-ccw" data-size="14"></i>
+                                            <span>Reset to Default</span>
+                                        </button>
+
+                                        <!-- (3) Text field displaying the logo file path -->
+                                        <div class="logo-path-wrapper">
+                                            <input type="text" id="setLogoUrl" class="form-input logo-path-input" placeholder="assets/tira-belle-logo.png" oninput="handleLogoUrlInput(this.value)" autocomplete="off">
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Business Identity Details -->
-                            <div class="form-row-2col">
-                                <div class="form-group">
-                                    <label class="form-label">Business Name <span style="color: #e74c3c;">*</span></label>
-                                    <input type="text" id="setBusinessName" class="form-input" placeholder="Enter business name" required>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Tagline</label>
-                                    <input type="text" id="setTagline" class="form-input" placeholder="Enter business tagline">
+                                <div class="logo-help-text">
+                                    <i data-lucide="info" data-size="13"></i>
+                                    <span>Supports PNG, JPG, WebP, SVG. Updates reflect across storefront, admin sidebar, standee, and receipts.</span>
                                 </div>
                             </div>
 
-                            <div class="form-row-2col">
-                                <div class="form-group">
-                                    <label class="form-label">Slogan / Flavor Descriptor</label>
-                                    <input type="text" id="setSlogan" class="form-input" placeholder="Enter brand slogan">
+                            <!-- Business Identity Details Group -->
+                            <div class="settings-subgroup">
+                                <div class="settings-subgroup-title">
+                                    <i data-lucide="building" data-size="15"></i>
+                                    <span>Brand & Contact Information</span>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">Owner / Chef Name(s)</label>
-                                    <input type="text" id="setOwnerName" class="form-input" placeholder="Enter owner or chef name">
+                                <div class="form-row-2col">
+                                    <div class="form-group">
+                                        <label class="form-label">Business Name <span style="color: #e74c3c;">*</span></label>
+                                        <input type="text" id="setBusinessName" class="form-input" placeholder="Enter business name" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Tagline</label>
+                                        <input type="text" id="setTagline" class="form-input" placeholder="Enter business tagline">
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="form-row-2col">
-                                <div class="form-group">
-                                    <label class="form-label">Primary WhatsApp / Phone <span style="color: #e74c3c;">*</span></label>
-                                    <input type="text" id="setPhone" class="form-input" placeholder="Enter mobile number" required>
+                                <div class="form-row-2col">
+                                    <div class="form-group">
+                                        <label class="form-label">Slogan / Flavor Descriptor</label>
+                                        <input type="text" id="setSlogan" class="form-input" placeholder="Enter brand slogan">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Owner / Chef Name(s)</label>
+                                        <input type="text" id="setOwnerName" class="form-input" placeholder="Enter owner or chef name">
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">Secondary Contact Phone</label>
-                                    <input type="text" id="setPhoneSecondary" class="form-input" placeholder="Enter secondary mobile number">
-                                </div>
-                            </div>
 
-                            <div class="form-row-2col">
+                                <div class="form-row-2col">
+                                    <div class="form-group">
+                                        <label class="form-label">Primary WhatsApp / Phone <span style="color: #e74c3c;">*</span></label>
+                                        <input type="text" id="setPhone" class="form-input" placeholder="Enter mobile number" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Secondary Contact Phone</label>
+                                        <input type="text" id="setPhoneSecondary" class="form-input" placeholder="Enter secondary mobile number">
+                                    </div>
+                                </div>
+
                                 <div class="form-group">
                                     <label class="form-label">Email Address</label>
                                     <input type="email" id="setEmail" class="form-input" placeholder="Enter your email address">
                                 </div>
+
                                 <div class="form-group">
-                                    <label class="form-label">Instagram Handle</label>
-                                    <input type="text" id="setInstagram" class="form-input" placeholder="e.g. tirabelle.desserts">
+                                    <label class="form-label">Physical Store / Counter Address</label>
+                                    <input type="text" id="setAddress" class="form-input" placeholder="Enter store or counter address">
                                 </div>
                             </div>
 
-                            <div class="form-group">
-                                <label class="form-label">Instagram Profile URL</label>
-                                <input type="url" id="setInstagramUrl" class="form-input" placeholder="https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj">
-                                <span style="font-size: 0.78rem; color: var(--color-text-light); margin-top: 4px; display: block;">
+                            <!-- Social Media & Links Group -->
+                            <div class="settings-subgroup">
+                                <div class="settings-subgroup-title">
+                                    <i data-lucide="instagram" data-size="15"></i>
+                                    <span>Social Media & Web Presence</span>
+                                </div>
+                                <div class="form-row-2col">
+                                    <div class="form-group">
+                                        <label class="form-label">Instagram Handle</label>
+                                        <input type="text" id="setInstagram" class="form-input" placeholder="e.g. tirabelle.desserts">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Instagram Profile URL</label>
+                                        <input type="url" id="setInstagramUrl" class="form-input" placeholder="https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj">
+                                    </div>
+                                </div>
+                                <span style="font-size: 0.78rem; color: var(--color-text-light); margin-top: -8px; margin-bottom: 12px; display: block;">
                                     Full Instagram link opened when visitors click the Instagram icon or handle in the website footer.
                                 </span>
                             </div>
 
-                            <div class="form-group">
-                                <label class="form-label">Physical Store / Counter Address</label>
-                                <input type="text" id="setAddress" class="form-input" placeholder="Enter store or counter address">
-                            </div>
-
-                            <div class="form-row-2col">
-                                <div class="form-group">
-                                    <label class="form-label">UPI ID (for Payments &amp; Receipts)</label>
-                                    <input type="text" id="setUpiId" class="form-input" placeholder="Enter UPI ID for payments">
+                            <!-- Financial & Regional Configuration Group -->
+                            <div class="settings-subgroup">
+                                <div class="settings-subgroup-title">
+                                    <i data-lucide="credit-card" data-size="15"></i>
+                                    <span>Payment & Currency</span>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">Currency Symbol</label>
-                                    <input type="text" id="setCurrency" class="form-input" placeholder="Enter currency symbol (e.g. ₹)" maxlength="5">
+                                <div class="form-row-2col">
+                                    <div class="form-group">
+                                        <label class="form-label">UPI ID (for Payments &amp; Receipts)</label>
+                                        <input type="text" id="setUpiId" class="form-input" placeholder="Enter UPI ID for payments">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Currency Symbol</label>
+                                        <input type="text" id="setCurrency" class="form-input" placeholder="Enter currency symbol (e.g. ₹)" maxlength="5">
+                                    </div>
                                 </div>
                             </div>
 
@@ -863,7 +927,7 @@
 
                     <!-- Loyalty Program Rules & Security -->
                     <div>
-                        <div class="card">
+                        <div class="card settings-card-pane" id="paneSettingsLoyalty">
                             <div class="card-title">Loyalty Program Configuration</div>
                             <form id="settingsLoyaltyForm" onsubmit="event.preventDefault(); saveLoyaltySettings();">
                                 <div class="form-group">
@@ -882,7 +946,7 @@
                             </form>
                         </div>
 
-                        <div class="card">
+                        <div class="card settings-card-pane" id="paneSettingsSecurity">
                             <div class="card-title">Admin Credentials</div>
                             <form id="settingsCredentialsForm" onsubmit="event.preventDefault(); saveCredentialsSettings();">
                                 <div class="form-group">
@@ -921,6 +985,43 @@
                                     <span>Update Credentials</span>
                                 </button>
                             </form>
+                        </div>
+
+                        <!-- Install App (PWA) Option -->
+                        <div class="card pwa-install-card settings-card-pane" id="paneSettingsInstall">
+                            <div class="card-title" style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="download" data-size="18" style="color: var(--color-caramel);"></i>
+                                    <span>Install App</span>
+                                </div>
+                                <span class="badge" id="pwaInstallStatusBadge" style="background: var(--color-bg); color: var(--color-text-muted);">
+                                    Desktop &amp; Mobile
+                                </span>
+                            </div>
+
+                            <p style="font-size: 0.88rem; color: var(--color-text-muted); line-height: 1.55; margin-bottom: 16px;">
+                                Install <strong>TIRA Belle</strong> on your device for fast one-tap desktop &amp; mobile access, offline counter support, and standalone window mode.
+                            </p>
+
+                            <div class="install-app-action-box">
+                                <button type="button" class="btn btn-caramel pwa-install-btn" id="btnSettingsInstallApp" onclick="triggerPwaInstall()">
+                                    <i data-lucide="arrow-down-to-line" data-size="16"></i>
+                                    <span id="btnSettingsInstallAppText">Install TIRA Belle App</span>
+                                </button>
+                                <div id="pwaInstalledNotice" style="display: none; align-items: center; gap: 8px; color: var(--color-success); font-weight: 600; font-size: 0.9rem;">
+                                    <i data-lucide="circle-check" data-size="18"></i>
+                                    <span>App is already installed and running standalone!</span>
+                                </div>
+                            </div>
+
+                            <div class="install-help-notes" style="margin-top: 14px; padding: 12px; background: var(--color-bg); border-radius: var(--radius-sm); border: 1px dashed var(--color-border); font-size: 0.8rem; color: var(--color-text-muted);">
+                                <div style="font-weight: 600; color: var(--color-espresso); margin-bottom: 4px;">Installation Tips:</div>
+                                <ul style="margin-left: 18px; line-height: 1.5;">
+                                    <li><strong>Chrome &amp; Edge (PC/Mac):</strong> Click the install icon in the browser address bar or use the button above.</li>
+                                    <li><strong>Safari (iOS/iPad):</strong> Tap the <em>Share</em> button <i data-lucide="share" data-size="12"></i> and select <em>"Add to Home Screen"</em>.</li>
+                                    <li><strong>Android (Chrome):</strong> Tap <em>Add to Home Screen</em> or install prompt when prompted.</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>

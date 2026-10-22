@@ -137,7 +137,7 @@
     </header>
 
     <!-- Mobile Navigation Backdrop Overlay -->
-    <div class="mobile-nav-backdrop" id="mobileNavBackdrop"></div>
+    <div class="mobile-nav-backdrop" id="mobileNavBackdrop" onclick="closeMobileNav()"></div>
 
     <!-- Responsive Navigation Drawer (Direct Child of Body for Full Viewport Stacking) -->
     <nav class="nav-drawer" id="navDrawer" aria-label="Mobile Navigation">
@@ -569,6 +569,14 @@
             <span>Counter</span>
         </a>
     </aside>
+
+    <!-- Floating Scroll to Top Button -->
+    <button type="button" class="scroll-to-top-btn" id="scrollToTopBtn" onclick="scrollToTop()" aria-label="Scroll to top of page" title="Scroll to top">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m5 12 7-7 7 7"/>
+            <path d="M12 19V5"/>
+        </svg>
+    </button>
 
     <!-- Scripts -->
     <script src="js/icons.js?v=37"></script>

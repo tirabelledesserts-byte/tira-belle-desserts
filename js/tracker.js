@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.TiraDB.applyGlobalBranding();
     }
     updateTrackerRuleText();
+    initScrollToTop();
 
     // Mobile input quick clear handler
     const trackerInput = document.getElementById('trackerInput');
@@ -82,12 +83,16 @@ window.searchLoyalty = async function(specifiedPhone = null) {
     const notFoundBox = document.getElementById('trackerNotFound');
     const resultPanel = document.getElementById('trackerResultPanel');
 
+    const skeleton = document.getElementById('trackerLoadingSkeleton');
+
     // Reset visibility
     if (ambiguousContainer) ambiguousContainer.style.display = 'none';
     if (notFoundBox) notFoundBox.style.display = 'none';
     if (resultPanel) resultPanel.classList.remove('active');
+    if (skeleton) skeleton.style.display = 'block';
 
     if (!query) {
+        if (skeleton) skeleton.style.display = 'none';
         showToast('Please enter a phone number or name to track your offer.', 'warning');
         return;
     }
@@ -160,6 +165,7 @@ window.searchLoyalty = async function(specifiedPhone = null) {
                     btn.onclick = () => window.searchLoyalty(c.phone);
                     ambiguousCards.appendChild(btn);
                 });
+                if (skeleton) skeleton.style.display = 'none';
                 ambiguousContainer.style.display = 'block';
                 return;
             }
@@ -167,6 +173,7 @@ window.searchLoyalty = async function(specifiedPhone = null) {
     }
 
     if (!matchedPhone) {
+        if (skeleton) skeleton.style.display = 'none';
         if (notFoundBox) notFoundBox.style.display = 'block';
         if (resultPanel) resultPanel.classList.remove('active');
         return;
@@ -197,6 +204,8 @@ window.searchLoyalty = async function(specifiedPhone = null) {
         (window.TiraDB && window.TiraDB.findCustomerByPhone(matchedPhone))
     );
 
+    if (skeleton) skeleton.style.display = 'none';
+
     if (!customerExists) {
         if (notFoundBox) notFoundBox.style.display = 'block';
         if (resultPanel) resultPanel.classList.remove('active');
@@ -208,6 +217,8 @@ window.searchLoyalty = async function(specifiedPhone = null) {
 
 // Render the detailed result panel
 function renderLoyaltyResult(loyalty) {
+    const skeleton = document.getElementById('trackerLoadingSkeleton');
+    if (skeleton) skeleton.style.display = 'none';
     const resultPanel = document.getElementById('trackerResultPanel');
     if (!resultPanel) return;
     lastTrackedPhone = loyalty.customer.phone;
@@ -265,8 +276,9 @@ function renderLoyaltyResult(loyalty) {
         // Paid Stamp Slots: 1 to threshold
         for (let i = 1; i <= threshold; i++) {
             const isStamped = i <= currentStamps;
+            const isNextTarget = !loyalty.isEligible && (i === currentStamps + 1);
             const box = document.createElement('div');
-            box.className = `stamp-box-large ${isStamped ? 'filled' : ''}`;
+            box.className = `stamp-box-large ${isStamped ? 'filled' : ''} ${isNextTarget ? 'next-target-pulse' : ''}`;
             
             box.innerHTML = `
                 <div class="loyalty-cup-container">
@@ -281,7 +293,7 @@ function renderLoyaltyResult(loyalty) {
                          width="110" height="110" 
                          loading="eager" draggable="false">
                 </div>
-                <div class="stamp-num-badge">Cup #${i}</div>
+                <div class="stamp-num-badge">${isNextTarget ? 'Next Cup!' : `Cup #${i}`}</div>
             `;
             stampsGrid.appendChild(box);
         }
@@ -315,6 +327,50 @@ function renderLoyaltyResult(loyalty) {
     if (purchasesElem) purchasesElem.textContent = loyalty.completedPurchasesCount;
     document.getElementById('resRemainingCups').textContent = loyalty.purchasesRemaining;
     document.getElementById('resClaimedRewards').textContent = loyalty.claimedCount;
+
+    // Render Previous In-Store Visits & Purchases
+    const purchasesSection = document.getElementById('resPurchasesSection');
+    const purchasesList = document.getElementById('resPurchasesList');
+    const currency = settings.currency || '₹';
+
+    if (purchasesSection && purchasesList) {
+        if (loyalty.salesHistory && loyalty.salesHistory.length > 0) {
+            purchasesSection.style.display = 'block';
+            purchasesList.innerHTML = '';
+            loyalty.salesHistory.forEach(s => {
+                const item = document.createElement('div');
+                item.className = 'history-item history-purchase-item';
+                let dateDisplay = '';
+                try {
+                    const d = s.timestamp ? new Date(s.timestamp) : (s.date ? new Date(s.date) : null);
+                    dateDisplay = d ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : (s.date || '');
+                } catch(e) {
+                    dateDisplay = s.date || '';
+                }
+
+                const itemsSummary = (s.items && s.items.length > 0)
+                    ? s.items.map(it => `${it.quantity}x ${it.productName}${it.isReward ? ' (FREE Reward)' : ''}`).join(', ')
+                    : `${s.paidCupsCount || 0} Cups`;
+
+                item.innerHTML = `
+                    <div class="history-item-left">
+                        <div class="history-item-title">
+                            <span class="history-date-chip"><i data-lucide="calendar" data-size="12"></i> ${dateDisplay}</span>
+                            <span class="history-pay-badge badge-${(s.paymentMode || 'cash').toLowerCase()}">${escapeHtml(s.paymentMode || 'Cash')}</span>
+                        </div>
+                        <div class="history-item-summary">${escapeHtml(itemsSummary)}</div>
+                    </div>
+                    <div class="history-item-right">
+                        <div class="history-amount">${currency}${Number(s.totalAmount || 0).toLocaleString('en-IN')}</div>
+                        <div class="history-stamps-earned">+${s.paidCupsCount || 0} Stamp${(s.paidCupsCount || 0) === 1 ? '' : 's'}</div>
+                    </div>
+                `;
+                purchasesList.appendChild(item);
+            });
+        } else {
+            purchasesSection.style.display = 'none';
+        }
+    }
 
     // Previous Redemptions History
     const redemptionsSection = document.getElementById('resRedemptionSection');
@@ -373,6 +429,8 @@ window.clearLoyaltyTracker = function() {
     if (clearInputBtn) clearInputBtn.style.display = 'none';
     if (resultPanel) resultPanel.classList.remove('active');
     if (notFound) notFound.style.display = 'none';
+    const skeleton = document.getElementById('trackerLoadingSkeleton');
+    if (skeleton) skeleton.style.display = 'none';
     if (ambiguous) ambiguous.style.display = 'none';
     if (input) input.focus();
     showToast('Loyalty tracker cleared.', 'info');
@@ -605,7 +663,51 @@ window.submitCustomerReview = async function() {
     }
 };
 
-// Initialize review form when DOM is ready
+// Initialize review form and scroll-to-top when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     initReviewForm();
 });
+
+/**
+ * Floating "Scroll to Top" Controller
+ * Appears dynamically when scrolling down past 280px, smoothly scrolls back to the top when clicked.
+ */
+function initScrollToTop() {
+    const scrollBtn = document.getElementById('scrollToTopBtn');
+    if (!scrollBtn) return;
+
+    let ticking = false;
+
+    const checkScroll = () => {
+        if (window.scrollY > 280) {
+            scrollBtn.classList.add('visible');
+        } else {
+            scrollBtn.classList.remove('visible');
+        }
+        ticking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(checkScroll);
+            ticking = true;
+        }
+    }, { passive: true });
+
+    checkScroll();
+
+    scrollBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+}
+
+window.scrollToTop = function() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+};

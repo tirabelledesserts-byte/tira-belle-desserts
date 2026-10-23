@@ -106,10 +106,13 @@
     document.addEventListener('DOMContentLoaded', checkStandaloneMode);
 
     // 3. Online/Offline Network Status Notifications
+    let wasOffline = false;
+
     function updateOnlineStatus() {
         const isOnline = navigator.onLine;
         const banner = document.getElementById('offlineNoticeBanner');
         if (!isOnline) {
+            wasOffline = true;
             if (!banner) {
                 const b = document.createElement('div');
                 b.id = 'offlineNoticeBanner';
@@ -120,10 +123,30 @@
                 `;
                 document.body.prepend(b);
             } else {
+                banner.className = 'offline-notice-banner';
+                banner.innerHTML = `
+                    <span class="offline-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" x2="23" y1="1" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" x2="12.01" y1="20" y2="20"/></svg></span>
+                    <span>Offline Mode Active • TIRA Belle counter and local records remain fully operational.</span>
+                `;
                 banner.style.display = 'flex';
             }
         } else if (banner) {
-            banner.style.display = 'none';
+            if (wasOffline) {
+                banner.className = 'offline-notice-banner online-restored';
+                banner.innerHTML = `
+                    <span class="offline-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" x2="12.01" y1="20" y2="20"/></svg></span>
+                    <span>Back Online • Connection restored successfully.</span>
+                `;
+                setTimeout(() => {
+                    banner.style.display = 'none';
+                    wasOffline = false;
+                }, 2400);
+                if (window.showToast) {
+                    window.showToast('Back Online • Connection restored', 'success');
+                }
+            } else {
+                banner.style.display = 'none';
+            }
         }
     }
 

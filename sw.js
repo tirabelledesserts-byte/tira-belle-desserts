@@ -3,7 +3,7 @@
  * Provides offline caching, network-resilience, and instant app-like loading.
  */
 
-const CACHE_NAME = 'tira-belle-v37';
+const CACHE_NAME = 'tira-belle-v43';
 
 const STATIC_ASSETS = [
     './',

@@ -37,6 +37,10 @@
             container = document.createElement('div');
             container.id = 'tiraToastContainer';
             container.className = 'tira-toast-container';
+            container.setAttribute('aria-live', 'polite');
+            container.setAttribute('aria-atomic', 'true');
+            container.setAttribute('role', 'region');
+            container.setAttribute('aria-label', 'System notifications');
             document.body.appendChild(container);
         }
         return container;
@@ -56,6 +60,13 @@
             const title = options.title || null;
             const duration = typeof options.duration === 'number' ? options.duration : 3800;
             const action = options.action || null;
+
+            // Subtle tactile haptic response on supported mobile devices
+            if ('vibrate' in navigator) {
+                try {
+                    navigator.vibrate(type === 'error' || type === 'danger' ? [30, 50, 30] : 12);
+                } catch (_) {}
+            }
 
             const container = ensureToastContainer();
 

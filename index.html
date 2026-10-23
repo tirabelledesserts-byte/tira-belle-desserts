@@ -94,6 +94,11 @@
     }
     </script>
 
+    <!-- Preconnect & DNS-Prefetch for Font & Asset Delivery -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+
     <link rel="icon" type="image/png" href="assets/tira-belle-logo.png">
     <link rel="apple-touch-icon" href="assets/icon-192.png">
     <link rel="manifest" href="manifest.json">
@@ -101,15 +106,21 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TIRA Belle">
-    <link rel="stylesheet" href="css/style.css?v=37">
+    <link rel="stylesheet" href="css/style.css?v=43">
 </head>
 <body>
+
+    <!-- Scroll Reading Progress Bar -->
+    <div class="scroll-progress-bar" id="scrollProgressBar" aria-hidden="true"></div>
+
+    <!-- Accessible Skip to Content Link -->
+    <a href="#main-content" class="skip-to-content">Skip to main content</a>
 
     <!-- Navigation Bar -->
     <header class="navbar">
         <div class="container navbar-container">
             <a href="index.html" class="nav-brand">
-                <img src="assets/tira-belle-logo.png" alt="TIRA Belle Logo" class="nav-logo-img" data-brand="logo">
+                <img src="assets/tira-belle-logo.png" alt="TIRA Belle Logo" class="nav-logo-img" width="48" height="48" loading="eager" decoding="async" data-brand="logo">
                 <div class="nav-brand-text">
                     <span class="brand-title" data-brand="name">TIRA Belle</span>
                     <span class="brand-subtitle" data-brand="tagline">Little Layers • Big Love</span>
@@ -174,6 +185,9 @@
         </div>
     </nav>
 
+    <!-- Main Content Landmark for Screen Readers & Focus Navigation -->
+    <main id="main-content">
+
     <!-- Hero Section -->
     <section class="hero">
         <div class="container hero-grid">
@@ -184,8 +198,17 @@
                     <span class="hero-tagline-text" data-brand="slogan">Layers of Love in Every Spoon</span>
                 </div>
 
-                <h1 class="hero-title">
-                    Artisan Tiramisu Handcrafted with <span class="script">Love</span>
+                <h1 class="hero-title hero-reveal-title" aria-label="Artisan Tiramisu Handcrafted with Love">
+                    <span class="hero-reveal-word" style="--reveal-delay: 0.04s;">Artisan</span>
+                    <span class="hero-reveal-word" style="--reveal-delay: 0.14s;">Tiramisu</span>
+                    <span class="hero-reveal-word" style="--reveal-delay: 0.24s;">Handcrafted</span>
+                    <span class="hero-reveal-word" style="--reveal-delay: 0.34s;">with</span>
+                    <span class="word-rotator-container" style="--reveal-delay: 0.44s;" aria-live="off">
+                        <span class="script rotator-word active" data-index="0">Love</span>
+                        <span class="script rotator-word" data-index="1">Pure Mascarpone</span>
+                        <span class="script rotator-word" data-index="2">Dark Espresso</span>
+                        <span class="script rotator-word" data-index="3">Belgian Cocoa</span>
+                    </span>
                 </h1>
 
                 <p class="hero-desc">
@@ -339,22 +362,25 @@
                         Every paid tiramisu cup (both 150g and 350g) earns 1 stamp toward your reward. Purchases are tracked cumulatively using your phone number.
                     </p>
 
-                    <div class="loyalty-steps">
-                        <div class="step-item">
+                    <div class="loyalty-steps" id="loyaltyProcessSteps">
+                        <div class="process-draw-track" aria-hidden="true">
+                            <div class="process-draw-line" id="processDrawLine"></div>
+                        </div>
+                        <div class="step-item" data-step="1">
                             <div class="step-num">1</div>
                             <div class="step-text">
                                 <h4>Order at our Counter</h4>
                                 <p>Provide your phone number to the admin when recording your purchase.</p>
                             </div>
                         </div>
-                        <div class="step-item">
+                        <div class="step-item" data-step="2">
                             <div class="step-num">2</div>
                             <div class="step-text">
                                 <h4 id="loyaltyStep2Title">Collect 5 Stamps</h4>
                                 <p id="loyaltyStep2Desc">Each cup adds 1 stamp. Buy 1 today, 2 next week, 2 next month — they all count!</p>
                             </div>
                         </div>
-                        <div class="step-item">
+                        <div class="step-item" data-step="3">
                             <div class="step-num">3</div>
                             <div class="step-text">
                                 <h4 id="loyaltyStep3Title">Claim 1 Free 150g Tiramisu!</h4>
@@ -366,6 +392,14 @@
 
                 <!-- Interactive Preview Stamp Card -->
                 <div class="loyalty-stamp-card-preview">
+                    <!-- Celebration Sparkles FX -->
+                    <div class="loyalty-celebration-particles" aria-hidden="true">
+                        <span class="loyalty-sparkle sparkle-1">✨</span>
+                        <span class="loyalty-sparkle sparkle-2">✦</span>
+                        <span class="loyalty-sparkle sparkle-3">★</span>
+                        <span class="loyalty-sparkle sparkle-4">✨</span>
+                    </div>
+
                     <div class="stamp-card-header">
                         <div class="stamp-card-title">
                             <i data-lucide="award" data-size="18"></i>
@@ -476,13 +510,13 @@
                 </div>
 
                 <div class="studio-action-buttons" id="publicStorefrontActionButtons">
-                    <a href="https://wa.me/919373484198?text=Hello%20Yash!%20I%20would%20like%20to%20order%20TIRA%20Belle%20tiramisu" target="_blank" class="btn btn-caramel btn-lg">
-                        <i data-lucide="phone" data-size="18"></i>
-                        <span>WhatsApp Yash</span>
+                    <a href="https://wa.me/919373484198?text=Hello%20Yash!%20I%20would%20like%20to%20order%20TIRA%20Belle%20tiramisu" target="_blank" class="btn btn-caramel btn-icon-circle" title="Order via WhatsApp (9373484198)" aria-label="Order via WhatsApp">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
                     </a>
-                    <a href="https://wa.me/918484870543?text=Hello%20Tejas!%20I%20would%20like%20to%20order%20TIRA%20Belle%20tiramisu" target="_blank" class="btn btn-caramel btn-lg">
-                        <i data-lucide="phone" data-size="18"></i>
-                        <span>WhatsApp Tejas</span>
+                    <a href="https://wa.me/918484870543?text=Hello%20Tejas!%20I%20would%20like%20to%20order%20TIRA%20Belle%20tiramisu" target="_blank" class="btn btn-caramel btn-icon-circle" title="Contact (8484870543)" aria-label="Contact (8484870543)">
+                        <i data-lucide="phone" data-size="22"></i>
                     </a>
                     <a href="tracker.html" class="btn btn-outline btn-lg">
                         <i data-lucide="award" data-size="18"></i>
@@ -492,6 +526,8 @@
             </div>
         </div>
     </section>
+
+    </main>
 
     <!-- Footer -->
     <footer class="footer">
@@ -579,10 +615,10 @@
     </button>
 
     <!-- Scripts -->
-    <script src="js/icons.js?v=37"></script>
-    <script src="js/pwa.js?v=37"></script>
-    <script src="js/alerts.js?v=37"></script>
-    <script src="js/db.js?v=37"></script>
-    <script src="js/app.js?v=37"></script>
+    <script src="js/icons.js?v=43"></script>
+    <script src="js/pwa.js?v=43"></script>
+    <script src="js/alerts.js?v=43"></script>
+    <script src="js/db.js?v=43"></script>
+    <script src="js/app.js?v=43"></script>
 </body>
 </html>

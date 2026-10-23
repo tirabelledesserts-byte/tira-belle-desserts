@@ -6,11 +6,15 @@
 document.addEventListener('DOMContentLoaded', () => {
     initMobileNav();
     initHeroSlider();
+    initWordRotator();
+    initProcessDrawObserver();
     renderStorefrontBranding();
     renderPublicProducts();
     renderPublicLoyaltyInfo();
     renderPublicReviews();
     initScrollToTop();
+    initScrollProgressBar();
+    initNavigationPrefetch();
 
     // Auto-scroll smoothly to review section if redirected with #reviews hash
     if (window.location.hash === '#reviews') {
@@ -63,11 +67,23 @@ function initHeroSlider() {
         autoplayTimer = setInterval(nextSlide, AUTOPLAY_INTERVAL);
     }
 
-    // Touch swipe support for mobile
-    const card = document.getElementById('heroSliderCard');
+    function stopAutoplay() {
+        if (autoplayTimer) {
+            clearInterval(autoplayTimer);
+            autoplayTimer = null;
+        }
+    }
+
+    // Pause autoplay on mouse enter, resume on mouse leave
+    slider.addEventListener('mouseenter', stopAutoplay);
+    slider.addEventListener('mouseleave', startAutoplay);
+
+    // Touch swipe support for mobile devices
+    const card = document.getElementById('heroSliderCard') || slider;
     if (card) {
         let touchStartX = 0;
         card.addEventListener('touchstart', (e) => {
+            stopAutoplay();
             if (e.touches && e.touches.length > 0) {
                 touchStartX = e.touches[0].clientX;
             }
@@ -78,9 +94,9 @@ function initHeroSlider() {
                 const diff = e.changedTouches[0].clientX - touchStartX;
                 if (Math.abs(diff) > 40) {
                     goToSlide(diff > 0 ? currentIndex - 1 : currentIndex + 1);
-                    startAutoplay();
                 }
             }
+            startAutoplay();
         }, { passive: true });
     }
 
@@ -399,7 +415,7 @@ function renderPublicProducts() {
         return `
         <div class="product-card">
             <div class="product-media">
-                <img src="${p.image || 'assets/classic/tiramisu-classic-150 g.png'}" alt="${escapeHtml(p.name)}" onerror="this.src='assets/poster/tiramisu-classic-poster.png'">
+                <img src="${p.image || 'assets/classic/tiramisu-classic-150 g.png'}" alt="${escapeHtml(p.name)}" width="300" height="220" loading="lazy" decoding="async" onerror="this.src='assets/poster/tiramisu-classic-poster.png'">
                 <span class="product-weight-tag">${escapeHtml(p.weight || '')}</span>
                 ${badgeText ? `<span class="product-badge">${escapeHtml(badgeText)}</span>` : ''}
             </div>
@@ -571,16 +587,16 @@ function renderStorefrontBranding() {
         const bizName = settings.businessName || 'TIRA Belle';
 
         let btnsHtml = `
-            <a href="https://wa.me/91${phone1.replace(/\D/g, '')}?text=${encodeURIComponent(`Hello! I would like to order ${bizName} tiramisu`)}" target="_blank" class="btn btn-caramel btn-lg">
-                <i data-lucide="phone" data-size="18"></i>
-                <span>WhatsApp Order</span>
+            <a href="https://wa.me/91${phone1.replace(/\D/g, '')}?text=${encodeURIComponent(`Hello! I would like to order ${bizName} tiramisu`)}" target="_blank" class="btn btn-caramel btn-icon-circle" title="Order via WhatsApp (${phone1})" aria-label="Order via WhatsApp">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
             </a>
         `;
         if (phone2) {
             btnsHtml += `
-                <a href="https://wa.me/91${phone2.replace(/\D/g, '')}?text=${encodeURIComponent(`Hello! I would like to order ${bizName} tiramisu`)}" target="_blank" class="btn btn-caramel btn-lg">
-                    <i data-lucide="phone" data-size="18"></i>
-                    <span>Contact #${phone2}</span>
+                <a href="https://wa.me/91${phone2.replace(/\D/g, '')}?text=${encodeURIComponent(`Hello! I would like to order ${bizName} tiramisu`)}" target="_blank" class="btn btn-caramel btn-icon-circle" title="Contact #${phone2}" aria-label="Contact #${phone2}">
+                    <i data-lucide="phone" data-size="22"></i>
                 </a>
             `;
         }
@@ -929,4 +945,135 @@ window.scrollToTop = function() {
         behavior: 'smooth'
     });
 };
+
+/**
+ * Scroll Reading Progress Bar Controller
+ * Tracks how far the user has scrolled through the page and updates top progress indicator.
+ */
+function initScrollProgressBar() {
+    const bar = document.getElementById('scrollProgressBar');
+    if (!bar) return;
+
+    let ticking = false;
+    const updateProgress = () => {
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+        bar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+        ticking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(updateProgress);
+            ticking = true;
+        }
+    }, { passive: true });
+
+    updateProgress();
+}
+
+/**
+ * Navigation Prefetch Optimizer
+ * Prefetches key destinations (tracker.html, admin.html) on idle or link hover.
+ */
+function initNavigationPrefetch() {
+    const prefetchUrl = (url) => {
+        if (!url || document.querySelector(`link[rel="prefetch"][href="${url}"]`)) return;
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = url;
+        document.head.appendChild(link);
+    };
+
+    document.querySelectorAll('a[href$=".html"]').forEach(a => {
+        a.addEventListener('mouseenter', () => prefetchUrl(a.getAttribute('href')), { once: true, passive: true });
+        a.addEventListener('touchstart', () => prefetchUrl(a.getAttribute('href')), { once: true, passive: true });
+    });
+}
+
+/**
+ * 02 Word Rotator Controller
+ * Smoothly cycles through the four brand promises:
+ * Love -> Pure Mascarpone -> Dark Espresso -> Belgian Cocoa
+ */
+function initWordRotator() {
+    const container = document.querySelector('.word-rotator-container');
+    if (!container) return;
+
+    const words = container.querySelectorAll('.rotator-word');
+    if (words.length <= 1) return;
+
+    let currentIndex = 0;
+    let rotatorInterval = null;
+
+    function rotateNext() {
+        const currentWord = words[currentIndex];
+        currentIndex = (currentIndex + 1) % words.length;
+        const nextWord = words[currentIndex];
+
+        // Animate out current
+        currentWord.classList.remove('active');
+        currentWord.classList.add('exit-up');
+
+        // Animate in next
+        nextWord.classList.remove('exit-up');
+        nextWord.classList.add('active');
+
+        setTimeout(() => {
+            currentWord.classList.remove('exit-up');
+        }, 500);
+    }
+
+    rotatorInterval = setInterval(rotateNext, 3200);
+
+    // Pause on hover or when page is backgrounded
+    container.addEventListener('mouseenter', () => clearInterval(rotatorInterval));
+    container.addEventListener('mouseleave', () => {
+        clearInterval(rotatorInterval);
+        rotatorInterval = setInterval(rotateNext, 3200);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            clearInterval(rotatorInterval);
+        } else {
+            clearInterval(rotatorInterval);
+            rotatorInterval = setInterval(rotateNext, 3200);
+        }
+    });
+}
+
+/**
+ * 08 Process Draw & Loyalty Celebration Observer
+ * Draws an illuminated connecting path between loyalty steps and triggers a subtle celebration
+ * animation on the Loyalty section when the visitor scrolls to it.
+ */
+function initProcessDrawObserver() {
+    const loyaltySection = document.getElementById('loyalty');
+    const stepsContainer = document.getElementById('loyaltyProcessSteps');
+    if (!loyaltySection && !stepsContainer) return;
+
+    const targetEl = loyaltySection || stepsContainer;
+
+    const observer = new IntersectionObserver((entries, obs) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                if (loyaltySection) {
+                    loyaltySection.classList.add('celebration-active');
+                }
+                if (stepsContainer) {
+                    stepsContainer.classList.add('draw-active');
+                }
+                // Once triggered, unobserve to maintain maximum performance
+                obs.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.18,
+        rootMargin: '0px 0px -40px 0px'
+    });
+
+    observer.observe(targetEl);
+}
 

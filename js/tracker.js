@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateTrackerRuleText();
     initScrollToTop();
+    initScrollProgressBar();
 
     // Mobile input quick clear handler
     const trackerInput = document.getElementById('trackerInput');
@@ -241,8 +242,13 @@ function renderLoyaltyResult(loyalty) {
     if (loyalty.isEligible) {
         banner.className = 'loyalty-status-banner status-eligible';
         icon.innerHTML = `<i data-lucide="award" data-size="32"></i>`;
-        title.innerHTML = `Congratulations! You've Earned ${safeRewardItem}!`;
-        desc.innerHTML = `You have purchased all <strong>${loyalty.threshold} eligible cups</strong>. Visit the TIRA Belle counter anytime to claim your handcrafted free dessert!`;
+        title.innerHTML = `🎉 Congratulations! You've Earned ${safeRewardItem}!`;
+        desc.innerHTML = `You have purchased all <strong>${loyalty.threshold} eligible cups</strong>. Visit the TIRA Belle counter anytime to claim your handcrafted free dessert!<br><button type="button" class="btn btn-sm celebration-party-btn" onclick="window.triggerRewardParty(event)" style="margin-top: 10px; background: #27ae60; color: #fff; border: none; font-weight: 700; border-radius: var(--radius-pill); padding: 6px 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(39, 174, 96, 0.35); display: inline-flex; align-items: center; gap: 6px;"><span>🎉 Celebrate &amp; Replay Party</span></button>`;
+        setTimeout(() => {
+            if (typeof window.launchRewardCelebration === 'function') {
+                window.launchRewardCelebration();
+            }
+        }, 350);
     } else {
         banner.className = 'loyalty-status-banner status-in-progress';
         icon.innerHTML = `<i data-lucide="coffee" data-size="32"></i>`;
@@ -711,3 +717,129 @@ window.scrollToTop = function() {
         behavior: 'smooth'
     });
 };
+
+/**
+ * Scroll Reading Progress Bar Controller
+ * Tracks how far the user has scrolled through the page and updates top progress indicator.
+ */
+function initScrollProgressBar() {
+    const bar = document.getElementById('scrollProgressBar');
+    if (!bar) return;
+
+    let ticking = false;
+    const updateProgress = () => {
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+        bar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+        ticking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(updateProgress);
+            ticking = true;
+        }
+    }, { passive: true });
+
+    updateProgress();
+}
+
+/**
+ * 12 Click -> Success: TIRA Belle Artisan Reward Celebration FX
+ * Spawns confetti particles in cocoa, caramel gold, mascarpone cream, and reward green.
+ */
+window.launchRewardCelebration = function(originX = null, originY = null) {
+    // 1. Tactile haptic feedback
+    if ('vibrate' in navigator) {
+        try { navigator.vibrate([40, 60, 40, 60, 100]); } catch (_) {}
+    }
+
+    // 2. Confetti canvas overlay
+    const canvas = document.createElement('canvas');
+    canvas.className = 'celebration-confetti-canvas';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    document.body.appendChild(canvas);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        canvas.remove();
+        return;
+    }
+
+    const colors = ['#dfa264', '#b7793d', '#27ae60', '#5a3525', '#fcf8f3', '#f39c12'];
+    const particles = [];
+    const particleCount = 75;
+    const startX = originX !== null ? originX : window.innerWidth / 2;
+    const startY = originY !== null ? originY : window.innerHeight * 0.38;
+
+    for (let i = 0; i < particleCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const velocity = 4 + Math.random() * 8;
+        particles.push({
+            x: startX,
+            y: startY,
+            vx: Math.cos(angle) * velocity,
+            vy: Math.sin(angle) * velocity - 2.5,
+            size: 4 + Math.random() * 6,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rotation: Math.random() * 360,
+            rotationSpeed: (Math.random() - 0.5) * 12,
+            opacity: 1,
+            gravity: 0.22,
+            drag: 0.96
+        });
+    }
+
+    let animationFrame = null;
+    const startTime = Date.now();
+    const duration = 2800; // 2.8s total duration
+
+    function renderParticles() {
+        const elapsed = Date.now() - startTime;
+        if (elapsed > duration) {
+            cancelAnimationFrame(animationFrame);
+            canvas.remove();
+            return;
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        particles.forEach(p => {
+            p.vx *= p.drag;
+            p.vy *= p.drag;
+            p.vy += p.gravity;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.rotation += p.rotationSpeed;
+            p.opacity = Math.max(0, 1 - (elapsed / duration));
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate((p.rotation * Math.PI) / 180);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.opacity;
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+            ctx.restore();
+        });
+
+        animationFrame = requestAnimationFrame(renderParticles);
+    }
+
+    animationFrame = requestAnimationFrame(renderParticles);
+};
+
+window.triggerRewardParty = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = e.currentTarget ? e.currentTarget.getBoundingClientRect() : null;
+        if (rect) {
+            window.launchRewardCelebration(rect.left + rect.width / 2, rect.top + rect.height / 2);
+            return;
+        }
+    }
+    window.launchRewardCelebration();
+};
+

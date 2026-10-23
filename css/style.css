@@ -250,6 +250,48 @@ a {
     width: 100%;
 }
 
+/* Navigation Icon-Only Buttons */
+.nav-actions .nav-icon-btn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0;
+}
+
+.nav-actions .nav-whatsapp-btn {
+    color: var(--color-espresso);
+    transition: var(--transition-smooth);
+}
+
+.nav-actions .nav-whatsapp-btn svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-actions .nav-whatsapp-btn:hover {
+    color: #25D366;
+    border-color: #25D366;
+    background: rgba(37, 211, 102, 0.08);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.2);
+}
+
+.nav-actions .nav-whatsapp-btn:hover svg {
+    transform: scale(1.1);
+}
+
+.nav-actions .nav-whatsapp-btn:active {
+    transform: translateY(0);
+}
+
 /* Responsive Navigation Drawer Defaults (Strictly Hidden on Desktop & Laptops) */
 .nav-drawer,
 .nav-drawer-header,
@@ -1072,10 +1114,48 @@ a {
 
 .studio-action-buttons {
     display: flex;
+    align-items: center;
     gap: 14px;
     flex-wrap: wrap;
     margin-top: 24px;
 }
+
+.studio-action-buttons .btn-icon-circle {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    max-width: 52px;
+    min-height: 52px;
+    max-height: 52px;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 52px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(183, 121, 61, 0.3);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.2s ease,
+                background 0.2s ease;
+}
+
+.studio-action-buttons .btn-icon-circle:hover {
+    transform: translateY(-3px) scale(1.06);
+    box-shadow: 0 8px 24px rgba(183, 121, 61, 0.45);
+}
+
+.studio-action-buttons .btn-icon-circle:active {
+    transform: translateY(0) scale(0.96);
+}
+
+.studio-action-buttons .btn-icon-circle svg,
+.studio-action-buttons .btn-icon-circle i {
+    width: 22px;
+    height: 22px;
+    display: block;
+}
+
 
 .quick-tracker-card {
     background: #fff;
@@ -3468,13 +3548,30 @@ a.footer-contact-item:hover svg,
 
     /* Studio Contact Action Buttons (Mobile) */
     .studio-action-buttons {
-        flex-direction: column !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
         width: 100% !important;
         gap: 10px !important;
     }
-    .studio-action-buttons .btn {
-        width: 100% !important;
+    .studio-action-buttons .btn:not(.btn-icon-circle) {
+        flex: 1 1 auto !important;
+        min-width: 180px !important;
         min-height: 48px !important;
+        width: auto !important;
+    }
+    .studio-action-buttons .btn-icon-circle {
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        max-width: 48px !important;
+        min-height: 48px !important;
+        max-height: 48px !important;
+        border-radius: 50% !important;
+        padding: 0 !important;
+        flex: 0 0 48px !important;
     }
 
     /* Storefront Loyalty Banner */
@@ -6218,6 +6315,660 @@ textarea:focus-visible {
     }
 }
 
+/* ==========================================================================
+   UX & Accessibility Strategy Enhancements
+   ========================================================================== */
 
+/* 1. Accessible Smooth Anchor Scrolling with Fixed Header Offset */
+html {
+    scroll-behavior: smooth;
+}
 
+section[id], 
+div[id].scroll-target {
+    scroll-margin-top: 86px;
+}
 
+@media (max-width: 768px) {
+    section[id], 
+    div[id].scroll-target {
+        scroll-margin-top: 72px;
+    }
+}
+
+/* 2. Skip to Content Accessibility Link */
+.skip-to-content {
+    position: absolute;
+    top: -60px;
+    left: 16px;
+    z-index: 99999;
+    background: var(--color-espresso, #24140e);
+    color: #ffffff !important;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm, 6px);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    border: 2px solid var(--color-caramel, #b7793d);
+    transition: top 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.skip-to-content:focus {
+    top: 14px;
+    outline: 2px solid var(--color-caramel-light, #dfa264);
+    outline-offset: 2px;
+}
+
+/* 3. High-Visibility Keyboard Focus Indicators */
+:focus-visible {
+    outline: 2px solid var(--color-caramel, #b7793d) !important;
+    outline-offset: 2px !important;
+}
+
+/* 4. Scroll Reading Progress Bar */
+.scroll-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0%;
+    background: linear-gradient(90deg, var(--color-caramel, #b7793d), #dfa264, #27ae60);
+    z-index: 10002;
+    transition: width 0.08s linear;
+    pointer-events: none;
+}
+
+/* 5. Button Async Loading State & Double-Click Protection */
+.btn.btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.85;
+    cursor: wait !important;
+}
+
+.btn.btn-loading > * {
+    visibility: hidden;
+    opacity: 0;
+}
+
+.btn.btn-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 18px;
+    height: 18px;
+    margin-top: -9px;
+    margin-left: -9px;
+    border: 2.2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: btnSpinner 0.7s infinite linear;
+}
+
+@keyframes btnSpinner {
+    to { transform: rotate(360deg); }
+}
+
+/* 6. Skeleton Loading Placeholders */
+.skeleton-pulse {
+    background: linear-gradient(90deg, #f0e6d9 25%, #fbf5ee 50%, #f0e6d9 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s infinite ease-in-out;
+    border-radius: var(--radius-sm, 6px);
+}
+
+@keyframes skeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-card {
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border-light, #f0e6d9);
+    border-radius: var(--radius-lg, 16px);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.skeleton-img {
+    width: 100%;
+    height: 180px;
+    border-radius: var(--radius-md, 10px);
+}
+
+.skeleton-line {
+    height: 14px;
+    border-radius: 4px;
+}
+
+.skeleton-line.title {
+    height: 20px;
+    width: 65%;
+}
+
+.skeleton-line.sub {
+    width: 85%;
+}
+
+.skeleton-line.short {
+    width: 40%;
+}
+
+/* 7. Offline & Online Reconnection Banner */
+.offline-notice-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #bd2727;
+    color: #ffffff;
+    font-size: 0.88rem;
+    font-weight: 500;
+    padding: 9px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    z-index: 10005;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    animation: slideDownBanner 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.offline-notice-banner.online-restored {
+    background: #1f7a46;
+}
+
+.offline-notice-banner svg {
+    flex-shrink: 0;
+}
+
+@keyframes slideDownBanner {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+}
+
+/* 8. Mobile Safe Area Insets & Touch Smoothness */
+@supports (padding: max(0px)) {
+    .navbar {
+        padding-top: max(12px, env(safe-area-inset-top, 12px));
+    }
+    .mobile-bottom-bar {
+        padding-bottom: max(10px, env(safe-area-inset-bottom, 10px));
+    }
+}
+
+/* 9. Card Hover Elevation Micro-Interactions */
+.product-card,
+.exp-card,
+.step-item,
+.loyalty-stamp-card-preview {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 16px 36px rgba(36, 20, 14, 0.12);
+    }
+    .exp-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    }
+}
+
+/* 10. Smooth Page Entrance */
+@keyframes pageFadeIn {
+    from {
+        opacity: 0.94;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+main {
+    animation: pageFadeIn 0.35s ease-out;
+}
+
+/* ==========================================================================
+   01 Hero Reveal: Sequential Word Stagger Entrance
+   ========================================================================== */
+.hero-reveal-word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(16px);
+    animation: heroRevealFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: var(--reveal-delay, 0s);
+    margin-right: 0.22em;
+}
+
+@keyframes heroRevealFadeUp {
+    0% {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==========================================================================
+   02 Word Rotator: Dynamic Rotating Brand Promises
+   ========================================================================== */
+.word-rotator-container {
+    display: inline-block;
+    position: relative;
+    vertical-align: baseline;
+    opacity: 0;
+    transform: translateY(16px);
+    animation: heroRevealFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: var(--reveal-delay, 0.44s);
+}
+
+.word-rotator-container .rotator-word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(50%) scale(0.96);
+    transition: transform 0.48s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s ease;
+    pointer-events: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    white-space: nowrap;
+    will-change: transform, opacity;
+}
+
+.word-rotator-container .rotator-word.active {
+    position: relative;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.word-rotator-container .rotator-word.exit-up {
+    position: absolute;
+    opacity: 0;
+    transform: translateY(-50%) scale(0.96);
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   08 Process Draw: Animated Loyalty Journey Connector Track
+   ========================================================================== */
+.loyalty-steps {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    margin-top: 24px;
+}
+
+.process-draw-track {
+    position: absolute;
+    left: 14px;
+    top: 15px;
+    bottom: 25px;
+    width: 2.5px;
+    background: rgba(183, 121, 61, 0.16);
+    border-radius: 4px;
+    z-index: 1;
+}
+
+.process-draw-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0%;
+    background: linear-gradient(180deg, var(--color-caramel, #b7793d) 0%, #dfa264 60%, #27ae60 100%);
+    box-shadow: 0 0 10px rgba(183, 121, 61, 0.5);
+    border-radius: 4px;
+    transition: height 1.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.loyalty-steps.draw-active .process-draw-line {
+    height: 100%;
+}
+
+.step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.28s ease;
+}
+
+.step-num {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--color-espresso);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 3;
+    box-shadow: 0 0 0 4px #fffdfa;
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.35s ease, box-shadow 0.35s ease;
+}
+
+.loyalty-steps.draw-active .step-item[data-step="1"] .step-num {
+    background: var(--color-caramel);
+    box-shadow: 0 0 0 4px #fffdfa, 0 0 12px rgba(183, 121, 61, 0.4);
+    transform: scale(1.05);
+}
+
+.loyalty-steps.draw-active .step-item[data-step="2"] .step-num {
+    transition-delay: 0.45s;
+    background: var(--color-caramel);
+    box-shadow: 0 0 0 4px #fffdfa, 0 0 12px rgba(183, 121, 61, 0.4);
+    transform: scale(1.05);
+}
+
+.loyalty-steps.draw-active .step-item[data-step="3"] .step-num {
+    transition-delay: 0.9s;
+    background: #27ae60;
+    box-shadow: 0 0 0 4px #fffdfa, 0 0 16px rgba(39, 174, 96, 0.55);
+    transform: scale(1.12);
+}
+
+/* ==========================================================================
+   12 Click → Success: Confetti & Party FX
+   ========================================================================== */
+.celebration-confetti-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 10006;
+}
+
+.status-eligible {
+    animation: rewardCelebrationPulse 2s infinite alternate ease-in-out;
+}
+
+@keyframes rewardCelebrationPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.4), 0 4px 14px rgba(39, 174, 96, 0.2);
+        transform: scale(1);
+    }
+    100% {
+        box-shadow: 0 0 0 10px rgba(39, 174, 96, 0), 0 8px 24px rgba(39, 174, 96, 0.35);
+        transform: scale(1.015);
+    }
+}
+
+/* ==========================================================================
+   Loyalty Section Subtle Celebration / Success Animation (On-Scroll)
+   ========================================================================== */
+.loyalty-stamp-card-preview {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s ease;
+}
+
+/* Shimmer beam across stamp card */
+.loyalty-stamp-card-preview::after {
+    content: '';
+    position: absolute;
+    top: -60%;
+    left: -120%;
+    width: 60%;
+    height: 220%;
+    background: linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, 0.55) 45%, rgba(247, 215, 148, 0.4) 55%, transparent 100%);
+    transform: rotate(25deg);
+    pointer-events: none;
+    opacity: 0;
+    z-index: 5;
+}
+
+/* Triggered state */
+.loyalty-section.celebration-active .loyalty-stamp-card-preview {
+    animation: loyaltyCardSuccessGlow 2.4s ease-out forwards;
+}
+
+.loyalty-section.celebration-active .loyalty-stamp-card-preview::after {
+    animation: loyaltyShimmerSweep 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s forwards;
+}
+
+@keyframes loyaltyCardSuccessGlow {
+    0% {
+        box-shadow: var(--shadow-md);
+        transform: translateY(0);
+    }
+    35% {
+        box-shadow: 0 12px 36px rgba(183, 121, 61, 0.22), 0 0 24px rgba(245, 166, 35, 0.25);
+        transform: translateY(-3px);
+    }
+    100% {
+        box-shadow: 0 10px 30px rgba(183, 121, 61, 0.15), 0 0 16px rgba(245, 166, 35, 0.12);
+        transform: translateY(0);
+    }
+}
+
+@keyframes loyaltyShimmerSweep {
+    0% {
+        left: -120%;
+        opacity: 0;
+    }
+    20% {
+        opacity: 1;
+    }
+    80% {
+        opacity: 0.9;
+    }
+    100% {
+        left: 200%;
+        opacity: 0;
+    }
+}
+
+/* Staggered Stamp Cups Celebration Pop Wave */
+.loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot {
+    animation: stampSlotCelebrationPop 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot:nth-child(1) { animation-delay: 0.12s; }
+.loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot:nth-child(2) { animation-delay: 0.22s; }
+.loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot:nth-child(3) { animation-delay: 0.32s; }
+.loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot:nth-child(4) { animation-delay: 0.42s; }
+.loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot:nth-child(5) { animation-delay: 0.52s; }
+.loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot:nth-child(6) { animation-delay: 0.62s; }
+.loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot:nth-child(7) { animation-delay: 0.72s; }
+
+@keyframes stampSlotCelebrationPop {
+    0% {
+        transform: scale(0.92);
+        opacity: 0.85;
+    }
+    50% {
+        transform: scale(1.08) translateY(-2px);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Reward Slot Success Pulse */
+.loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot.reward-slot {
+    animation: rewardSlotSuccessBounce 0.85s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.65s both;
+}
+
+@keyframes rewardSlotSuccessBounce {
+    0% {
+        transform: scale(0.9);
+        box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.5);
+    }
+    50% {
+        transform: scale(1.14) translateY(-3px);
+        box-shadow: 0 0 20px rgba(39, 174, 96, 0.55), 0 0 0 6px rgba(39, 174, 96, 0.2);
+    }
+    75% {
+        transform: scale(1.03);
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        box-shadow: 0 0 12px rgba(39, 174, 96, 0.25);
+    }
+}
+
+/* Celebration Badge Pop */
+.loyalty-section.celebration-active #loyaltyCardBadge {
+    animation: badgeCelebrationGlow 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.4s both;
+}
+
+@keyframes badgeCelebrationGlow {
+    0% {
+        transform: scale(0.95);
+    }
+    50% {
+        transform: scale(1.12);
+        box-shadow: 0 0 14px rgba(39, 174, 96, 0.45);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: none;
+    }
+}
+
+/* Subtle Celebration Sparkles & Starbursts */
+.loyalty-celebration-particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 6;
+}
+
+.loyalty-sparkle {
+    position: absolute;
+    pointer-events: none;
+    user-select: none;
+    opacity: 0;
+    line-height: 1;
+}
+
+.loyalty-sparkle.sparkle-1 {
+    top: 10px;
+    right: 24px;
+    font-size: 1.15rem;
+    color: #f5a623;
+}
+
+.loyalty-sparkle.sparkle-2 {
+    bottom: 28px;
+    right: 18px;
+    font-size: 0.95rem;
+    color: #27ae60;
+}
+
+.loyalty-sparkle.sparkle-3 {
+    top: 36px;
+    left: 14px;
+    font-size: 0.85rem;
+    color: #e67e22;
+}
+
+.loyalty-sparkle.sparkle-4 {
+    bottom: 70px;
+    left: 20px;
+    font-size: 1.05rem;
+    color: #f39c12;
+}
+
+.loyalty-section.celebration-active .loyalty-sparkle.sparkle-1 {
+    animation: sparkleFloatUp 1.8s ease-out 0.3s forwards;
+}
+.loyalty-section.celebration-active .loyalty-sparkle.sparkle-2 {
+    animation: sparkleFloatUp 1.8s ease-out 0.5s forwards;
+}
+.loyalty-section.celebration-active .loyalty-sparkle.sparkle-3 {
+    animation: sparkleFloatUp 1.8s ease-out 0.4s forwards;
+}
+.loyalty-section.celebration-active .loyalty-sparkle.sparkle-4 {
+    animation: sparkleFloatUp 1.8s ease-out 0.6s forwards;
+}
+
+@keyframes sparkleFloatUp {
+    0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.3) rotate(0deg);
+    }
+    30% {
+        opacity: 0.95;
+        transform: translateY(-4px) scale(1.15) rotate(15deg);
+        filter: drop-shadow(0 0 6px rgba(245, 166, 35, 0.7));
+    }
+    70% {
+        opacity: 0.8;
+        transform: translateY(-16px) scale(1) rotate(30deg);
+        filter: drop-shadow(0 0 4px rgba(245, 166, 35, 0.5));
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-28px) scale(0.5) rotate(45deg);
+        filter: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loyalty-section.celebration-active .loyalty-stamp-card-preview,
+    .loyalty-section.celebration-active .loyalty-stamp-card-preview::after,
+    .loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot,
+    .loyalty-section.celebration-active .loyalty-stamp-card-preview .stamp-slot.reward-slot,
+    .loyalty-section.celebration-active #loyaltyCardBadge,
+    .loyalty-section.celebration-active .loyalty-sparkle {
+        animation: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+    }
+    .loyalty-celebration-particles {
+        display: none !important;
+    }
+}
+
+/* ==========================================================================
+   WhatsApp Brand Button Styling
+   ========================================================================== */
+.btn-whatsapp {
+    background: #25D366;
+    color: #ffffff !important;
+    border: none;
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+    font-weight: 600;
+    transition: var(--transition-fast);
+}
+
+.btn-whatsapp:hover {
+    background: #20bd5a;
+    color: #ffffff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(37, 211, 102, 0.42);
+}
+
+.btn-whatsapp:active {
+    transform: translateY(0);
+}
+
+.btn-whatsapp svg {
+    flex-shrink: 0;
+}

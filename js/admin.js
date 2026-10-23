@@ -871,6 +871,364 @@ window.printReceipt = function() {
     window.print();
 };
 
+/**
+ * Renders the receipt into a high-DPI canvas to produce an actual PNG image file
+ * preserving all exact design, layout, branding, items, and loyalty details.
+ */
+async function createReceiptImageCanvas(data) {
+    const canvas = document.createElement('canvas');
+    const width = 420;
+    
+    // Calculate required height based on item rows
+    const baseHeight = 520;
+    const itemsHeight = Math.max(1, data.items.length) * 26;
+    const height = baseHeight + itemsHeight;
+
+    // 2x Retina resolution
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas;
+    ctx.scale(2, 2);
+
+    // 1. Receipt paper background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+
+    // Subtle paper border
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#e8dbcb';
+    ctx.strokeRect(6, 6, width - 12, height - 12);
+
+    // Decorative top caramel accent bar
+    ctx.fillStyle = '#b7793d';
+    ctx.fillRect(6, 6, width - 12, 4);
+
+    let y = 26;
+
+    // 2. Logo (if available)
+    if (data.logoSrc) {
+        try {
+            const logoImg = await new Promise(resolve => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = data.logoSrc;
+                setTimeout(() => resolve(null), 1200);
+            });
+            if (logoImg) {
+                const logoH = 44;
+                const aspect = logoImg.width / logoImg.height;
+                const logoW = Math.min(130, logoH * aspect);
+                ctx.drawImage(logoImg, (width - logoW) / 2, y, logoW, logoH);
+                y += logoH + 8;
+            } else {
+                y += 6;
+            }
+        } catch (_) {
+            y += 6;
+        }
+    } else {
+        y += 10;
+    }
+
+    // 3. Header Branding
+    ctx.fillStyle = '#24140e';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 22px Georgia, "Playfair Display", serif';
+    ctx.fillText(data.bizName || 'TIRA Belle', width / 2, y);
+
+    y += 18;
+    ctx.fillStyle = '#b7793d';
+    ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText((data.tagline || 'LITTLE LAYERS • BIG LOVE').toUpperCase(), width / 2, y);
+
+    y += 16;
+    ctx.fillStyle = '#6e584d';
+    ctx.font = 'italic 12px Georgia, serif';
+    ctx.fillText(data.slogan || 'Layers of Love in Every Spoon', width / 2, y);
+
+    y += 15;
+    ctx.fillStyle = '#777777';
+    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(data.address || 'Physical Dessert Studio & Artisan Counter, Pune', width / 2, y);
+
+    y += 17;
+    ctx.fillStyle = '#555555';
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(data.date, width / 2, y);
+
+    y += 16;
+    ctx.fillStyle = '#24140e';
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(`Receipt: ${data.recId}`, width / 2, y);
+
+    // 4. Dashed divider
+    y += 16;
+    ctx.strokeStyle = '#cccccc';
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(22, y);
+    ctx.lineTo(width - 22, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 5. Customer & Payment Details (Left aligned)
+    y += 18;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#24140e';
+    ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(`Customer: ${data.custName}`, 24, y);
+
+    y += 18;
+    ctx.fillText(`Phone: ${data.custPhone}`, 24, y);
+
+    y += 18;
+    ctx.fillText(`Payment: ${data.payMode}`, 24, y);
+
+    // 6. Dashed divider before items
+    y += 16;
+    ctx.strokeStyle = '#cccccc';
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(22, y);
+    ctx.lineTo(width - 22, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 7. Items list
+    ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    data.items.forEach(it => {
+        y += 22;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#24140e';
+        ctx.fillText(it.name, 24, y);
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = it.price === 'FREE' ? '#27ae60' : '#24140e';
+        ctx.fillText(it.price, width - 24, y);
+    });
+
+    // 8. Total Section
+    y += 16;
+    ctx.strokeStyle = '#24140e';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(22, y);
+    ctx.lineTo(width - 22, y);
+    ctx.stroke();
+
+    y += 24;
+    ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#24140e';
+    ctx.fillText('TOTAL PAID', 24, y);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#b7793d';
+    ctx.font = 'bold 17px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(data.grandTotal, width - 24, y);
+
+    // 9. Loyalty Progress Box
+    y += 18;
+    ctx.fillStyle = '#fdfaf5';
+    ctx.fillRect(22, y, width - 44, 52);
+    ctx.strokeStyle = '#c59b6d';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.strokeRect(22, y, width - 44, 52);
+    ctx.setLineDash([]);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#22120b';
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(data.loyaltyStatus, width / 2, y + 21);
+
+    ctx.fillStyle = data.loyaltyNote && data.loyaltyNote.includes('eligible') ? '#27ae60' : '#666666';
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(data.loyaltyNote, width / 2, y + 39);
+
+    // 10. Footer Section
+    y += 72;
+    ctx.fillStyle = '#555555';
+    ctx.font = 'italic 11px Georgia, serif';
+    ctx.fillText(data.footerSlogan || 'Thank you for tasting the love in every spoon!', width / 2, y);
+
+    y += 16;
+    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#777777';
+    ctx.fillText(data.footerContact, width / 2, y);
+
+    return canvas;
+}
+
+/**
+ * Feature: Share Receipt Image on WhatsApp
+ * Generates the authentic receipt image for the selected transaction, validates
+ * and formats the customer's WhatsApp number with country code, and opens WhatsApp
+ * with the image prepared/attached for immediate sending.
+ */
+window.shareReceiptOnWhatsApp = async function() {
+    const btn = document.getElementById('btnShareWhatsAppReceipt');
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader" data-size="16"></i> <span>Preparing Image...</span>';
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    try {
+        // 1. Retrieve all current receipt details
+        const recId = document.getElementById('recId')?.textContent?.trim() || 'TXN-1001';
+        const recDate = document.getElementById('recDate')?.textContent?.trim() || '';
+        const custName = document.getElementById('recCustName')?.textContent?.trim() || 'Valued Guest';
+        const custPhone = document.getElementById('recCustPhone')?.textContent?.trim() || '';
+        const payMode = document.getElementById('recPayMode')?.textContent?.trim() || 'Cash';
+        const grandTotal = document.getElementById('recGrandTotal')?.textContent?.trim() || '₹0';
+        const loyaltyStatus = document.getElementById('recLoyaltyStatus')?.textContent?.trim() || '';
+        const loyaltyNote = document.getElementById('recLoyaltyNote')?.textContent?.trim() || '';
+        const bizName = document.getElementById('recBizName')?.textContent?.trim() || 'TIRA Belle';
+        const tagline = document.getElementById('recTagline')?.textContent?.trim() || 'LITTLE LAYERS • BIG LOVE';
+        const slogan = document.getElementById('recSlogan')?.textContent?.trim() || 'Layers of Love in Every Spoon';
+        const address = document.getElementById('recAddress')?.textContent?.trim() || 'Physical Dessert Studio & Artisan Counter, Pune';
+        const footerSlogan = document.getElementById('recFooterSlogan')?.textContent?.trim() || 'Thank you for tasting the love in every spoon!';
+        const footerContact = document.getElementById('recFooterContact')?.textContent?.trim() || '';
+        const logoSrc = document.getElementById('recLogo')?.src || 'assets/tira-belle-logo.png';
+
+        // 2. Validate customer WhatsApp number
+        const digitsOnly = custPhone.replace(/\D/g, '');
+        if (!digitsOnly || digitsOnly.length < 10) {
+            showToast(`Cannot share on WhatsApp: Customer phone number is invalid or missing ("${custPhone || 'empty'}"). Please ensure a valid 10-digit number.`, 'error');
+            return;
+        }
+
+        // Format with country code (defaults to India 91 for 10-digit numbers)
+        let formattedPhone = digitsOnly;
+        if (digitsOnly.length === 10) {
+            formattedPhone = '91' + digitsOnly;
+        }
+
+        // 3. Extract items list
+        const items = [];
+        document.querySelectorAll('#recItemsList .receipt-item-row').forEach(row => {
+            const spans = row.querySelectorAll('span');
+            if (spans.length >= 2) {
+                items.push({
+                    name: spans[0].textContent.trim(),
+                    price: spans[1].textContent.trim()
+                });
+            }
+        });
+
+        // 4. Generate the high-resolution receipt Canvas & Image Blob
+        const receiptData = {
+            recId, date: recDate, custName, custPhone, payMode, grandTotal,
+            loyaltyStatus, loyaltyNote, bizName, tagline, slogan, address,
+            footerSlogan, footerContact, logoSrc, items
+        };
+
+        const canvas = await createReceiptImageCanvas(receiptData);
+
+        const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob(b => {
+                if (b) resolve(b);
+                else reject(new Error('Failed to generate receipt image blob from canvas'));
+            }, 'image/png');
+        });
+
+        const receiptFileName = `tira-belle-receipt-${recId}.png`;
+        let receiptFile = null;
+        try {
+            receiptFile = new File([blob], receiptFileName, { type: 'image/png' });
+        } catch (_) {
+            receiptFile = null;
+        }
+
+        // 5. WhatsApp Message
+        const waMessage = `Thank you for your purchase at ${bizName}! Here is your receipt (${recId}).`;
+        const encodedMessage = encodeURIComponent(waMessage);
+
+        const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+        const waUrlApp = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+        const waUrlWeb = `https://web.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
+
+        // 6. Native Share API with File (Supported on mobile and supporting desktop environments)
+        if (navigator.share && receiptFile && navigator.canShare && navigator.canShare({ files: [receiptFile] })) {
+            try {
+                await navigator.share({
+                    title: `${bizName} Receipt #${recId}`,
+                    text: waMessage,
+                    files: [receiptFile]
+                });
+                showToast(`Receipt image prepared for sharing with ${custName}!`, 'success');
+                return;
+            } catch (shareErr) {
+                if (shareErr.name === 'AbortError') {
+                    // User dismissed share dialog
+                    return;
+                }
+                console.warn('Native share error, continuing with WhatsApp Web flow:', shareErr);
+            }
+        }
+
+        // 7. Desktop & WhatsApp Web Flow:
+        // Copy image directly to Clipboard (PNG Image Item)
+        let copiedToClipboard = false;
+        if (navigator.clipboard && window.ClipboardItem) {
+            try {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+                copiedToClipboard = true;
+            } catch (clipErr) {
+                console.warn('Clipboard image write failed:', clipErr);
+            }
+        }
+
+        // Download receipt image file so it is readily accessible on device
+        try {
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = receiptFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
+        } catch (dlErr) {
+            console.warn('Auto-download error:', dlErr);
+        }
+
+        // Open WhatsApp directly to the customer's conversation
+        const targetUrl = isMobile ? waUrlApp : waUrlWeb;
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+
+        // Clear, explicit guidance for user confirmation
+        if (window.TiraAlert && typeof window.TiraAlert.alert === 'function') {
+            window.TiraAlert.alert({
+                title: 'WhatsApp Chat Opened',
+                message: `Opened WhatsApp chat for <strong>${custName}</strong> (+${formattedPhone}).<br><br>The receipt image has been <strong>copied to your clipboard</strong> and downloaded.<br><br>👉 <strong>Press Ctrl+V (Paste)</strong> in the WhatsApp chat to send the receipt image!`,
+                type: 'info',
+                buttonText: 'Got it!'
+            });
+        } else {
+            showToast(`Opened WhatsApp for ${custName}! Receipt image copied to clipboard — press Ctrl+V to send image.`, 'info');
+        }
+
+    } catch (error) {
+        console.error('Error sharing receipt on WhatsApp:', error);
+        showToast('Could not share receipt image: ' + (error.message || 'Unknown error'), 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            if (window.lucide) window.lucide.createIcons();
+        }
+    }
+};
+
 // ----------------- SECTION: CATEGORY MANAGEMENT -----------------
 window.renderCategoriesSection = function() {
     const container = document.getElementById('adminCategoriesContainer');

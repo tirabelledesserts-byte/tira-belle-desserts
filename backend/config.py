@@ -146,7 +146,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 CREDENTIAL_SALT = os.getenv("CREDENTIAL_SALT", "TIRABELLE_SALT_2026")
 
 # Server Config
-HOST = os.getenv("HOST", "127.0.0.1")
+HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8001"))
 CORS_ORIGINS = [
     "http://localhost:8001",

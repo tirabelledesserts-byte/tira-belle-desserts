@@ -148,7 +148,15 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     db.commit()
 
     from backend.routers.realtime import notify_change
-    notify_change("sales", "created", {"saleId": sale.id, "phone": clean_phone})
+    notify_change("sales", "created", {
+        "saleId": sale.id,
+        "phone": clean_phone,
+        "customerName": customer.name,
+        "totalAmount": sale.total_amount,
+        "paymentMode": sale.payment_mode,
+        "paidCupsCount": sale.paid_cups_count,
+        "items": [it.product_name for it in sale.items]
+    })
     notify_change("customers", "updated", {"phone": clean_phone})
 
     updated_loyalty = calculate_customer_loyalty(clean_phone, db)
@@ -180,6 +188,9 @@ def get_metrics(filter_date: str = "today", db: Session = Depends(get_db)):
         custom = filter_date.replace("custom:", "").strip()
         sales_query = sales_query.filter(Sale.date == custom)
         redemptions_query = redemptions_query.filter(Redemption.date == custom)
+    elif len(filter_date) == 10 and filter_date.count("-") == 2:
+        sales_query = sales_query.filter(Sale.date == filter_date)
+        redemptions_query = redemptions_query.filter(Redemption.date == filter_date)
 
     sales = sales_query.order_by(Sale.timestamp.desc()).all()
     redemptions = redemptions_query.all()
@@ -208,7 +219,9 @@ def get_metrics(filter_date: str = "today", db: Session = Depends(get_db)):
         else:
             online_collection += s.total_amount
 
-        total_paid_quantity += (s.paid_cups_count or 0)
+        # Total cups sold includes all purchased products (both loyalty-eligible and excluded sizes)
+        sale_cups = sum(it.quantity for it in s.items if not it.is_reward) if s.items else (s.paid_cups_count or 0)
+        total_paid_quantity += sale_cups
 
         for it in s.items:
             if not it.is_reward:

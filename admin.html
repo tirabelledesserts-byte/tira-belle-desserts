@@ -18,7 +18,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TIRA Belle Admin">
-    <link rel="stylesheet" href="css/style.css?v=43">
+    <link rel="stylesheet" href="css/style.css?v=60">
     <style>
         /* Admin specific custom helpers */
         .login-overlay {
@@ -133,6 +133,7 @@
             </div>
 
             <nav class="admin-nav">
+                <div class="admin-nav-group-title">Operations</div>
                 <button class="admin-nav-item active" onclick="switchAdminSection('dashboard')" title="Dashboard" data-title="Dashboard">
                     <i data-lucide="layout-dashboard" class="nav-icon"></i>
                     <span>Dashboard</span>
@@ -141,6 +142,8 @@
                     <i data-lucide="shopping-cart" class="nav-icon"></i>
                     <span>New Sale (POS)</span>
                 </button>
+
+                <div class="admin-nav-group-title">Menu & Catalog</div>
                 <button class="admin-nav-item" onclick="switchAdminSection('products')" title="Products" data-title="Products">
                     <i data-lucide="package" class="nav-icon"></i>
                     <span>Products</span>
@@ -149,6 +152,8 @@
                     <i data-lucide="layers" class="nav-icon"></i>
                     <span>Categories</span>
                 </button>
+
+                <div class="admin-nav-group-title">CRM & Loyalty</div>
                 <button class="admin-nav-item" onclick="switchAdminSection('customers')" title="Customer Details" data-title="Customer Details">
                     <i data-lucide="users" class="nav-icon"></i>
                     <span>Customer Details</span>
@@ -165,6 +170,8 @@
                     <i data-lucide="star" class="nav-icon"></i>
                     <span>Customer Reviews</span>
                 </button>
+
+                <div class="admin-nav-group-title">System</div>
                 <button class="admin-nav-item" onclick="switchAdminSection('settings')" title="Settings" data-title="Settings">
                     <i data-lucide="settings" class="nav-icon"></i>
                     <span>Settings</span>
@@ -190,15 +197,55 @@
             <section id="sec-dashboard" class="admin-section active">
                 <div class="admin-topbar">
                     <div>
-                        <h1 class="admin-page-title">Daily Sales & Performance</h1>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap;">
+                            <h1 class="admin-page-title">Daily Sales & Performance</h1>
+                            <span class="live-status-pill">
+                                <span class="live-status-dot"></span>
+                                <span>Live Counter</span>
+                            </span>
+                        </div>
                         <p class="admin-page-subtitle">Real-time revenue, product-wise sales, and loyalty redemptions</p>
                     </div>
                     <div class="admin-top-actions">
-                        <select id="dashboardDateFilter" class="form-select" onchange="loadDashboardMetrics()" style="width: auto;">
-                            <option value="today">Today's Sales</option>
-                            <option value="yesterday">Yesterday</option>
-                            <option value="all">All Time Sales</option>
-                        </select>
+                        <div class="admin-top-action-row">
+                            <!-- Notification Bell Button (with unread alert badge) -->
+                            <div class="notification-btn-wrapper">
+                                <button type="button" class="admin-icon-btn" id="adminNotificationBtn" onclick="toggleAdminNotifications(event)" aria-label="Notifications" title="Counter Notifications">
+                                    <i data-lucide="bell" data-size="18"></i>
+                                    <span class="notification-badge-dot" id="adminNotifDot"></span>
+                                </button>
+                                
+                                <!-- Notifications Dropdown Flyout -->
+                                <div class="notification-dropdown-menu" id="adminNotificationDropdown" style="display: none;">
+                                    <div class="notif-header">
+                                        <div style="font-weight: 700; color: var(--color-espresso); font-size: 0.88rem;">Live Activity Notifications</div>
+                                        <span class="badge badge-warning" style="font-size: 0.68rem;" id="notifUnreadBadge">0 New</span>
+                                    </div>
+                                    <div class="notif-list" id="adminNotifList">
+                                        <!-- Populated dynamically via renderAdminNotifications() -->
+                                    </div>
+                                    <div class="notif-footer">
+                                        <button type="button" class="notif-clear-btn" onclick="clearAdminNotifications()">Mark all as read</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Calendar Date Picker Widget -->
+                            <div class="date-selector-wrapper" id="dateSelectorWrapper" title="Click to choose a date from calendar">
+                                <i data-lucide="calendar" class="date-selector-icon" data-size="16"></i>
+                                <span id="datePickerDisplay" class="date-picker-display">Today • 28 Oct 2026</span>
+                                <input type="date" id="dashboardDatePicker" class="date-picker-native-input" onchange="onDashboardDateSelect(this.value)" aria-label="Choose specific sales date">
+                                <i data-lucide="chevron-down" class="date-selector-arrow" data-size="14"></i>
+                            </div>
+
+                            <!-- Quick Return to Today Button (shown when viewing a past date) -->
+                            <button type="button" id="btnResetToday" class="btn btn-outline btn-sm reset-today-btn" style="display: none;" onclick="resetDashboardToToday()" title="Return to today's sales">
+                                <i data-lucide="rotate-ccw" data-size="13"></i>
+                                <span>Today</span>
+                            </button>
+                        </div>
+
+                        <!-- Record New Sale Button -->
                         <button id="btnRecordNewSale" class="btn btn-caramel btn-dashboard-sale" onclick="switchAdminSection('pos')">
                             <i data-lucide="plus" data-size="16"></i>
                             <span>Record New Sale</span>
@@ -208,7 +255,7 @@
 
                 <!-- Metrics Grid -->
                 <div class="metrics-grid">
-                    <div class="metric-card">
+                    <div class="metric-card revenue">
                         <div class="metric-header">
                             <span class="metric-title">Total Sales Revenue</span>
                             <span class="metric-icon"><i data-lucide="chart-no-axes-combined" data-size="20"></i></span>
@@ -235,13 +282,13 @@
                         <div class="metric-sub">UPI, QR & Card payments</div>
                     </div>
 
-                    <div class="metric-card">
+                    <div class="metric-card cups">
                         <div class="metric-header">
                             <span class="metric-title">Total Cups Sold</span>
                             <span class="metric-icon"><i data-lucide="coffee" data-size="20"></i></span>
                         </div>
                         <div class="metric-value" id="dashTotalPaidCups">0</div>
-                        <div class="metric-sub">Eligible paid tiramisu cups</div>
+                        <div class="metric-sub">Total cups & tubs sold (all sizes)</div>
                     </div>
 
                     <div class="metric-card rewards">
@@ -295,7 +342,7 @@
                                     <th>Date & Time</th>
                                     <th>Customer</th>
                                     <th>Items Purchased</th>
-                                    <th>Paid Cups</th>
+                                    <th>Cups / Loyalty</th>
                                     <th>Amount</th>
                                     <th>Payment</th>
                                     <th>Actions</th>
@@ -366,10 +413,21 @@
 
                         <!-- Customer Details Input -->
                         <div class="form-group customer-suggest-wrapper">
-                            <label class="form-label" for="posCustomerPhone">Customer Phone Number <span style="color: #e74c3c;">*</span></label>
-                            <input type="tel" id="posCustomerPhone" class="form-input" placeholder="Enter customer mobile number" oninput="handlePosPhoneInput(this.value)">
+                            <div class="pos-phone-header">
+                                <label class="form-label" for="posCustomerPhone" style="margin-bottom: 0;">Customer Mobile (For Stamps) <span style="color: #e74c3c;">*</span></label>
+                                <span id="posMemberStatusBadge" class="pos-member-badge" style="display: none;">
+                                    <i data-lucide="check-circle-2" data-size="12"></i> Recognized Member
+                                </span>
+                            </div>
+                            <input type="tel" id="posCustomerPhone" class="form-input" placeholder="Type 10-digit phone number..." maxlength="10" oninput="handlePosPhoneInput(this.value)">
                             <div class="form-help">Primary identifier used to track loyalty points automatically</div>
                             
+                            <!-- Dynamic Customer Loyalty Card (Rendered when valid 10 digits entered) -->
+                            <div id="posDynamicLoyaltyCard" class="pos-dynamic-loyalty-container" style="display: none;"></div>
+
+                            <!-- Hidden internal checkbox to preserve compatibility with createSale & updateCartUI -->
+                            <input type="checkbox" id="posRedeemRewardCheckbox" style="display: none;" onchange="toggleRewardInOrder(this.checked)">
+
                             <!-- Returning customer quick dropdown -->
                             <div id="posCustomerSuggestions" class="customer-suggest-dropdown"></div>
                         </div>
@@ -377,21 +435,6 @@
                         <div class="form-group">
                             <label class="form-label" for="posCustomerName">Customer Name (Optional)</label>
                             <input type="text" id="posCustomerName" class="form-input" placeholder="Enter customer name">
-                        </div>
-
-                        <!-- Smart Loyalty Alert Banner -->
-                        <div id="posLoyaltyAlert" class="pos-loyalty-banner">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                                <i data-lucide="award" data-size="22" style="color: #b7793d;"></i>
-                                <div>
-                                    <strong style="color: #935116; font-size: 0.92rem;" id="posLoyaltyAlertTitle">Loyalty Reward Eligible!</strong>
-                                    <div style="font-size: 0.82rem; color: #784212;" id="posLoyaltyAlertDesc">Customer has 5 stamps and can claim 1 Free 150g Cup.</div>
-                                </div>
-                            </div>
-                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 700; color: #27ae60; cursor: pointer;">
-                                <input type="checkbox" id="posRedeemRewardCheckbox" onchange="toggleRewardInOrder(this.checked)">
-                                <span>Redeem 1 Free 150g Tiramisu with this order (₹0)</span>
-                            </label>
                         </div>
 
                         <!-- Payment Mode Selector -->
@@ -421,7 +464,7 @@
                             </button>
                             <button class="btn btn-caramel pos-btn-save" onclick="submitPosSale()" id="btnSaveSale">
                                 <i data-lucide="circle-check" data-size="16"></i>
-                                <span>Save Sale & Generate Receipt</span>
+                                <span>Complete Order & Print Bill</span>
                             </button>
                         </div>
                     </div>
@@ -527,9 +570,24 @@
                         <h1 class="admin-page-title">Customer Records & Purchase Histories</h1>
                         <p class="admin-page-subtitle">View all registered customers, lifetime spend, visits, and transaction logs</p>
                     </div>
-                    <div class="admin-top-actions">
-                        <input type="text" id="customerSearchInput" class="form-input" placeholder="Search by name or mobile number" style="width: 260px;" oninput="renderCustomersTable()">
-                        <button class="btn btn-outline btn-sm" onclick="exportCustomersCSV()">
+                    <div class="admin-top-actions" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <input type="text" id="customerSearchInput" class="form-input" placeholder="Search by name or mobile number" style="width: 250px;" oninput="renderCustomersTable()">
+                        
+                        <!-- Customer Calendar Date Picker Widget -->
+                        <div class="date-selector-wrapper" id="custDateSelectorWrapper" title="Filter customers by purchase date">
+                            <i data-lucide="calendar" class="date-selector-icon" data-size="16"></i>
+                            <span id="custDatePickerDisplay" class="date-picker-display">All Time Records</span>
+                            <input type="date" id="customerDatePicker" class="date-picker-native-input" onchange="onCustomerDateSelect(this.value)" aria-label="Filter customers by purchase date">
+                            <i data-lucide="chevron-down" class="date-selector-arrow" data-size="14"></i>
+                        </div>
+
+                        <!-- Reset Date Button to return to All Time -->
+                        <button type="button" id="btnCustResetAll" class="btn btn-outline btn-sm reset-today-btn" style="display: none;" onclick="resetCustomerDateFilter()" title="View all registered customers">
+                            <i data-lucide="rotate-ccw" data-size="13"></i>
+                            <span>All Time</span>
+                        </button>
+
+                        <button class="btn btn-outline btn-sm" onclick="exportCustomersCSV()" title="Export current customer table to CSV">
                             <i data-lucide="download" data-size="16"></i>
                             <span>Export CSV</span>
                         </button>
@@ -626,22 +684,54 @@
                     </div>
                 </div>
 
-                <div class="card">
-                    <h3 style="font-family: var(--font-heading); margin-bottom: 16px;">Search Customer Loyalty</h3>
-                    <div class="admin-search-row" style="max-width: 600px; margin-bottom: 24px;">
-                        <input type="text" id="adminLoyaltySearchInput" class="form-input" placeholder="Search by name or mobile number" onkeydown="if(event.key==='Enter') adminTrackLoyalty()">
-                        <button class="btn btn-caramel" onclick="adminTrackLoyalty()">
-                            <i data-lucide="search" data-size="16"></i>
-                            <span>Track</span>
-                        </button>
-                        <button type="button" class="btn btn-outline" id="adminLoyaltyClearBtn" onclick="adminClearLoyaltyTracker()" title="Clear search and results">
-                            <i data-lucide="rotate-ccw" data-size="16"></i>
-                            <span>Clear</span>
-                        </button>
+                <!-- Top Loyalty Grid: Search (Left) & Customers Near Reward (Right) -->
+                <div class="loyalty-header-grid">
+                    <!-- Column 1: Search Customer Loyalty -->
+                    <div class="card loyalty-card-col">
+                        <div class="card-title" style="margin-bottom: 8px;">
+                            <span>Search Customer Loyalty</span>
+                        </div>
+                        <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 16px;">
+                            Search customer by mobile number or name to track stamp cards and record free reward claims.
+                        </p>
+                        <div class="admin-search-row">
+                            <input type="text" id="adminLoyaltySearchInput" class="form-input" placeholder="Search by name or mobile number" onkeydown="if(event.key==='Enter') adminTrackLoyalty()">
+                            <button class="btn btn-caramel" onclick="adminTrackLoyalty()">
+                                <i data-lucide="search" data-size="16"></i>
+                                <span>Track</span>
+                            </button>
+                            <button type="button" class="btn btn-outline" id="adminLoyaltyClearBtn" onclick="adminClearLoyaltyTracker()" title="Clear search and results">
+                                <i data-lucide="rotate-ccw" data-size="16"></i>
+                                <span>Clear</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Admin Loyalty Result Card -->
-                    <div id="adminLoyaltyResult" style="display: none; background: var(--color-bg); border-radius: var(--radius-md); padding: 24px; border: 1.5px solid var(--color-border);">
+                    <!-- Column 2: Customers Near Reward (Right Side) -->
+                    <div class="card loyalty-card-col">
+                        <div class="card-title" style="margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="sparkles" data-size="18" style="color: var(--color-caramel);"></i>
+                                <span>Customers Near Reward</span>
+                            </div>
+                            <span class="counter-tag" id="nearRewardCountBadge" style="background: rgba(183, 121, 61, 0.12); color: var(--color-caramel); font-weight: 700;">
+                                0 Customers
+                            </span>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--color-text-muted); margin-bottom: 10px;">
+                            Customers close to completing their 5-cup stamp card or eligible for a free 150g reward. Click to inspect.
+                        </p>
+                        
+                        <!-- Scrollable list of customers near reward -->
+                        <div id="nearRewardList" class="near-reward-scroll-container">
+                            <!-- Populated dynamically via renderNearRewardCustomers() -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Loyalty Result Card (Revealed when a customer is searched or clicked) -->
+                <div id="adminLoyaltyResult" class="card" style="display: none; background: var(--color-bg); border-radius: var(--radius-md); padding: 24px; border: 1.5px solid var(--color-border); margin-bottom: 28px;">
+
                         
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
                             <div>
@@ -691,7 +781,6 @@
                             <div id="admResRedemptionsList"></div>
                         </div>
                     </div>
-                </div>
 
                 <!-- Global Redemptions Audit Log -->
                 <div class="card">
@@ -1422,11 +1511,11 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- Scripts -->
-    <script src="js/icons.js?v=43"></script>
-    <script src="js/qrcode.min.js?v=43"></script>
-    <script src="js/pwa.js?v=43"></script>
-    <script src="js/alerts.js?v=43"></script>
-    <script src="js/db.js?v=43"></script>
-    <script src="js/admin.js?v=43"></script>
+    <script src="js/icons.js?v=48"></script>
+    <script src="js/qrcode.min.js?v=48"></script>
+    <script src="js/pwa.js?v=48"></script>
+    <script src="js/alerts.js?v=48"></script>
+    <script src="js/db.js?v=60"></script>
+    <script src="js/admin.js?v=60"></script>
 </body>
 </html>

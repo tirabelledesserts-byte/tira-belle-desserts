@@ -27,7 +27,9 @@ def notify_change(entity: str, action: str = "updated", payload: Optional[dict] 
     _data_version += 1
     _last_updated = datetime.now(timezone.utc).isoformat()
 
+    event_id = f"evt_{_data_version}_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
     event_data = {
+        "id": event_id,
         "type": "change",
         "version": _data_version,
         "entity": entity,

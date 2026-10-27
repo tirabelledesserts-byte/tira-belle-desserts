@@ -385,11 +385,11 @@ class TiraBelleDB {
             this.checkVersionAndSync();
         }, 2500);
 
-        // 3. Sync immediately on tab focus or visibility change
+        // 3. Sync on tab focus or visibility change only if remote version has incremented
         if (typeof document !== 'undefined') {
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    this.checkVersionAndSync(true);
+                    this.checkVersionAndSync(false);
                     if (!this.sseSource || this.sseSource.readyState === EventSource.CLOSED) {
                         this.connectEventSource();
                     }
@@ -397,7 +397,7 @@ class TiraBelleDB {
             });
         }
         window.addEventListener('focus', () => {
-            this.checkVersionAndSync(true);
+            this.checkVersionAndSync(false);
         });
     }
 
@@ -455,8 +455,17 @@ class TiraBelleDB {
     }
 
     async handleRealtimeChange(changeData) {
-        // Re-synchronize data from backend
+        if (!changeData) return;
+
+        // 1. Dispatch dedicated live event for real-time notification engine (genuine live actions only)
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('tira-live-event', { detail: changeData }));
+        }
+
+        // 2. Re-synchronize data from backend silently
         await this.syncWithBackend();
+
+        // 3. Dispatch entity data update events so UI views update their tables
         if (typeof window !== 'undefined') {
             const entity = changeData.entity;
             const payload = changeData.payload;
@@ -472,6 +481,8 @@ class TiraBelleDB {
                 window.dispatchEvent(new CustomEvent('tira-settings-changed', { detail: payload }));
             } else if (entity === 'customers') {
                 window.dispatchEvent(new CustomEvent('tira-customers-changed', { detail: payload }));
+            } else if (entity === 'redemptions') {
+                window.dispatchEvent(new CustomEvent('tira-redemptions-changed', { detail: payload }));
             }
         }
     }
@@ -1583,8 +1594,10 @@ class TiraBelleDB {
         } else if (filterDate === 'all') {
             filterFn = () => true;
         } else if (filterDate.startsWith('custom:')) {
-            const customDate = filterDate.replace('custom:', '');
+            const customDate = filterDate.replace('custom:', '').trim();
             filterFn = sale => sale.date === customDate;
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(filterDate)) {
+            filterFn = sale => sale.date === filterDate;
         } else {
             filterFn = sale => sale.date === targetDate;
         }
@@ -1600,8 +1613,10 @@ class TiraBelleDB {
         } else if (filterDate === 'all') {
             redemptionFilterFn = () => true;
         } else if (filterDate.startsWith('custom:')) {
-            const customDate = filterDate.replace('custom:', '');
+            const customDate = filterDate.replace('custom:', '').trim();
             redemptionFilterFn = r => r.date === customDate;
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(filterDate)) {
+            redemptionFilterFn = r => r.date === filterDate;
         } else {
             redemptionFilterFn = r => r.date === targetDate;
         }
@@ -1634,9 +1649,13 @@ class TiraBelleDB {
             } else {
                 onlineCollection += saleAmount;
             }
-            totalPaidQuantity += Number(sale.paidCupsCount ?? sale.paid_cups_count ?? 0);
-
             const items = Array.isArray(sale.items) ? sale.items : [];
+            const nonRewardCups = items.reduce((sum, it) => {
+                const isRew = it.isReward ?? it.is_reward ?? false;
+                return isRew ? sum : sum + Number(it.quantity ?? 1);
+            }, 0);
+            totalPaidQuantity += (items.length > 0 ? nonRewardCups : Number(sale.paidCupsCount ?? sale.paid_cups_count ?? 0));
+
             items.forEach(item => {
                 const isRew = item.isReward ?? item.is_reward ?? false;
                 if (!isRew) {

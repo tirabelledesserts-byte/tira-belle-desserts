@@ -233,7 +233,10 @@ window.switchAdminSection = function(sectionId) {
     else if (sectionId === 'categories') renderCategoriesSection();
     else if (sectionId === 'products') renderProductsTable();
     else if (sectionId === 'customers') renderCustomersTable();
-    else if (sectionId === 'loyalty') renderAdminLoyaltyAudit();
+    else if (sectionId === 'loyalty') {
+        renderAdminLoyaltyAudit();
+        renderNearRewardCustomers();
+    }
     else if (sectionId === 'qr') renderCounterQr();
     else if (sectionId === 'reviews') renderAdminReviews();
     else if (sectionId === 'settings') populateSettingsFields();
@@ -251,6 +254,7 @@ function initAdminApp(refreshSettings = true) {
     renderCounterQr();
     renderAdminReviews();
     renderAdminLoyaltyAudit();
+    renderNearRewardCustomers();
 
     const activeLoyaltyInput = document.getElementById('adminLoyaltyPhoneInput');
     if (activeLoyaltyInput && activeLoyaltyInput.value && activeLoyaltyInput.value.trim().length >= 4) {
@@ -263,7 +267,531 @@ function initAdminApp(refreshSettings = true) {
         populateSettingsFields();
     }
     setupImageDropzones();
+    const datePicker = document.getElementById('dashboardDatePicker');
+    if (datePicker && !datePicker.value) {
+        datePicker.value = getLocalDateString(new Date());
+    }
+    updateDatePickerDisplay();
+    if (window.TiraNotifs && typeof window.TiraNotifs.render === 'function') {
+        window.TiraNotifs.render();
+    }
     if (window.lucide) window.lucide.createIcons();
+}
+
+// ==========================================================================
+// REAL-TIME NOTIFICATIONS ENGINE & LIVE ACTIVITY MANAGER
+// ==========================================================================
+window.TiraNotifs = {
+    STORAGE_KEY: 'tira_admin_notifications_v3',
+    PROCESSED_KEY: 'tira_processed_events_v3',
+
+    get() {
+        try {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (raw) {
+                const list = JSON.parse(raw);
+                if (Array.isArray(list)) {
+                    // Automatically filter and deduplicate any duplicate items by actionTarget/id
+                    const seen = new Set();
+                    const deduped = [];
+                    for (const item of list) {
+                        const key = item.actionTarget || item.id;
+                        if (key && seen.has(key)) continue;
+                        if (key) seen.add(key);
+                        deduped.push(item);
+                    }
+                    if (deduped.length !== list.length) {
+                        this.save(deduped);
+                    }
+                    return deduped;
+                }
+            }
+        } catch (e) {}
+        return []; // Clean empty state on first load
+    },
+
+    save(list) {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify((list || []).slice(0, 50)));
+        } catch (e) {}
+    },
+
+    getProcessedSet() {
+        try {
+            const raw = localStorage.getItem(this.PROCESSED_KEY);
+            if (raw) return new Set(JSON.parse(raw));
+        } catch (e) {}
+        return new Set();
+    },
+
+    isProcessed(key) {
+        if (!key) return false;
+        return this.getProcessedSet().has(String(key));
+    },
+
+    markProcessed(key) {
+        if (!key) return;
+        const set = this.getProcessedSet();
+        set.add(String(key));
+        const arr = Array.from(set).slice(-200);
+        try {
+            localStorage.setItem(this.PROCESSED_KEY, JSON.stringify(arr));
+        } catch (e) {}
+    },
+
+    add(notif, showLiveAlert = true) {
+        if (!notif) return null;
+        const dedupKey = notif.actionTarget || notif.eventKey || notif.id;
+        if (dedupKey && this.isProcessed(dedupKey)) {
+            return null; // Already processed! Strictly block duplicate
+        }
+
+        const list = this.get();
+        // Also guard against existing items in current list with same actionTarget or id
+        if (dedupKey && list.some(item => (item.actionTarget === dedupKey || item.id === dedupKey))) {
+            if (dedupKey) this.markProcessed(dedupKey);
+            return null; // Already exists in list! Strictly block duplicate
+        }
+
+        if (dedupKey) {
+            this.markProcessed(dedupKey);
+        }
+
+        const newNotif = {
+            id: notif.id || ('notif_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)),
+            type: notif.type || 'cash',
+            title: notif.title || 'Notification',
+            desc: notif.desc || '',
+            timestamp: notif.timestamp || new Date().toISOString(),
+            unread: true,
+            actionType: notif.actionType || '',
+            actionTarget: notif.actionTarget || ''
+        };
+
+        list.unshift(newNotif);
+        this.save(list);
+        this.render();
+
+        // Audio chime and toast alert ONLY when genuine live event occurs
+        if (showLiveAlert) {
+            this.playChime();
+            if (typeof showToast === 'function') {
+                showToast(`${newNotif.title} — ${newNotif.desc}`, notif.toastType || 'info');
+            }
+        }
+        return newNotif;
+    },
+
+    markAllRead() {
+        const list = this.get().map(n => ({ ...n, unread: false }));
+        this.save(list);
+        this.render();
+        if (typeof showToast === 'function') {
+            showToast('All notifications marked as read', 'info');
+        }
+    },
+
+    markItemRead(id) {
+        const list = this.get().map(n => n.id === id ? { ...n, unread: false } : n);
+        this.save(list);
+        this.render();
+    },
+
+    render() {
+        const listContainer = document.getElementById('adminNotifList');
+        const badge = document.getElementById('notifUnreadBadge');
+        const dot = document.getElementById('adminNotifDot');
+
+        const notifs = this.get();
+        const unreadCount = notifs.filter(n => n.unread).length;
+
+        if (dot) {
+            if (unreadCount > 0) {
+                dot.classList.add('active');
+                dot.style.display = 'block';
+            } else {
+                dot.classList.remove('active');
+                dot.style.display = 'none';
+            }
+        }
+        if (badge) {
+            badge.textContent = unreadCount > 0 ? `${unreadCount} New` : '0 New';
+            badge.className = unreadCount > 0 ? 'badge badge-warning' : 'badge badge-success';
+        }
+
+        if (!listContainer) return;
+
+        if (!notifs.length) {
+            listContainer.innerHTML = `
+                <div class="notif-empty">
+                    <i data-lucide="bell-off" data-size="28" style="color: var(--color-border-dark);"></i>
+                    <div style="font-weight: 700; color: var(--color-espresso); font-size: 0.88rem; margin-top: 4px;">No notifications yet</div>
+                    <div style="font-size: 0.76rem; color: var(--color-text-muted); max-width: 260px; margin: 0 auto; line-height: 1.4;">
+                        Real-time alerts for counter sales, customer reviews, and loyalty rewards will appear here as they occur.
+                    </div>
+                </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
+            return;
+        }
+
+        listContainer.innerHTML = '';
+        notifs.forEach(notif => {
+            const item = document.createElement('div');
+            item.className = `notif-item ${notif.unread ? 'unread' : ''}`;
+            item.onclick = () => this.handleClick(notif);
+
+            let iconHtml = '<i data-lucide="bell" data-size="16"></i>';
+            let iconClass = 'notif-icon-sale';
+            if (notif.type === 'cash') {
+                iconHtml = '<i data-lucide="banknote" data-size="16"></i>';
+                iconClass = 'notif-icon-sale';
+            } else if (notif.type === 'online') {
+                iconHtml = '<i data-lucide="qr-code" data-size="16"></i>';
+                iconClass = 'notif-icon-customer';
+            } else if (notif.type === 'rewards') {
+                iconHtml = '<i data-lucide="gift" data-size="16"></i>';
+                iconClass = 'notif-icon-reward';
+            } else if (notif.type === 'review') {
+                iconHtml = '<i data-lucide="star" data-size="16"></i>';
+                iconClass = 'notif-icon-review';
+            }
+
+            const relTime = formatNotifRelativeTime(notif.timestamp);
+            const safeTitle = typeof escapeHtml === 'function' ? escapeHtml(notif.title) : notif.title;
+            const safeDesc = typeof escapeHtml === 'function' ? escapeHtml(notif.desc) : notif.desc;
+
+            item.innerHTML = `
+                <div class="notif-item-icon ${iconClass}">${iconHtml}</div>
+                <div class="notif-item-content">
+                    <div class="notif-item-title-row">
+                        <span class="notif-item-title">${safeTitle}</span>
+                        <span class="notif-item-time">${relTime}</span>
+                    </div>
+                    <div class="notif-item-body">${safeDesc}</div>
+                </div>
+            `;
+            listContainer.appendChild(item);
+        });
+
+        if (window.lucide) window.lucide.createIcons();
+    },
+
+    handleClick(notif) {
+        this.markItemRead(notif.id);
+        const dropdown = document.getElementById('adminNotificationDropdown');
+        if (dropdown) dropdown.style.display = 'none';
+
+        if (notif.actionType === 'sale' && notif.actionTarget) {
+            if (typeof viewReceipt === 'function') {
+                viewReceipt(notif.actionTarget);
+            }
+        } else if (notif.actionType === 'loyalty') {
+            if (typeof switchAdminSection === 'function') {
+                switchAdminSection('loyalty');
+            }
+            if (notif.actionTarget && typeof adminQuickTrackCustomer === 'function') {
+                setTimeout(() => adminQuickTrackCustomer(notif.actionTarget), 150);
+            }
+        } else if (notif.actionType === 'review') {
+            if (typeof switchAdminSection === 'function') {
+                switchAdminSection('reviews');
+            }
+        } else if (notif.actionType === 'customer') {
+            if (typeof switchAdminSection === 'function') {
+                switchAdminSection('customers');
+            }
+        }
+    },
+
+    playChime() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            const t = ctx.currentTime;
+            osc.frequency.setValueAtTime(587.33, t); // D5
+            osc.frequency.exponentialRampToValueAtTime(880, t + 0.08); // A5
+            gain.gain.setValueAtTime(0.04, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.26);
+        } catch (e) {}
+    }
+};
+
+window.toggleAdminNotifications = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const dropdown = document.getElementById('adminNotificationDropdown');
+    if (!dropdown) return;
+    const isShown = dropdown.style.display === 'block';
+    dropdown.style.display = isShown ? 'none' : 'block';
+    if (!isShown) {
+        window.TiraNotifs.render();
+    }
+};
+
+window.clearAdminNotifications = function() {
+    window.TiraNotifs.markAllRead();
+    const dropdown = document.getElementById('adminNotificationDropdown');
+    if (dropdown) dropdown.style.display = 'none';
+};
+
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('adminNotificationDropdown');
+    const btn = document.getElementById('adminNotificationBtn');
+    if (dropdown && dropdown.style.display === 'block') {
+        if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    }
+});
+
+function formatNotifRelativeTime(isoString) {
+    if (!isoString) return 'Just now';
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return 'Recently';
+    const now = new Date();
+    const diffSecs = Math.floor((now - d) / 1000);
+    if (diffSecs < 10) return 'Just now';
+    if (diffSecs < 60) return `${diffSecs}s ago`;
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return 'Yesterday';
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+// ==========================================================================
+// REAL-TIME NOTIFICATION ENGINE (GENUINE LIVE EVENTS ONLY)
+// ==========================================================================
+window.addEventListener('tira-live-event', (e) => {
+    const event = e.detail;
+    if (!event || event.type !== 'change') return;
+
+    const entity = event.entity;
+    const action = event.action;
+    const payload = event.payload || {};
+
+    // 1. Genuine Sale Created Over Counter
+    if (entity === 'sales' && action === 'created') {
+        const saleId = payload.saleId;
+        if (!saleId) return;
+        const amount = Number(payload.totalAmount || 0);
+        const pMode = payload.paymentMode || 'Cash';
+        const custName = payload.customerName || 'Valued Guest';
+        const items = Array.isArray(payload.items) ? payload.items.join(', ') : 'Tiramisu';
+
+        window.TiraNotifs.add({
+            eventKey: `sale_${saleId}`,
+            type: pMode === 'Cash' ? 'cash' : 'online',
+            title: `New ${pMode} Sale Recorded (₹${amount})`,
+            desc: `${saleId}: ${items} • ${custName}`,
+            actionType: 'sale',
+            actionTarget: saleId,
+            toastType: 'success'
+        }, true);
+
+        // Check if customer reached loyalty milestone
+        const phone = payload.phone;
+        if (phone && window.TiraDB) {
+            setTimeout(() => {
+                const loyalty = window.TiraDB.getCustomerLoyalty(phone);
+                if (loyalty && loyalty.isEligible) {
+                    window.TiraNotifs.add({
+                        eventKey: `milestone_${phone}_${loyalty.currentCycleProgress || 5}`,
+                        type: 'rewards',
+                        title: `🎉 Free Reward Milestone Unlocked!`,
+                        desc: `${custName} (${phone}) reached ${loyalty.threshold} stamps! Free dessert ready to claim.`,
+                        actionType: 'loyalty',
+                        actionTarget: phone,
+                        toastType: 'success'
+                    }, true);
+                }
+            }, 350);
+        }
+    }
+
+    // 2. Genuine Reward Claimed Over Counter
+    else if (entity === 'redemptions' && action === 'created') {
+        const rdmId = payload.redemptionId;
+        if (!rdmId) return;
+        const custName = payload.customerName || 'Customer';
+        const phone = payload.phone || '';
+        const rewardItem = payload.rewardItem || '1 Free 150g Cup';
+
+        window.TiraNotifs.add({
+            eventKey: `rdm_${rdmId}`,
+            type: 'rewards',
+            title: '🎁 Reward Claimed Over Counter',
+            desc: `${custName} (${phone}) redeemed ${rewardItem}`,
+            actionType: 'loyalty',
+            actionTarget: phone,
+            toastType: 'success'
+        }, true);
+    }
+
+    // 3. Genuine Customer Review Submitted
+    else if (entity === 'reviews' && action === 'created') {
+        const revName = payload.name;
+        const rating = payload.rating;
+        const comment = payload.comment || '';
+        if (!revName && !rating) return; // Ignore empty / uninitialized calls
+
+        const revKey = payload.reviewId ? `rev_${payload.reviewId}` : `rev_${revName}_${rating}_${comment.slice(0, 20)}`;
+        const commentSnippet = comment ? `"${comment.slice(0, 55)}..."` : 'left a 5-star review';
+
+        window.TiraNotifs.add({
+            eventKey: revKey,
+            type: 'review',
+            title: `⭐ New ${rating}★ Review Received!`,
+            desc: `${revName || 'Customer'}: ${commentSnippet}`,
+            actionType: 'review',
+            actionTarget: '',
+            toastType: 'info'
+        }, true);
+    }
+});
+
+// ==========================================================================
+// SILENT UI DATA SYNCHRONIZATION (Zero notifications, updates tables/cards only)
+// ==========================================================================
+window.addEventListener('tira-sales-changed', () => {
+    loadDashboardMetrics();
+    renderCustomersTable();
+    if (typeof window.renderNearRewardCustomers === 'function') {
+        window.renderNearRewardCustomers();
+    }
+});
+
+window.addEventListener('tira-redemptions-changed', () => {
+    renderAdminLoyaltyAudit();
+    renderNearRewardCustomers();
+    loadDashboardMetrics();
+    renderCustomersTable();
+});
+
+window.addEventListener('tira-reviews-changed', () => {
+    renderAdminReviews();
+});
+
+window.addEventListener('tira-customers-changed', () => {
+    renderCustomersTable();
+    renderNearRewardCustomers();
+});
+
+window.addEventListener('tira-products-changed', () => {
+    renderProductsTable();
+    renderPosCatalog();
+    loadDashboardMetrics();
+});
+
+window.addEventListener('tira-categories-changed', () => {
+    renderCategoriesSection();
+    renderPosCatalog();
+});
+
+
+function getLocalDateString(d = new Date()) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    return dateStr;
+}
+
+window.updateDatePickerDisplay = function(dateStr) {
+    const picker = document.getElementById('dashboardDatePicker');
+    const display = document.getElementById('datePickerDisplay');
+    const resetBtn = document.getElementById('btnResetToday');
+    const liveText = document.getElementById('dashLiveCounterText');
+    const summaryTag = document.getElementById('dashProductSummaryTag');
+
+    const todayStr = getLocalDateString(new Date());
+    const yestDate = new Date();
+    yestDate.setDate(yestDate.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yestDate);
+
+    const targetDate = dateStr || (picker ? picker.value : todayStr) || todayStr;
+    if (picker && picker.value !== targetDate) {
+        picker.value = targetDate;
+    }
+
+    const formatted = formatDisplayDate(targetDate);
+
+    if (display) {
+        if (targetDate === todayStr) {
+            display.textContent = `Today • ${formatted}`;
+        } else if (targetDate === yesterdayStr) {
+            display.textContent = `Yesterday • ${formatted}`;
+        } else {
+            display.textContent = formatted;
+        }
+    }
+
+    if (resetBtn) {
+        resetBtn.style.display = (targetDate === todayStr) ? 'none' : 'inline-flex';
+    }
+
+    if (liveText) {
+        liveText.textContent = (targetDate === todayStr) ? 'Live Counter' : formatted;
+    }
+
+    if (summaryTag) {
+        if (targetDate === todayStr) {
+            summaryTag.textContent = "Today's Breakdown";
+        } else if (targetDate === yesterdayStr) {
+            summaryTag.textContent = "Yesterday's Breakdown";
+        } else {
+            summaryTag.textContent = `Breakdown • ${formatted}`;
+        }
+    }
+};
+
+window.onDashboardDateSelect = function(selectedDate) {
+    if (!selectedDate) return;
+    window.updateDatePickerDisplay(selectedDate);
+    window.loadDashboardMetrics(selectedDate);
+    
+    const formatted = formatDisplayDate(selectedDate);
+    const todayStr = getLocalDateString(new Date());
+    if (selectedDate === todayStr) {
+        showToast(`Viewing today's sales (${formatted})`, 'info');
+    } else {
+        showToast(`Viewing sales for ${formatted}`, 'info');
+    }
+};
+
+window.resetDashboardToToday = function() {
+    const todayStr = getLocalDateString(new Date());
+    const picker = document.getElementById('dashboardDatePicker');
+    if (picker) picker.value = todayStr;
+    window.updateDatePickerDisplay(todayStr);
+    window.loadDashboardMetrics(todayStr);
+    showToast("Returned to today's sales", 'info');
+};
+
+function updateDateFilterLabels() {
+    window.updateDatePickerDisplay();
 }
 
 function liveSyncAdminView(refreshSettings = false) {
@@ -280,9 +808,14 @@ window.addEventListener('tira-customers-changed', () => liveSyncAdminView(false)
 window.addEventListener('tira-settings-changed', () => liveSyncAdminView(true));
 
 // ----------------- SECTION 1: DASHBOARD METRICS -----------------
-window.loadDashboardMetrics = async function() {
-    const filterSelect = document.getElementById('dashboardDateFilter');
-    const filter = filterSelect ? filterSelect.value : 'today';
+window.loadDashboardMetrics = async function(filterDateParam) {
+    const picker = document.getElementById('dashboardDatePicker');
+    const todayStr = getLocalDateString(new Date());
+    const filter = filterDateParam || (picker ? picker.value : todayStr) || todayStr;
+
+    // Keep display label and buttons in sync
+    window.updateDatePickerDisplay(filter);
+
     const settings = window.TiraDB.getSettings();
     const curr = settings.currency || '₹';
 
@@ -313,7 +846,20 @@ window.loadDashboardMetrics = async function() {
         // Product Summary Table
         const summaryTag = document.getElementById('dashProductSummaryTag');
         if (summaryTag) {
-            summaryTag.textContent = filter === 'today' ? "Today's Breakdown" : (filter === 'yesterday' ? "Yesterday's Breakdown" : "All Time Breakdown");
+            const yestDate = new Date();
+            yestDate.setDate(yestDate.getDate() - 1);
+            const yesterdayStr = getLocalDateString(yestDate);
+            const formatted = formatDisplayDate(filter);
+
+            if (filter === 'today' || filter === todayStr) {
+                summaryTag.textContent = "Today's Breakdown";
+            } else if (filter === 'yesterday' || filter === yesterdayStr) {
+                summaryTag.textContent = "Yesterday's Breakdown";
+            } else if (filter === 'all') {
+                summaryTag.textContent = "All Time Breakdown";
+            } else {
+                summaryTag.textContent = `Breakdown • ${formatted}`;
+            }
         }
 
         const summaryTbody = document.getElementById('dashProductSummaryTbody');
@@ -358,6 +904,10 @@ window.loadDashboardMetrics = async function() {
                     const safeItems = typeof escapeHtml === 'function' ? escapeHtml(itemsStr) : itemsStr;
                     const safeId = typeof escapeHtml === 'function' ? escapeHtml(sale.id) : sale.id;
                     const paidCups = Number(sale.paidCupsCount ?? sale.paid_cups_count ?? 0);
+                    const totalCupsInSale = items.reduce((acc, it) => {
+                        const isRew = it.isReward ?? it.is_reward ?? false;
+                        return isRew ? acc : acc + Number(it.quantity ?? 1);
+                    }, 0) || paidCups;
                     const amount = Number(sale.totalAmount ?? sale.total_amount ?? 0);
                     const pMode = sale.paymentMode || sale.payment_mode || 'Cash';
 
@@ -369,7 +919,12 @@ window.loadDashboardMetrics = async function() {
                             <div style="font-size: 0.78rem; color: var(--color-text-muted);">${safePhone}</div>
                         </td>
                         <td style="max-width: 220px; font-size: 0.85rem;">${safeItems}</td>
-                        <td><strong>${paidCups} cups</strong></td>
+                        <td>
+                            <strong>${totalCupsInSale} cup${totalCupsInSale !== 1 ? 's' : ''}</strong>
+                            <div style="font-size: 0.74rem; color: ${paidCups > 0 ? 'var(--color-caramel)' : 'var(--color-text-muted)'};">
+                                ${paidCups > 0 ? `+${paidCups} stamp${paidCups !== 1 ? 's' : ''}` : 'No loyalty stamp'}
+                            </div>
+                        </td>
                         <td><strong>${curr}${amount.toLocaleString('en-IN')}</strong></td>
                         <td>
                             <span class="badge ${pMode === 'Cash' ? 'badge-cash' : 'badge-online'}">
@@ -551,7 +1106,17 @@ window.resetNewSale = async function(skipConfirm = false) {
     const suggestEl = document.getElementById('posCustomerSuggestions');
     if (suggestEl) {
         suggestEl.innerHTML = '';
+        suggestEl.classList.remove('active');
         suggestEl.style.display = 'none';
+    }
+
+    const badge = document.getElementById('posMemberStatusBadge');
+    if (badge) badge.style.display = 'none';
+
+    const loyaltyCard = document.getElementById('posDynamicLoyaltyCard');
+    if (loyaltyCard) {
+        loyaltyCard.style.display = 'none';
+        loyaltyCard.innerHTML = '';
     }
 
     const alertBanner = document.getElementById('posLoyaltyAlert');
@@ -559,6 +1124,12 @@ window.resetNewSale = async function(skipConfirm = false) {
 
     const redeemCheckbox = document.getElementById('posRedeemRewardCheckbox');
     if (redeemCheckbox) redeemCheckbox.checked = false;
+
+    const saveBtn = document.getElementById('btnSaveSale');
+    if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i data-lucide="circle-check" data-size="16"></i> <span>Complete Order & Print Bill</span>';
+    }
 
     if (typeof setPosPaymentMode === 'function') {
         setPosPaymentMode('Cash');
@@ -626,16 +1197,17 @@ function updateCartUI() {
     if (isFreeRewardSelected) {
         const rewardRow = document.createElement('div');
         rewardRow.className = 'cart-item-row';
-        rewardRow.style.background = '#eafaf1';
+        rewardRow.style.background = '#f7f0fe';
         rewardRow.style.padding = '8px 12px';
-        rewardRow.style.borderRadius = '6px';
+        rewardRow.style.borderRadius = '8px';
+        rewardRow.style.border = '1px dashed #b388ff';
         rewardRow.innerHTML = `
             <div>
-                <div class="cart-item-title" style="color: #27ae60; display: flex; align-items: center; gap: 6px;">
+                <div class="cart-item-title" style="color: #6b21a8; display: flex; align-items: center; gap: 6px; font-weight: 700;">
                     <i data-lucide="gift" data-size="16"></i>
-                    <span>1 Free 150g Tiramisu</span>
+                    <span>1 Free 150g Cup</span>
                 </div>
-                <div class="cart-item-unit">Loyalty Reward Redemption</div>
+                <div class="cart-item-unit" style="color: #7e22ce;">Loyalty Reward Redemption</div>
             </div>
             <div style="font-weight: 800; color: #27ae60;">₹0 (Free)</div>
         `;
@@ -656,13 +1228,17 @@ window.setPosPaymentMode = function(mode) {
 };
 
 window.handlePosPhoneInput = function(phoneVal) {
-    const cleanDigits = phoneVal.replace(/\D/g, '');
+    const rawVal = phoneVal || '';
+    const cleanDigits = rawVal.replace(/\D/g, '').slice(0, 10);
     const suggestions = document.getElementById('posCustomerSuggestions');
-    const alertBox = document.getElementById('posLoyaltyAlert');
+    const badge = document.getElementById('posMemberStatusBadge');
+    const loyaltyCard = document.getElementById('posDynamicLoyaltyCard');
+    const rewardCheckbox = document.getElementById('posRedeemRewardCheckbox');
 
-    if (cleanDigits.length >= 3) {
+    // 1. Suggestions dropdown for partial numbers (3 to 9 digits)
+    if (cleanDigits.length >= 3 && cleanDigits.length < 10) {
         const matches = window.TiraDB.searchCustomer(cleanDigits);
-        if (matches.length > 0) {
+        if (matches.length > 0 && suggestions) {
             suggestions.innerHTML = '';
             matches.slice(0, 5).forEach(c => {
                 const item = document.createElement('div');
@@ -678,53 +1254,172 @@ window.handlePosPhoneInput = function(phoneVal) {
                 suggestions.appendChild(item);
             });
             suggestions.classList.add('active');
-        } else {
+            suggestions.style.display = 'block';
+        } else if (suggestions) {
             suggestions.classList.remove('active');
+            suggestions.style.display = 'none';
         }
-    } else {
+    } else if (suggestions) {
         suggestions.classList.remove('active');
+        suggestions.style.display = 'none';
     }
 
-    // If exact 10 digits entered, check loyalty status
-    if (cleanDigits.length === 10) {
-        const customer = window.TiraDB.findCustomerByPhone(cleanDigits);
-        if (customer) {
-            document.getElementById('posCustomerName').value = customer.name;
-            checkPosLoyaltyEligibility(customer.phone);
-        } else {
-            alertBox.classList.remove('active');
+    // 2. Initial State: Before a valid 10-digit number is entered
+    if (cleanDigits.length < 10) {
+        if (badge) badge.style.display = 'none';
+        if (loyaltyCard) {
+            loyaltyCard.style.display = 'none';
+            loyaltyCard.innerHTML = '';
         }
+        if (rewardCheckbox && rewardCheckbox.checked) {
+            rewardCheckbox.checked = false;
+            updateCartUI();
+        }
+        return;
+    }
+
+    // 3. Exactly 10 digits entered: Automatically check loyalty status
+    const customer = window.TiraDB.findCustomerByPhone(cleanDigits);
+    const loyalty = window.TiraDB.getCustomerLoyalty(cleanDigits);
+    const isRecognized = !!(customer || (loyalty && loyalty.exists));
+
+    // Recognized Member green badge
+    if (badge) {
+        badge.style.display = isRecognized ? 'inline-flex' : 'none';
+    }
+
+    // Auto-fill customer name if known and input is currently empty
+    const nameField = document.getElementById('posCustomerName');
+    if (nameField && customer && customer.name && customer.name !== 'Guest' && !nameField.value.trim()) {
+        nameField.value = customer.name;
+    }
+
+    // Render dynamic loyalty card (Purple eligible card or Progress card)
+    renderPosLoyaltyCard(loyalty, cleanDigits);
+};
+
+window.renderPosLoyaltyCard = function(loyalty, cleanDigits) {
+    const loyaltyCard = document.getElementById('posDynamicLoyaltyCard');
+    const rewardCheckbox = document.getElementById('posRedeemRewardCheckbox');
+    if (!loyaltyCard) return;
+
+    if (!loyalty || !cleanDigits || cleanDigits.length !== 10) {
+        loyaltyCard.style.display = 'none';
+        loyaltyCard.innerHTML = '';
+        return;
+    }
+
+    const threshold = loyalty.threshold || 5;
+    const isEligible = !!loyalty.isEligible;
+    const isRedeemed = !!(rewardCheckbox && rewardCheckbox.checked);
+
+    if (isEligible) {
+        // Customer is Eligible for a Free Cup: Purple Card
+        loyaltyCard.innerHTML = `
+            <div class="pos-loyalty-card-eligible">
+                <div class="pos-loyalty-eligible-info">
+                    <div class="pos-loyalty-eligible-icon">
+                        <i data-lucide="gift" data-size="20"></i>
+                    </div>
+                    <div>
+                        <div class="pos-loyalty-eligible-title">Eligible for 1 Free 150g Cup! 🎉</div>
+                        <div class="pos-loyalty-eligible-sub">Reached ${threshold} cups reward threshold</div>
+                    </div>
+                </div>
+                <button type="button" class="pos-redeem-btn ${isRedeemed ? 'redeemed' : ''}" id="btnPosRedeem" onclick="posToggleRewardRedemption('${cleanDigits}')" title="${isRedeemed ? 'Free reward applied to order' : 'Click to redeem 1 free cup'}">
+                    ${isRedeemed ? '<i data-lucide="check" data-size="14"></i> Redeemed' : 'Redeem'}
+                </button>
+            </div>
+        `;
     } else {
-        alertBox.classList.remove('active');
+        // Customer is Not Yet Eligible: Progress Card
+        const currentStamps = loyalty.currentCycleProgress || 0;
+        const stampsNeeded = loyalty.cupsRemaining || Math.max(0, threshold - currentStamps);
+        const progressPct = Math.min(100, Math.max(0, Math.round((currentStamps / threshold) * 100)));
+
+        loyaltyCard.innerHTML = `
+            <div class="pos-loyalty-card-progress">
+                <div class="pos-loyalty-progress-header">
+                    <span class="pos-loyalty-progress-title">
+                        <i data-lucide="award" data-size="15" style="color: #b7793d;"></i>
+                        Loyalty Progress
+                    </span>
+                    <span class="pos-loyalty-progress-stat">
+                        ${currentStamps}/${threshold} stamps collected
+                    </span>
+                </div>
+                <div class="pos-loyalty-bar-bg">
+                    <div class="pos-loyalty-bar-inner" style="width: ${progressPct}%;"></div>
+                </div>
+                <div class="pos-loyalty-progress-footer">
+                    <span>${stampsNeeded} more stamp${stampsNeeded !== 1 ? 's' : ''} needed for a free cup</span>
+                    <span style="font-size: 0.74rem; color: #8e44ad; font-weight: 600;">Reward: Free 150g Cup</span>
+                </div>
+            </div>
+        `;
+    }
+
+    loyaltyCard.style.display = 'block';
+    if (window.lucide) window.lucide.createIcons();
+};
+
+window.posToggleRewardRedemption = function(phone) {
+    const cleanDigits = (phone || document.getElementById('posCustomerPhone')?.value || '').replace(/\D/g, '').slice(0, 10);
+    const loyalty = window.TiraDB.getCustomerLoyalty(cleanDigits);
+    const rewardCheckbox = document.getElementById('posRedeemRewardCheckbox');
+    if (!rewardCheckbox) return;
+
+    if (!loyalty.isEligible) {
+        showToast('Customer is not eligible for a free reward cup yet.', 'warning');
+        rewardCheckbox.checked = false;
+        updateCartUI();
+        renderPosLoyaltyCard(loyalty, cleanDigits);
+        return;
+    }
+
+    // Toggle reward redemption
+    if (rewardCheckbox.checked) {
+        rewardCheckbox.checked = false;
+        updateCartUI();
+        renderPosLoyaltyCard(loyalty, cleanDigits);
+        showToast('Free 150g Cup reward removed from current order.', 'info');
+    } else {
+        rewardCheckbox.checked = true;
+        updateCartUI();
+        renderPosLoyaltyCard(loyalty, cleanDigits);
+        showToast('Eligible Free 150g Cup added to order (₹0)!', 'success');
     }
 };
 
 function selectPosCustomer(customer) {
-    document.getElementById('posCustomerPhone').value = customer.phone;
-    document.getElementById('posCustomerName').value = customer.name;
-    document.getElementById('posCustomerSuggestions').classList.remove('active');
-    checkPosLoyaltyEligibility(customer.phone);
+    const phoneInput = document.getElementById('posCustomerPhone');
+    const nameInput = document.getElementById('posCustomerName');
+    if (phoneInput) phoneInput.value = customer.phone;
+    if (nameInput) nameInput.value = customer.name;
+    const suggestions = document.getElementById('posCustomerSuggestions');
+    if (suggestions) {
+        suggestions.classList.remove('active');
+        suggestions.style.display = 'none';
+    }
+    handlePosPhoneInput(customer.phone);
 }
 
 function checkPosLoyaltyEligibility(phone) {
-    const alertBox = document.getElementById('posLoyaltyAlert');
-    const alertTitle = document.getElementById('posLoyaltyAlertTitle');
-    const alertDesc = document.getElementById('posLoyaltyAlertDesc');
-    const checkbox = document.getElementById('posRedeemRewardCheckbox');
-
-    const loyalty = window.TiraDB.getCustomerLoyalty(phone);
-    if (loyalty.isEligible) {
-        alertTitle.textContent = `${loyalty.customer.name} is Eligible for 1 Free 150g Cup!`;
-        alertDesc.textContent = `Completed purchases: ${loyalty.completedPurchasesCount} (${loyalty.totalCupsPurchased} cups total). Customer has ${loyalty.availableRewards} unclaimed reward(s).`;
-        alertBox.classList.add('active');
-    } else {
-        alertBox.classList.remove('active');
-        checkbox.checked = false;
+    const cleanDigits = (phone || '').replace(/\D/g, '').slice(0, 10);
+    if (cleanDigits.length === 10) {
+        const loyalty = window.TiraDB.getCustomerLoyalty(cleanDigits);
+        renderPosLoyaltyCard(loyalty, cleanDigits);
     }
 }
 
 window.toggleRewardInOrder = function(checked) {
     updateCartUI();
+    const phone = document.getElementById('posCustomerPhone')?.value || '';
+    const cleanDigits = phone.replace(/\D/g, '').slice(0, 10);
+    if (cleanDigits.length === 10) {
+        const loyalty = window.TiraDB.getCustomerLoyalty(cleanDigits);
+        renderPosLoyaltyCard(loyalty, cleanDigits);
+    }
 };
 
 window.submitPosSale = async function() {
@@ -772,6 +1467,9 @@ window.submitPosSale = async function() {
             // Refresh dashboard metrics and customer table
             loadDashboardMetrics();
             renderCustomersTable();
+            if (typeof window.renderNearRewardCustomers === 'function') {
+                window.renderNearRewardCustomers();
+            }
         } else {
             showToast(result.message || 'Error recording sale', 'error');
         }
@@ -781,7 +1479,7 @@ window.submitPosSale = async function() {
     } finally {
         if (saveBtn) {
             saveBtn.disabled = false;
-            saveBtn.innerHTML = '<i data-lucide="check-circle" data-size="16"></i> <span>Save & Record Sale</span>';
+            saveBtn.innerHTML = '<i data-lucide="circle-check" data-size="16"></i> <span>Complete Order & Print Bill</span>';
             if (window.lucide) window.lucide.createIcons();
         }
     }
@@ -1888,6 +2586,46 @@ window.setCustomerFilter = function(filterKey) {
     renderCustomersTable();
 };
 
+window.onCustomerDateSelect = function(selectedDate) {
+    const display = document.getElementById('custDatePickerDisplay');
+    const resetBtn = document.getElementById('btnCustResetAll');
+    const picker = document.getElementById('customerDatePicker');
+
+    if (picker && selectedDate) {
+        picker.value = selectedDate;
+    }
+
+    if (selectedDate) {
+        const formatted = formatDisplayDate(selectedDate);
+        const todayStr = getLocalDateString(new Date());
+        if (display) {
+            display.textContent = (selectedDate === todayStr) ? `Today • ${formatted}` : formatted;
+        }
+        if (resetBtn) resetBtn.style.display = 'inline-flex';
+        showToast(`Filtered customers for ${formatted}`, 'info');
+    } else {
+        if (display) display.textContent = 'All Time Records';
+        if (resetBtn) resetBtn.style.display = 'none';
+    }
+
+    window.adminCustCurrentPage = 1;
+    renderCustomersTable();
+};
+
+window.resetCustomerDateFilter = function() {
+    const picker = document.getElementById('customerDatePicker');
+    const display = document.getElementById('custDatePickerDisplay');
+    const resetBtn = document.getElementById('btnCustResetAll');
+
+    if (picker) picker.value = '';
+    if (display) display.textContent = 'All Time Records';
+    if (resetBtn) resetBtn.style.display = 'none';
+
+    window.adminCustCurrentPage = 1;
+    renderCustomersTable();
+    showToast('Showing all registered customers', 'info');
+};
+
 window.renderCustomersTable = function() {
     const tbody = document.getElementById('adminCustomersTableTbody');
     if (!tbody) return;
@@ -1899,50 +2637,120 @@ window.renderCustomersTable = function() {
     const settings = window.TiraDB.getSettings();
     const curr = settings.currency || '₹';
 
-    // Map each customer to their sales, redemptions, and criteria
-    const customerMetaList = customers.map(c => {
-        const cleanPhone = (c.phone || '').trim().replace(/\D/g, '');
-        const custSales = sales.filter(s => (s.customerPhone || '').replace(/\D/g, '') === cleanPhone);
-        const custRedemptions = redemptions.filter(r => (r.customerPhone || '').replace(/\D/g, '') === cleanPhone);
-        const loyalty = window.TiraDB.getCustomerLoyalty(c.phone);
-        const totalSpend = custSales.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
+    const datePicker = document.getElementById('customerDatePicker');
+    const selectedDate = datePicker?.value || '';
 
-        // Check payment modes used
-        const hasCash = custSales.some(s => s.paymentMode === 'Cash');
-        const hasOnline = custSales.some(s => s.paymentMode === 'Online');
+    let customerMetaList = [];
 
-        // Check products purchased (150g vs 350g)
-        let has150g = false;
-        let has350g = false;
-        custSales.forEach(s => {
-            (s.items || []).forEach(it => {
-                const pid = (it.productId || '').toLowerCase();
-                const pname = (it.productName || '').toLowerCase();
-                const pweight = (it.weight || '').toLowerCase();
-                if (pid.includes('150') || pname.includes('150') || pweight.includes('150')) {
-                    has150g = true;
-                }
-                if (pid.includes('350') || pname.includes('350') || pweight.includes('350')) {
-                    has350g = true;
-                }
+    if (selectedDate && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
+        // Filter by selected specific date
+        const daySales = sales.filter(s => s.date === selectedDate);
+        const dayRedemptions = redemptions.filter(r => r.date === selectedDate);
+        const activePhones = new Set([
+            ...daySales.map(s => (s.customerPhone || '').replace(/\D/g, '')),
+            ...dayRedemptions.map(r => (r.customerPhone || '').replace(/\D/g, ''))
+        ]);
+
+        customers.forEach(c => {
+            const cleanPhone = (c.phone || '').trim().replace(/\D/g, '');
+            if (!activePhones.has(cleanPhone)) return;
+
+            const custDaySales = daySales.filter(s => (s.customerPhone || '').replace(/\D/g, '') === cleanPhone);
+            const custDayRedemptions = dayRedemptions.filter(r => (r.customerPhone || '').replace(/\D/g, '') === cleanPhone);
+            const loyalty = window.TiraDB.getCustomerLoyalty(c.phone);
+
+            const dateSpend = custDaySales.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
+            const dateCups = custDaySales.reduce((acc, s) => {
+                const sItems = Array.isArray(s.items) ? s.items : [];
+                const nonReward = sItems.reduce((sum, it) => (it.isReward || it.is_reward) ? sum : sum + Number(it.quantity || 1), 0);
+                return acc + (sItems.length > 0 ? nonReward : Number(s.paidCupsCount || 0));
+            }, 0);
+            const hasCash = custDaySales.some(s => s.paymentMode === 'Cash');
+            const hasOnline = custDaySales.some(s => s.paymentMode === 'Online');
+
+            let has150g = false;
+            let has350g = false;
+            custDaySales.forEach(s => {
+                (s.items || []).forEach(it => {
+                    const pid = (it.productId || '').toLowerCase();
+                    const pname = (it.productName || '').toLowerCase();
+                    const pweight = (it.weight || '').toLowerCase();
+                    if (pid.includes('150') || pname.includes('150') || pweight.includes('150')) has150g = true;
+                    if (pid.includes('350') || pname.includes('350') || pweight.includes('350')) has350g = true;
+                });
+            });
+
+            const hasClaimed = custDayRedemptions.length > 0;
+
+            customerMetaList.push({
+                customer: c,
+                cleanPhone,
+                loyalty,
+                totalSpend: dateSpend,
+                dateSpend,
+                dateCups,
+                dateOrderCount: custDaySales.length,
+                formattedDate: formatDisplayDate(selectedDate),
+                isDateFiltered: true,
+                hasCash,
+                hasOnline,
+                has150g,
+                has350g,
+                hasClaimed
             });
         });
+    } else {
+        // Lifetime calculation for all registered customers
+        customerMetaList = customers.map(c => {
+            const cleanPhone = (c.phone || '').trim().replace(/\D/g, '');
+            const custSales = sales.filter(s => (s.customerPhone || '').replace(/\D/g, '') === cleanPhone);
+            const custRedemptions = redemptions.filter(r => (r.customerPhone || '').replace(/\D/g, '') === cleanPhone);
+            const loyalty = window.TiraDB.getCustomerLoyalty(c.phone);
+            const totalSpend = custSales.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
+            const totalCups = custSales.reduce((acc, s) => {
+                const sItems = Array.isArray(s.items) ? s.items : [];
+                const nonReward = sItems.reduce((sum, it) => (it.isReward || it.is_reward) ? sum : sum + Number(it.quantity || 1), 0);
+                return acc + (sItems.length > 0 ? nonReward : Number(s.paidCupsCount || 0));
+            }, 0);
 
-        // Check if offer/reward claimed
-        const hasClaimed = custRedemptions.length > 0 || (loyalty.claimedCount || 0) > 0;
+            // Check payment modes used
+            const hasCash = custSales.some(s => s.paymentMode === 'Cash');
+            const hasOnline = custSales.some(s => s.paymentMode === 'Online');
 
-        return {
-            customer: c,
-            cleanPhone,
-            loyalty,
-            totalSpend,
-            hasCash,
-            hasOnline,
-            has150g,
-            has350g,
-            hasClaimed
-        };
-    });
+            // Check products purchased (150g vs 350g)
+            let has150g = false;
+            let has350g = false;
+            custSales.forEach(s => {
+                (s.items || []).forEach(it => {
+                    const pid = (it.productId || '').toLowerCase();
+                    const pname = (it.productName || '').toLowerCase();
+                    const pweight = (it.weight || '').toLowerCase();
+                    if (pid.includes('150') || pname.includes('150') || pweight.includes('150')) has150g = true;
+                    if (pid.includes('350') || pname.includes('350') || pweight.includes('350')) has350g = true;
+                });
+            });
+
+            // Check if offer/reward claimed
+            const hasClaimed = custRedemptions.length > 0 || (loyalty.claimedCount || 0) > 0;
+
+            return {
+                customer: c,
+                cleanPhone,
+                loyalty,
+                totalSpend,
+                totalCups,
+                dateSpend: totalSpend,
+                dateCups: totalCups,
+                dateOrderCount: loyalty.completedPurchasesCount,
+                isDateFiltered: false,
+                hasCash,
+                hasOnline,
+                has150g,
+                has350g,
+                hasClaimed
+            };
+        });
+    }
 
     // Compute badges / counts for each filter chip
     const countAll = customerMetaList.length;
@@ -2014,7 +2822,9 @@ window.renderCustomersTable = function() {
     tbody.innerHTML = '';
     if (!filtered.length) {
         let emptyMsg = 'No customer records found matching search query.';
-        if (activeCustomerFilter !== 'all') {
+        if (selectedDate) {
+            emptyMsg = `No customer purchases or redemptions recorded for <strong>${formatDisplayDate(selectedDate)}</strong>. <button type="button" class="btn btn-outline btn-sm" onclick="resetCustomerDateFilter()" style="margin-left: 10px;">Show All Customers</button>`;
+        } else if (activeCustomerFilter !== 'all') {
             const filterLabelMap = {
                 'cash': 'Cash payments',
                 'online': 'Online payments',
@@ -2024,7 +2834,7 @@ window.renderCustomersTable = function() {
             };
             emptyMsg = `No customers found for filter: <strong>${filterLabelMap[activeCustomerFilter] || activeCustomerFilter}</strong>.`;
         }
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--color-text-muted); padding: 24px;">${emptyMsg}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--color-text-muted); padding: 28px;">${emptyMsg}</td></tr>`;
         return;
     }
 
@@ -2035,13 +2845,26 @@ window.renderCustomersTable = function() {
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(c.name) : c.name;
         const safePhone = typeof escapeHtml === 'function' ? escapeHtml(c.phone) : c.phone;
 
+        const cupsHtml = item.isDateFiltered
+            ? `<strong>${item.dateCups} cup${item.dateCups !== 1 ? 's' : ''}</strong><div style="font-size: 0.74rem; color: var(--color-caramel);">on ${item.formattedDate}</div>`
+            : `<strong>${item.totalCups} cup${item.totalCups !== 1 ? 's' : ''}</strong>${item.totalCups !== loyalty.totalCupsPurchased ? `<div style="font-size: 0.74rem; color: var(--color-text-muted);">${loyalty.totalCupsPurchased} loyalty eligible</div>` : ''}`;
+
+
+        const ordersHtml = item.isDateFiltered
+            ? `<strong>${item.dateOrderCount} order${item.dateOrderCount !== 1 ? 's' : ''}</strong>`
+            : `<strong>${loyalty.completedPurchasesCount} orders</strong>`;
+
+        const spendHtml = item.isDateFiltered
+            ? `<strong>${curr}${item.dateSpend.toLocaleString('en-IN')}</strong>`
+            : `<strong>${curr}${totalSpend.toLocaleString('en-IN')}</strong>`;
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${safeName}</strong></td>
             <td><code>${safePhone}</code></td>
-            <td><strong>${loyalty.totalCupsPurchased} cups</strong></td>
-            <td><strong>${loyalty.completedPurchasesCount} orders</strong></td>
-            <td><strong>${curr}${totalSpend.toLocaleString('en-IN')}</strong></td>
+            <td>${cupsHtml}</td>
+            <td>${ordersHtml}</td>
+            <td>${spendHtml}</td>
             <td>
                 <span class="badge ${loyalty.isEligible ? 'badge-success' : 'badge-warning'}">
                     ${loyalty.isEligible ? 'Eligible for Free Reward' : `${loyalty.currentCycleProgress}/${loyalty.threshold} Cups`}
@@ -2049,7 +2872,7 @@ window.renderCustomersTable = function() {
             </td>
             <td>
                 ${item.hasClaimed 
-                    ? `<span class="badge badge-success" style="font-weight: 700;"><i data-lucide="gift" data-size="12"></i> ${loyalty.claimedCount} free cup${loyalty.claimedCount !== 1 ? 's' : ''} claimed</span>` 
+                    ? `<span class="badge badge-success" style="font-weight: 700;"><i data-lucide="gift" data-size="12"></i> ${item.isDateFiltered ? 'Redeemed on date' : `${loyalty.claimedCount} free cup${loyalty.claimedCount !== 1 ? 's' : ''} claimed`}</span>` 
                     : `<span style="color: var(--color-text-muted); font-size: 0.82rem;">0 claimed</span>`}
             </td>
             <td>
@@ -2116,27 +2939,96 @@ window.closeCustomerModal = function() {
 };
 
 window.exportCustomersCSV = function() {
+    const dateInput = document.getElementById('customerDatePicker');
+    const selectedDate = dateInput ? dateInput.value : '';
     const customers = window.TiraDB.getCustomers();
     const sales = window.TiraDB.getSales();
+    const redemptions = window.TiraDB.getRedemptions();
 
+    if (selectedDate && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
+        // Export ONLY data for the selected date!
+        const dateSales = sales.filter(s => s.date === selectedDate);
+        const dateRedemptions = redemptions.filter(r => r.date === selectedDate);
+        
+        const activePhones = new Set([
+            ...dateSales.map(s => (s.customerPhone || '').replace(/\D/g, '')),
+            ...dateRedemptions.map(r => (r.customerPhone || '').replace(/\D/g, ''))
+        ]);
+
+        const filteredCustomers = customers.filter(c => {
+            const clean = (c.phone || '').replace(/\D/g, '');
+            return activePhones.has(clean);
+        });
+
+        if (!filteredCustomers.length) {
+            showToast(`No customer transactions found for ${formatDisplayDate(selectedDate)} to export.`, 'warning');
+            return;
+        }
+
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Customer Name,Phone,Date,Cups Purchased On Date,Orders On Date,Total Spend On Date (INR),Payment Modes,Items Purchased,Lifetime Cups,Current Cycle Progress,Eligible For Free Reward,Offer Claimed On Date\n";
+
+        filteredCustomers.forEach(c => {
+            const cleanPhone = (c.phone || '').replace(/\D/g, '');
+            const custDaySales = dateSales.filter(s => (s.customerPhone || '').replace(/\D/g, '') === cleanPhone);
+            const custDayRedemptions = dateRedemptions.filter(r => (r.customerPhone || '').replace(/\D/g, '') === cleanPhone);
+            const dayCups = custDaySales.reduce((acc, s) => {
+                const sItems = Array.isArray(s.items) ? s.items : [];
+                const nonReward = sItems.reduce((sum, it) => (it.isReward || it.is_reward) ? sum : sum + Number(it.quantity || 1), 0);
+                return acc + (sItems.length > 0 ? nonReward : Number(s.paidCupsCount || 0));
+            }, 0);
+            const daySpend = custDaySales.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
+            const paymentModes = Array.from(new Set(custDaySales.map(s => s.paymentMode || 'Cash'))).join('; ');
+            
+            const itemsList = [];
+            custDaySales.forEach(s => {
+                (s.items || []).forEach(it => {
+                    itemsList.push(`${it.productName || it.product_name} (x${it.quantity || 1})`);
+                });
+            });
+            const itemsStr = itemsList.join('; ');
+
+            const loyalty = window.TiraDB.getCustomerLoyalty(c.phone);
+            const claimedOnDate = custDayRedemptions.length > 0 ? 'YES' : 'NO';
+
+            csvContent += `"${c.name}","${c.phone}","${selectedDate}",${dayCups},${custDaySales.length},${daySpend},"${paymentModes}","${itemsStr}",${loyalty.totalCupsPurchased},"${loyalty.currentCycleProgress}/${loyalty.threshold}",${loyalty.isEligible ? 'YES' : 'NO'},${claimedOnDate}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `tira_belle_customers_${selectedDate}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        showToast(`Exported ${filteredCustomers.length} customer records for ${formatDisplayDate(selectedDate)} to CSV.`, 'success');
+        return;
+    }
+
+    // Default: Lifetime export for all registered customers
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Customer Name,Phone,Total Cups Purchased,Completed Purchases,Total Spend (INR),Current Cycle Progress,Threshold,Eligible For Free Reward,Total Rewards Claimed\n";
+    csvContent += "Customer Name,Phone,Total Cups Purchased,Loyalty Eligible Cups,Completed Purchases,Total Spend (INR),Current Cycle Progress,Threshold,Eligible For Free Reward,Total Rewards Claimed\n";
 
     customers.forEach(c => {
         const loyalty = window.TiraDB.getCustomerLoyalty(c.phone);
-        const custSales = sales.filter(s => s.customerPhone === c.phone);
-        const totalSpend = custSales.reduce((acc, s) => acc + s.totalAmount, 0);
-        csvContent += `"${c.name}","${c.phone}",${loyalty.totalCupsPurchased},${loyalty.completedPurchasesCount},${totalSpend},${loyalty.currentCycleProgress},${loyalty.threshold},${loyalty.isEligible ? 'YES' : 'NO'},${loyalty.claimedCount}\n`;
+        const custSales = sales.filter(s => (s.customerPhone || '').replace(/\D/g, '') === (c.phone || '').replace(/\D/g, ''));
+        const totalSpend = custSales.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
+        const totalCups = custSales.reduce((acc, s) => {
+            const sItems = Array.isArray(s.items) ? s.items : [];
+            const nonReward = sItems.reduce((sum, it) => (it.isReward || it.is_reward) ? sum : sum + Number(it.quantity || 1), 0);
+            return acc + (sItems.length > 0 ? nonReward : Number(s.paidCupsCount || 0));
+        }, 0);
+        csvContent += `"${c.name}","${c.phone}",${totalCups},${loyalty.totalCupsPurchased},${loyalty.completedPurchasesCount},${totalSpend},"${loyalty.currentCycleProgress}",${loyalty.threshold},${loyalty.isEligible ? 'YES' : 'NO'},${loyalty.claimedCount}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `tira_belle_customers_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `tira_belle_customers_all_time_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
-    showToast('Customer records exported to CSV.', 'success');
+    showToast('All-time customer records exported to CSV.', 'success');
 };
 
 // ----------------- SECTION 5: CUSTOMER LOYALTY TRACKER (ADMIN) -----------------
@@ -2321,6 +3213,7 @@ window.triggerAdminRedemption = async function(phone) {
             showToast(res.message, 'success');
             renderAdminLoyaltyCard(phone);
             renderAdminLoyaltyAudit();
+            renderNearRewardCustomers();
             loadDashboardMetrics();
         } else {
             showToast(res.message, 'error');
@@ -2362,6 +3255,152 @@ window.renderAdminLoyaltyAudit = function() {
         tbody.appendChild(tr);
     });
 };
+
+// ----------------- CUSTOMERS NEAR REWARD COMPONENT -----------------
+window.renderNearRewardCustomers = function() {
+    const container = document.getElementById('nearRewardList');
+    const badgeEl = document.getElementById('nearRewardCountBadge');
+    if (!container) return;
+
+    const customers = window.TiraDB.getCustomers();
+    if (!customers || !customers.length) {
+        container.innerHTML = `
+            <div class="near-reward-empty">
+                <i data-lucide="coffee" data-size="28" style="color: #d8cbb8;"></i>
+                <span>No registered customers found yet.</span>
+            </div>
+        `;
+        if (badgeEl) badgeEl.textContent = '0 Customers';
+        if (window.lucide) window.lucide.createIcons();
+        return;
+    }
+
+    const settings = window.TiraDB.getSettings();
+    const threshold = Math.max(1, parseInt(settings.loyaltyThreshold, 10) || 5);
+
+    // Filter and compute status
+    const candidates = [];
+    customers.forEach(c => {
+        const phone = (c.phone || '').trim();
+        if (!phone) return;
+        const loyalty = window.TiraDB.getCustomerLoyalty(phone);
+
+        // Excluded products do NOT count: loyalty.totalCupsPurchased and currentCycleProgress strictly count eligible cups
+        const isEligible = !!loyalty.isEligible;
+        const currentStamps = loyalty.currentCycleProgress || 0;
+        const cupsRemaining = loyalty.cupsRemaining !== undefined ? loyalty.cupsRemaining : Math.max(0, threshold - currentStamps);
+
+        // Include customers who are either Eligible for a reward OR have active stamps towards reward
+        if (isEligible || currentStamps > 0) {
+            candidates.push({
+                customer: c,
+                phone,
+                name: c.name || 'Valued Guest',
+                loyalty,
+                isEligible,
+                currentStamps,
+                threshold,
+                cupsRemaining,
+                availableRewards: loyalty.availableRewards || 0
+            });
+        }
+    });
+
+    // Sort order:
+    // 1. Eligible customers (ready to redeem) at the very top
+    // 2. Customers closest to reward (least cups remaining, most stamps completed)
+    candidates.sort((a, b) => {
+        if (a.isEligible && !b.isEligible) return -1;
+        if (!a.isEligible && b.isEligible) return 1;
+        if (a.cupsRemaining !== b.cupsRemaining) return a.cupsRemaining - b.cupsRemaining;
+        return b.currentStamps - a.currentStamps;
+    });
+
+    if (badgeEl) {
+        const count = candidates.length;
+        badgeEl.textContent = `${count} Customer${count !== 1 ? 's' : ''}`;
+        if (candidates.some(c => c.isEligible)) {
+            badgeEl.style.background = 'rgba(39, 174, 96, 0.15)';
+            badgeEl.style.color = '#27ae60';
+        } else {
+            badgeEl.style.background = 'rgba(183, 121, 61, 0.12)';
+            badgeEl.style.color = 'var(--color-caramel)';
+        }
+    }
+
+    if (!candidates.length) {
+        container.innerHTML = `
+            <div class="near-reward-empty">
+                <i data-lucide="coffee" data-size="28" style="color: #d8cbb8;"></i>
+                <span>No customers currently near reward. New eligible purchases will appear here!</span>
+            </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+    }
+
+    container.innerHTML = '';
+    candidates.forEach(cand => {
+        const item = document.createElement('div');
+        const isEligible = cand.isEligible;
+        item.className = `near-reward-item ${isEligible ? 'eligible' : ''}`;
+        item.onclick = () => window.adminQuickTrackCustomer(cand.phone);
+        item.setAttribute('title', `Click to view loyalty stamp card for ${cand.name}`);
+
+        const pct = isEligible ? 100 : Math.min(100, Math.round((cand.currentStamps / cand.threshold) * 100));
+        const statusBadge = isEligible
+            ? `<span class="near-reward-badge badge-ready"><i data-lucide="gift" data-size="12"></i> Ready to Claim!</span>`
+            : `<span class="near-reward-badge badge-near"><i data-lucide="award" data-size="12"></i> ${cand.cupsRemaining} cup${cand.cupsRemaining !== 1 ? 's' : ''} left</span>`;
+
+        const progressText = isEligible
+            ? `<strong>${cand.threshold}/${cand.threshold} Stamps Completed</strong> (Reward Unlocked)`
+            : `<strong>${cand.currentStamps}/${cand.threshold} Stamps Completed</strong> (${cand.cupsRemaining} stamp${cand.cupsRemaining !== 1 ? 's' : ''} remaining)`;
+
+        const safeName = typeof escapeHtml === 'function' ? escapeHtml(cand.name) : cand.name;
+        const safePhone = typeof escapeHtml === 'function' ? escapeHtml(cand.phone) : cand.phone;
+
+        item.innerHTML = `
+            <div class="near-reward-item-top">
+                <div>
+                    <div class="near-reward-name">
+                        <span>${safeName}</span>
+                        ${isEligible ? '<i data-lucide="sparkles" data-size="13" style="color: #27ae60;"></i>' : ''}
+                    </div>
+                    <div class="near-reward-phone">${safePhone}</div>
+                </div>
+                ${statusBadge}
+            </div>
+            <div class="near-reward-progress-bar-wrap">
+                <div class="near-reward-progress-track">
+                    <div class="near-reward-progress-fill ${isEligible ? 'fill-ready' : 'fill-near'}" style="width: ${pct}%;"></div>
+                </div>
+                <div class="near-reward-progress-text">${pct}%</div>
+            </div>
+            <div style="font-size: 0.74rem; color: var(--color-text-muted); display: flex; align-items: center; justify-content: space-between;">
+                <span>${progressText}</span>
+                <span style="color: var(--color-caramel); font-weight: 700; display: inline-flex; align-items: center; gap: 2px;">
+                    Track <i data-lucide="chevron-right" data-size="12"></i>
+                </span>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+};
+
+window.adminQuickTrackCustomer = function(phone) {
+    const input = document.getElementById('adminLoyaltySearchInput');
+    if (input) input.value = phone;
+    renderAdminLoyaltyCard(phone);
+    const resultBox = document.getElementById('adminLoyaltyResult');
+    if (resultBox) {
+        resultBox.style.display = 'block';
+        resultBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+};
+
+
 
 // ----------------- SECTION 6: COUNTER QR STANDEE -----------------
 window.renderCounterQr = function() {
@@ -2892,4 +3931,23 @@ window.addEventListener('tira-reviews-changed', () => {
 // ----------------- STARTUP -----------------
 document.addEventListener('DOMContentLoaded', () => {
     checkAdminAuth();
+    const dateWrapper = document.getElementById('dateSelectorWrapper');
+    const dateInput = document.getElementById('dashboardDatePicker');
+    if (dateWrapper && dateInput) {
+        dateWrapper.addEventListener('click', (e) => {
+            if (e.target !== dateInput && typeof dateInput.showPicker === 'function') {
+                try { dateInput.showPicker(); } catch(err) {}
+            }
+        });
+    }
+
+    const custDateWrapper = document.getElementById('custDateSelectorWrapper');
+    const custDateInput = document.getElementById('customerDatePicker');
+    if (custDateWrapper && custDateInput) {
+        custDateWrapper.addEventListener('click', (e) => {
+            if (e.target !== custDateInput && typeof custDateInput.showPicker === 'function') {
+                try { custDateInput.showPicker(); } catch(err) {}
+            }
+        });
+    }
 });

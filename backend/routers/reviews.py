@@ -82,7 +82,12 @@ def submit_review(rev_in: ReviewCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_rev)
     from backend.routers.realtime import notify_change
-    notify_change("reviews", "created")
+    notify_change("reviews", "created", {
+        "reviewId": new_rev.id,
+        "name": new_rev.name,
+        "rating": new_rev.rating,
+        "comment": new_rev.comment
+    })
     return new_rev
 
 @router.delete("/{review_id}")

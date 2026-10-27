@@ -2003,17 +2003,32 @@ a.footer-contact-item:hover svg,
 .admin-nav {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     flex-grow: 1;
+}
+
+.admin-nav-group-title {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: rgba(255, 255, 255, 0.42);
+    font-weight: 700;
+    padding: 14px 16px 4px;
+    user-select: none;
+    transition: opacity var(--transition-fast);
+}
+
+.admin-sidebar.collapsed .admin-nav-group-title {
+    display: none !important;
 }
 
 .admin-nav-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 16px;
+    padding: 11px 16px;
     border-radius: var(--radius-md);
-    color: rgba(255, 255, 255, 0.75);
+    color: rgba(255, 255, 255, 0.78);
     font-weight: 500;
     font-size: 0.92rem;
     cursor: pointer;
@@ -2032,7 +2047,7 @@ a.footer-contact-item:hover svg,
 .admin-nav-item.active {
     color: #fff;
     background: linear-gradient(135deg, var(--color-caramel) 0%, #8c5324 100%);
-    box-shadow: 0 4px 12px rgba(183, 121, 61, 0.3);
+    box-shadow: 0 4px 14px rgba(183, 121, 61, 0.35);
 }
 
 .admin-nav-item .nav-icon {
@@ -2060,7 +2075,7 @@ a.footer-contact-item:hover svg,
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 32px;
+    margin-bottom: 28px;
     padding-bottom: 20px;
     border-bottom: 1px solid var(--color-border);
 }
@@ -2069,6 +2084,7 @@ a.footer-contact-item:hover svg,
     font-family: var(--font-heading);
     font-size: 2rem;
     color: var(--color-espresso);
+    letter-spacing: -0.3px;
 }
 
 .admin-page-subtitle {
@@ -2076,10 +2092,311 @@ a.footer-contact-item:hover svg,
     color: var(--color-text-muted);
 }
 
+/* Live Counter Status Pill */
+.live-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    background: #eafaf1;
+    color: #1f7a46;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    border: 1px solid rgba(39, 174, 96, 0.25);
+    vertical-align: middle;
+}
+
+.live-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #27ae60;
+    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7);
+    animation: livePulse 2s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+@keyframes livePulse {
+    0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7); }
+    70% { box-shadow: 0 0 0 7px rgba(39, 174, 96, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); }
+}
+
 .admin-top-actions {
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+.admin-top-action-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Notification Bell Button & Alert Dot */
+.notification-btn-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+.admin-icon-btn {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    border: 1.5px solid var(--color-border);
+    color: var(--color-espresso);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+    box-shadow: 0 1px 3px rgba(36, 20, 14, 0.04);
+}
+
+.admin-icon-btn:hover {
+    background: var(--color-bg);
+    border-color: var(--color-caramel);
+    color: var(--color-caramel);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(183, 121, 61, 0.15);
+}
+
+.notification-badge-dot {
+    position: absolute;
+    top: 9px;
+    right: 9px;
+    width: 8px;
+    height: 8px;
+    background: #e74c3c;
+    border-radius: 50%;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.25);
+    animation: badgePulse 2s infinite ease-in-out;
+}
+
+@keyframes badgePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+/* Notification Dropdown Flyout */
+.notification-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 320px;
+    max-width: 90vw;
+    background: #ffffff;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 14px 35px rgba(36, 20, 14, 0.15);
+    z-index: 1000;
+    overflow: hidden;
+    animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownFadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.notif-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.notif-list {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.notif-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border-light);
+    transition: background var(--transition-fast);
+}
+
+.notif-item:hover {
+    background: var(--color-bg);
+}
+
+.notif-item.unread {
+    background: #fdfaf6;
+}
+
+.notif-icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg);
+    color: var(--color-caramel);
+}
+
+.notif-icon.rewards { background: #fef9e7; color: #d68910; }
+.notif-icon.cash { background: #eafaf1; color: #27ae60; }
+.notif-icon.online { background: #ebf5fb; color: #2980b9; }
+
+.notif-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notif-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-espresso);
+    margin-bottom: 2px;
+}
+
+.notif-desc {
+    font-size: 0.76rem;
+    color: var(--color-text-muted);
+    line-height: 1.35;
+    margin-bottom: 4px;
+}
+
+.notif-time {
+    font-size: 0.68rem;
+    color: var(--color-text-light);
+}
+
+.notif-footer {
+    padding: 10px 16px;
+    background: var(--color-bg);
+    text-align: center;
+    border-top: 1px solid var(--color-border-light);
+}
+
+.notif-clear-btn {
+    background: none;
+    border: none;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-caramel);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.notif-clear-btn:hover {
+    color: var(--color-espresso);
+    text-decoration: underline;
+}
+
+/* Styled Date Selector with Calendar Date Picker */
+.date-selector-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    background-color: #ffffff;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    height: 42px;
+    padding-left: 38px;
+    padding-right: 32px;
+    box-shadow: 0 1px 3px rgba(36, 20, 14, 0.04);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    user-select: none;
+}
+
+.date-selector-wrapper:hover {
+    border-color: var(--color-caramel);
+    box-shadow: 0 2px 8px rgba(183, 121, 61, 0.12);
+}
+
+.date-selector-wrapper:focus-within {
+    border-color: var(--color-caramel);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus);
+}
+
+.date-selector-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--color-caramel);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.date-selector-arrow {
+    position: absolute;
+    right: 12px;
+    color: var(--color-text-light);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.date-picker-display {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--color-espresso);
+    white-space: nowrap;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.date-picker-native-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 3;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+}
+
+.date-picker-native-input::-webkit-calendar-picker-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    margin: 0;
+    padding: 0;
+}
+
+.reset-today-btn {
+    height: 42px;
+    padding: 0 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--color-caramel);
+    border: 1.5px solid var(--color-caramel);
+    background: rgba(183, 121, 61, 0.08);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.reset-today-btn:hover {
+    background: var(--color-caramel);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(183, 121, 61, 0.25);
 }
 
 .admin-top-actions .form-select,
@@ -2113,15 +2430,22 @@ a.footer-contact-item:hover svg,
 }
 
 .metric-card {
-    background: var(--color-surface);
-    border-radius: var(--radius-md);
-    padding: 22px;
-    box-shadow: var(--shadow-sm);
+    background: linear-gradient(155deg, #ffffff 0%, #fdfcf9 100%);
+    border-radius: var(--radius-lg);
+    padding: 22px 20px;
+    box-shadow: 0 4px 16px rgba(36, 20, 14, 0.05);
     border: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
     position: relative;
     overflow: hidden;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(36, 20, 14, 0.09);
+    border-color: var(--color-caramel-light);
 }
 
 .metric-card::before {
@@ -2129,37 +2453,79 @@ a.footer-contact-item:hover svg,
     position: absolute;
     top: 0; left: 0; width: 4px; height: 100%;
     background: var(--color-caramel);
+    border-top-left-radius: var(--radius-lg);
+    border-bottom-left-radius: var(--radius-lg);
 }
 
-.metric-card.cash::before { background: #27ae60; }
-.metric-card.online::before { background: #2980b9; }
-.metric-card.rewards::before { background: #e67e22; }
+.metric-card.revenue::before { background: linear-gradient(180deg, #dfa264 0%, #b7793d 100%); }
+.metric-card.cash::before { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); }
+.metric-card.online::before { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); }
+.metric-card.cups::before { background: linear-gradient(180deg, #e67e22 0%, #d35400 100%); }
+.metric-card.rewards::before { background: linear-gradient(180deg, #f39c12 0%, #d68910 100%); }
 
 .metric-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
 .metric-title {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     color: var(--color-text-muted);
 }
 
 .metric-icon {
-    font-size: 1.25rem;
-    opacity: 0.8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-caramel);
+    border: 1px solid var(--color-border-light);
+    flex-shrink: 0;
+    transition: transform var(--transition-fast);
+}
+
+.metric-card:hover .metric-icon {
+    transform: scale(1.08);
+}
+
+.metric-card.cash .metric-icon {
+    background: #eafaf1;
+    color: #27ae60;
+    border-color: rgba(39, 174, 96, 0.2);
+}
+
+.metric-card.online .metric-icon {
+    background: #ebf5fb;
+    color: #2980b9;
+    border-color: rgba(41, 128, 185, 0.2);
+}
+
+.metric-card.cups .metric-icon {
+    background: #fbf1e4;
+    color: #b7793d;
+    border-color: rgba(183, 121, 61, 0.2);
+}
+
+.metric-card.rewards .metric-icon {
+    background: #fef9e7;
+    color: #d68910;
+    border-color: rgba(214, 137, 16, 0.2);
 }
 
 .metric-value {
-    font-size: 2rem;
+    font-size: 2.1rem;
     font-weight: 800;
     color: var(--color-espresso);
     line-height: 1.1;
+    letter-spacing: -0.5px;
 }
 
 .metric-sub {
@@ -2407,7 +2773,182 @@ a.footer-contact-item:hover svg,
     background: var(--color-caramel-subtle);
 }
 
-/* POS Loyalty Alert Banner */
+/* POS Customer Mobile & Member Status Header */
+.pos-phone-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.pos-member-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(39, 174, 96, 0.12);
+    color: #27ae60;
+    border: 1px solid rgba(39, 174, 96, 0.35);
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    animation: fadeInScale 0.2s ease-out;
+}
+
+@keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeInSlideUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* POS Dynamic Loyalty Card Container */
+.pos-dynamic-loyalty-container {
+    margin-top: 10px;
+    margin-bottom: 6px;
+    animation: fadeInSlideUp 0.25s ease-out;
+}
+
+/* 1. Purple Card for Free Cup Eligibility */
+.pos-loyalty-card-eligible {
+    background: linear-gradient(135deg, #f7f0fe 0%, #ede1fc 100%);
+    border: 1.5px solid #a855f7;
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.12);
+}
+
+.pos-loyalty-eligible-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pos-loyalty-eligible-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #8e24aa 0%, #7c3aed 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+}
+
+.pos-loyalty-eligible-title {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #6b21a8;
+    line-height: 1.25;
+}
+
+.pos-loyalty-eligible-sub {
+    font-size: 0.79rem;
+    color: #7e22ce;
+    margin-top: 2px;
+    font-weight: 500;
+}
+
+.pos-redeem-btn {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(109, 40, 217, 0.28);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.pos-redeem-btn:hover {
+    background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(109, 40, 217, 0.38);
+}
+
+.pos-redeem-btn.redeemed {
+    background: #27ae60;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(39, 174, 96, 0.3);
+}
+
+.pos-redeem-btn.redeemed:hover {
+    background: #219653;
+}
+
+/* 2. Progress Card for Ineligible Status */
+.pos-loyalty-card-progress {
+    background: var(--color-surface, #ffffff);
+    border: 1.5px solid var(--color-border, #ecdccb);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(44, 24, 16, 0.04);
+}
+
+.pos-loyalty-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.84rem;
+}
+
+.pos-loyalty-progress-title {
+    font-weight: 700;
+    color: var(--color-primary-dark, #4a2818);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pos-loyalty-progress-stat {
+    font-weight: 700;
+    color: var(--color-caramel, #b7793d);
+}
+
+.pos-loyalty-bar-bg {
+    height: 8px;
+    background: rgba(183, 121, 61, 0.12);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.pos-loyalty-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #b7793d 0%, #8e24aa 100%);
+    border-radius: 6px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pos-loyalty-progress-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: var(--color-text-muted, #7f8c8d);
+}
+
+/* POS Loyalty Alert Banner (Legacy Support) */
 .pos-loyalty-banner {
     background: linear-gradient(135deg, #fef9e7 0%, #fef3cd 100%);
     border: 1.5px solid #f1c40f;
@@ -4366,7 +4907,7 @@ a.footer-contact-item:hover svg,
    ========================================================================== */
 .tira-toast-container {
     position: fixed;
-    top: 24px;
+    bottom: 24px;
     right: 24px;
     z-index: 10001;
     display: flex;
@@ -6972,3 +7513,421 @@ main {
 .btn-whatsapp svg {
     flex-shrink: 0;
 }
+
+/* ==========================================================================
+   Admin Loyalty Tracker: Customers Near Reward Component
+   ========================================================================== */
+.loyalty-header-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.08fr;
+    gap: 24px;
+    margin-bottom: 24px;
+    align-items: stretch;
+}
+
+.loyalty-card-col {
+    margin-bottom: 0 !important;
+    display: flex;
+    flex-direction: column;
+}
+
+.near-reward-scroll-container {
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Custom scrollbar matching artisan theme */
+.near-reward-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+.near-reward-scroll-container::-webkit-scrollbar-track {
+    background: var(--color-bg);
+    border-radius: 4px;
+}
+.near-reward-scroll-container::-webkit-scrollbar-thumb {
+    background: #d8cbb8;
+    border-radius: 4px;
+}
+.near-reward-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: var(--color-caramel);
+}
+
+/* Near Reward Customer Item Card */
+.near-reward-item {
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    text-align: left;
+    position: relative;
+}
+
+.near-reward-item:hover {
+    border-color: var(--color-caramel);
+    background: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(183, 121, 61, 0.14);
+}
+
+.near-reward-item.eligible {
+    border-color: rgba(39, 174, 96, 0.45);
+    background: #f7fdf9;
+}
+
+.near-reward-item.eligible:hover {
+    border-color: #27ae60;
+    box-shadow: 0 4px 14px rgba(39, 174, 96, 0.2);
+}
+
+.near-reward-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.near-reward-name {
+    font-weight: 700;
+    color: var(--color-espresso);
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.near-reward-phone {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+}
+
+.near-reward-badge {
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.near-reward-badge.badge-ready {
+    background: rgba(39, 174, 96, 0.15);
+    color: #27ae60;
+    border: 1px solid rgba(39, 174, 96, 0.3);
+}
+
+.near-reward-badge.badge-near {
+    background: rgba(183, 121, 61, 0.12);
+    color: var(--color-caramel);
+    border: 1px solid rgba(183, 121, 61, 0.25);
+}
+
+/* Progress bar inside near reward item */
+.near-reward-progress-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.near-reward-progress-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.near-reward-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+.near-reward-progress-fill.fill-ready {
+    background: linear-gradient(90deg, #27ae60, #2ecc71);
+}
+
+.near-reward-progress-fill.fill-near {
+    background: linear-gradient(90deg, var(--color-caramel), #d49a60);
+}
+
+.near-reward-progress-text {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--color-espresso);
+    white-space: nowrap;
+}
+
+.near-reward-empty {
+    text-align: center;
+    padding: 24px 16px;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+@media (max-width: 992px) {
+    .loyalty-header-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
+   TIRA Belle - Real-Time Live Notification Center
+   ========================================================================== */
+.notification-btn-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.admin-icon-btn {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1.5px solid var(--color-border);
+    color: var(--color-espresso);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 6px rgba(36, 20, 14, 0.04);
+}
+
+.admin-icon-btn:hover {
+    background: var(--color-surface);
+    border-color: var(--color-caramel);
+    color: var(--color-caramel);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(183, 121, 61, 0.16);
+}
+
+.admin-icon-btn:active {
+    transform: translateY(0);
+}
+
+.notification-badge-dot {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 10px;
+    height: 10px;
+    background: #e74c3c;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    display: none;
+    animation: notifPulse 2s infinite;
+}
+
+.notification-badge-dot.active {
+    display: block;
+}
+
+@keyframes notifPulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+    70% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+}
+
+.notification-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 360px;
+    max-width: 90vw;
+    background: #ffffff;
+    border: 1.5px solid rgba(183, 121, 61, 0.22);
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgba(36, 20, 14, 0.16), 0 2px 8px rgba(0, 0, 0, 0.04);
+    z-index: 1200;
+    overflow: hidden;
+    animation: notifSlideDown 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes notifSlideDown {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.notif-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.notif-list {
+    max-height: 380px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px 0;
+}
+
+.notif-list::-webkit-scrollbar {
+    width: 5px;
+}
+.notif-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.notif-list::-webkit-scrollbar-thumb {
+    background: rgba(183, 121, 61, 0.25);
+    border-radius: 10px;
+}
+
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+}
+
+.notif-item:last-child {
+    border-bottom: none;
+}
+
+.notif-item:hover {
+    background: #fbf7f2;
+}
+
+.notif-item.unread {
+    background: rgba(183, 121, 61, 0.05);
+}
+
+.notif-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 5px;
+    height: 24px;
+    background: var(--color-caramel);
+    border-radius: 4px;
+}
+
+.notif-item-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.notif-icon-sale {
+    background: rgba(39, 174, 96, 0.12);
+    color: #27ae60;
+}
+
+.notif-icon-reward {
+    background: rgba(183, 121, 61, 0.14);
+    color: var(--color-caramel);
+}
+
+.notif-icon-customer {
+    background: rgba(41, 128, 185, 0.12);
+    color: #2980b9;
+}
+
+.notif-icon-review {
+    background: rgba(243, 156, 18, 0.14);
+    color: #d68910;
+}
+
+.notif-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notif-item-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 3px;
+}
+
+.notif-item-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-espresso);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.notif-item-time {
+    font-size: 0.70rem;
+    color: var(--color-text-light);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.notif-item-body {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.notif-empty {
+    text-align: center;
+    padding: 32px 20px;
+    color: var(--color-text-muted);
+    font-size: 0.84rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.notif-footer {
+    padding: 10px 16px;
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+}
+
+.notif-clear-btn {
+    background: none;
+    border: none;
+    color: var(--color-caramel);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+}
+
+.notif-clear-btn:hover {
+    background: rgba(183, 121, 61, 0.1);
+}
+

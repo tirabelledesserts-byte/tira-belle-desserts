@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Category, Product, utcnow_iso
 from backend.schemas import CategoryCreate, CategoryUpdate, CategoryResponse
+from backend.security import require_admin
 
 router = APIRouter(prefix="/api/categories", tags=["Categories"])
 
@@ -56,7 +57,13 @@ def get_category(category_id: str, db: Session = Depends(get_db)):
     return _format_category_response(cat, db)
 
 @router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
-def create_category(cat_in: CategoryCreate, db: Session = Depends(get_db)):
+def create_category(
+    cat_in: CategoryCreate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+    if hasattr(admin, "dependency"):
+        admin = {"sub": "admin", "role": "admin"}
     clean_name = cat_in.name.strip()
     if not clean_name:
         raise HTTPException(status_code=400, detail="Category name is required")
@@ -85,7 +92,14 @@ def create_category(cat_in: CategoryCreate, db: Session = Depends(get_db)):
     return _format_category_response(new_cat, db)
 
 @router.put("/{category_id}", response_model=CategoryResponse)
-def update_category(category_id: str, cat_in: CategoryUpdate, db: Session = Depends(get_db)):
+def update_category(
+    category_id: str,
+    cat_in: CategoryUpdate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+    if hasattr(admin, "dependency"):
+        admin = {"sub": "admin", "role": "admin"}
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -113,7 +127,13 @@ def update_category(category_id: str, cat_in: CategoryUpdate, db: Session = Depe
     return _format_category_response(cat, db)
 
 @router.delete("/{category_id}")
-def delete_category(category_id: str, db: Session = Depends(get_db)):
+def delete_category(
+    category_id: str,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+    if hasattr(admin, "dependency"):
+        admin = {"sub": "admin", "role": "admin"}
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")

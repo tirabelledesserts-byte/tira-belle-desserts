@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Review, Customer, utcnow_iso, today_date_str
 from backend.schemas import ReviewCreate, ReviewResponse
+from backend.security import require_admin
 from backend.routers.customers import clean_phone_number
 
 router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
@@ -12,30 +13,15 @@ router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
 @router.get("", response_model=List[ReviewResponse])
 def get_reviews(db: Session = Depends(get_db)):
     reviews = db.query(Review).order_by(Review.timestamp.desc()).all()
-    # Deduplicate reviews by content signature to ensure no duplicates are returned
+    # Deduplicate reviews by content signature for display
     seen = set()
     unique_reviews = []
-    has_updates = False
     for r in reviews:
         sig = (r.name.strip().lower(), r.comment.strip().lower(), r.date)
         if sig in seen:
             continue
         seen.add(sig)
-        
-        # Eligible reviews submitted with a valid phone number receive the verified badge
-        clean_p = clean_phone_number(r.phone) if r.phone else ""
-        if clean_p and len(clean_p) >= 7 and not r.verified:
-            r.verified = True
-            has_updates = True
-
         unique_reviews.append(r)
-
-    if has_updates:
-        try:
-            db.commit()
-        except Exception:
-            db.rollback()
-
     return unique_reviews
 
 @router.post("", response_model=ReviewResponse)
@@ -91,10 +77,18 @@ def submit_review(rev_in: ReviewCreate, db: Session = Depends(get_db)):
     return new_rev
 
 @router.delete("/{review_id}")
-def delete_review(review_id: str, db: Session = Depends(get_db)):
+def delete_review(
+    review_id: str,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
     rev = db.query(Review).filter(Review.id == review_id).first()
     if not rev:
         raise HTTPException(status_code=404, detail="Review not found")
-    db.delete(rev)
-    db.commit()
+    try:
+        db.delete(rev)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
     return {"success": True, "message": "Review removed successfully"}

@@ -5,9 +5,10 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from backend.database import get_db
-from backend.models import Sale, SaleItem, Customer, Product, Redemption, StoreSetting, utcnow_iso, today_date_str
+from backend.models import Sale, SaleItem, Customer, Product, Redemption, StoreSetting, utcnow_iso, today_date_str, ist_now
 from backend.schemas import SaleCreate, SalePatchCustomer, SaleResponse, DashboardMetricsResponse
 from backend.routers.customers import clean_phone_number, calculate_customer_loyalty
+from backend.security import require_admin
 
 router = APIRouter(prefix="/api/sales", tags=["Sales & POS"])
 
@@ -47,105 +48,116 @@ def get_sales(limit: int = 200, db: Session = Depends(get_db)):
 @router.post("", response_model=dict)
 def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     clean_phone = clean_phone_number(sale_in.customer_phone)
-    if not clean_phone:
-        raise HTTPException(status_code=400, detail="Valid customer phone number is required")
+    if not clean_phone or len(clean_phone) < 7:
+        raise HTTPException(status_code=400, detail="Valid customer phone number with at least 7 digits is required")
 
     if not sale_in.items:
         raise HTTPException(status_code=400, detail="Cart cannot be empty")
 
-    # Upsert customer
-    cust_name = (sale_in.customer_name or "Valued Guest").strip()
-    customer = db.query(Customer).filter(Customer.phone == clean_phone).first()
-    if not customer:
-        customer = Customer(phone=clean_phone, name=cust_name)
-        db.add(customer)
+    try:
+        # Upsert customer
+        cust_name = (sale_in.customer_name or "Valued Guest").strip()
+        customer = db.query(Customer).filter(Customer.phone == clean_phone).first()
+        if not customer:
+            customer = Customer(phone=clean_phone, name=cust_name)
+            db.add(customer)
+            db.flush()
+        elif cust_name and customer.name != cust_name:
+            customer.name = cust_name
+            customer.updated_at = utcnow_iso()
+
+        # Handle simultaneous loyalty reward redemption if requested
+        reward_redeemed = False
+        settings = db.query(StoreSetting).filter(StoreSetting.id == 1).first()
+        reward_item_name = settings.reward_item_name if settings else "1 Free 150g Tiramisu Cup"
+
+        if sale_in.redeem_free_reward:
+            loyalty = calculate_customer_loyalty(clean_phone, db)
+            if loyalty["isEligible"]:
+                redemption_id = f"RDM-{int(time.time() * 1000)}-{secrets.token_hex(2).upper()}"
+                redemption = Redemption(
+                    id=redemption_id,
+                    customer_phone=clean_phone,
+                    customer_name=customer.name,
+                    reward_item=reward_item_name,
+                    redeemed_at=utcnow_iso(),
+                    date=today_date_str(),
+                    admin_user="admin",
+                    notes="Redeemed together with Sale POS"
+                )
+                db.add(redemption)
+                reward_redeemed = True
+
+        # Batch-fetch all products referenced in cart to prevent N+1 queries
+        product_ids = [it.product_id for it in sale_in.items if it.product_id]
+        products_map = {}
+        if product_ids:
+            found_prods = db.query(Product).filter(Product.id.in_(product_ids)).all()
+            products_map = {p.id: p for p in found_prods}
+
+        # Process cart items
+        subtotal = 0.0
+        paid_cups_count = 0
+        db_items = []
+
+        for item in sale_in.items:
+            prod = products_map.get(item.product_id)
+            price = prod.price if prod else max(0.0, float(item.price))
+            qty = max(1, int(item.quantity))
+            item_total = price * qty
+            subtotal += item_total
+
+            if not item.is_reward and (prod.counts_towards_loyalty if prod else True):
+                paid_cups_count += qty
+
+            db_items.append(SaleItem(
+                product_id=item.product_id,
+                product_name=item.product_name or (prod.name if prod else "Tiramisu"),
+                weight=prod.weight if prod else (item.weight or ""),
+                price=price,
+                quantity=qty,
+                total=item_total,
+                is_reward=item.is_reward
+            ))
+
+        if reward_redeemed:
+            db_items.append(SaleItem(
+                product_id="reward-150",
+                product_name=f"{reward_item_name} (Loyalty Reward)",
+                weight="150 g",
+                price=0.0,
+                quantity=1,
+                total=0.0,
+                is_reward=True
+            ))
+
+        sale_id = f"TXN-{int(time.time() * 1000)}-{secrets.token_hex(2).upper()}"
+        sale = Sale(
+            id=sale_id,
+            customer_phone=clean_phone,
+            customer_name=customer.name,
+            subtotal=subtotal,
+            discount=0.0,
+            total_amount=subtotal,
+            payment_mode=sale_in.payment_mode or "Cash",
+            paid_cups_count=paid_cups_count,
+            timestamp=utcnow_iso(),
+            date=today_date_str(),
+            notes=sale_in.notes or "",
+            reward_redeemed_in_sale=reward_redeemed
+        )
+        db.add(sale)
+        db.flush()
+
+        for it in db_items:
+            it.sale_id = sale.id
+            db.add(it)
+
+        # Single atomic commit for customer, redemption, sale, and items
         db.commit()
-    elif cust_name and customer.name != cust_name:
-        customer.name = cust_name
-        customer.updated_at = utcnow_iso()
-        db.commit()
-
-    # Handle simultaneous loyalty reward redemption if requested
-    reward_redeemed = False
-    settings = db.query(StoreSetting).filter(StoreSetting.id == 1).first()
-    reward_item_name = settings.reward_item_name if settings else "1 Free 150g Tiramisu Cup"
-
-    if sale_in.redeem_free_reward:
-        loyalty = calculate_customer_loyalty(clean_phone, db)
-        if loyalty["isEligible"]:
-            redemption_id = f"RDM-{int(time.time() * 1000)}-{secrets.token_hex(2).upper()}"
-            redemption = Redemption(
-                id=redemption_id,
-                customer_phone=clean_phone,
-                customer_name=customer.name,
-                reward_item=reward_item_name,
-                redeemed_at=utcnow_iso(),
-                date=today_date_str(),
-                admin_user="admin",
-                notes="Redeemed together with Sale POS"
-            )
-            db.add(redemption)
-            reward_redeemed = True
-
-    # Process cart items
-    subtotal = 0.0
-    paid_cups_count = 0
-    db_items = []
-
-    for item in sale_in.items:
-        prod = db.query(Product).filter(Product.id == item.product_id).first()
-        price = prod.price if prod else item.price
-        qty = max(1, item.quantity)
-        item_total = price * qty
-        subtotal += item_total
-
-        if not item.is_reward and (prod.counts_towards_loyalty if prod else True):
-            paid_cups_count += qty
-
-        db_items.append(SaleItem(
-            product_id=item.product_id,
-            product_name=item.product_name or (prod.name if prod else "Tiramisu"),
-            weight=prod.weight if prod else (item.weight or ""),
-            price=price,
-            quantity=qty,
-            total=item_total,
-            is_reward=item.is_reward
-        ))
-
-    if reward_redeemed:
-        db_items.append(SaleItem(
-            product_id="reward-150",
-            product_name=f"{reward_item_name} (Loyalty Reward)",
-            weight="150 g",
-            price=0.0,
-            quantity=1,
-            total=0.0,
-            is_reward=True
-        ))
-
-    sale_id = f"TXN-{int(time.time() * 1000)}-{secrets.token_hex(2).upper()}"
-    sale = Sale(
-        id=sale_id,
-        customer_phone=clean_phone,
-        customer_name=customer.name,
-        subtotal=subtotal,
-        discount=0.0,
-        total_amount=subtotal,
-        payment_mode=sale_in.payment_mode or "Cash",
-        paid_cups_count=paid_cups_count,
-        timestamp=utcnow_iso(),
-        date=today_date_str(),
-        notes=sale_in.notes or "",
-        reward_redeemed_in_sale=reward_redeemed
-    )
-    db.add(sale)
-    db.flush()
-
-    for it in db_items:
-        it.sale_id = sale.id
-        db.add(it)
-
-    db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
 
     from backend.routers.realtime import notify_change
     notify_change("sales", "created", {
@@ -170,29 +182,39 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
     }
 
 @router.patch("/{sale_id}/customer", response_model=dict)
-def patch_sale_customer(sale_id: str, data: SalePatchCustomer, db: Session = Depends(get_db)):
+def patch_sale_customer(
+    sale_id: str,
+    data: SalePatchCustomer,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+    if hasattr(admin, "dependency"):
+        admin = {"sub": "admin", "role": "admin"}
     clean_phone = clean_phone_number(data.customer_phone)
-    if not clean_phone:
-        raise HTTPException(status_code=400, detail="Valid customer phone number is required")
+    if not clean_phone or len(clean_phone) < 7:
+        raise HTTPException(status_code=400, detail="Valid customer phone number with at least 7 digits is required")
 
     sale = db.query(Sale).filter(Sale.id == sale_id).first()
     if not sale:
         raise HTTPException(status_code=404, detail="Sale not found")
 
-    cust_name = (data.customer_name or sale.customer_name or "Valued Guest").strip()
-    customer = db.query(Customer).filter(Customer.phone == clean_phone).first()
-    if not customer:
-        customer = Customer(phone=clean_phone, name=cust_name)
-        db.add(customer)
-        db.commit()
-    elif data.customer_name and customer.name != cust_name:
-        customer.name = cust_name
-        customer.updated_at = utcnow_iso()
-        db.commit()
+    try:
+        cust_name = (data.customer_name or sale.customer_name or "Valued Guest").strip()
+        customer = db.query(Customer).filter(Customer.phone == clean_phone).first()
+        if not customer:
+            customer = Customer(phone=clean_phone, name=cust_name)
+            db.add(customer)
+            db.flush()
+        elif data.customer_name and customer.name != cust_name:
+            customer.name = cust_name
+            customer.updated_at = utcnow_iso()
 
-    sale.customer_phone = clean_phone
-    sale.customer_name = cust_name
-    db.commit()
+        sale.customer_phone = clean_phone
+        sale.customer_name = cust_name
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
 
     from backend.routers.realtime import notify_change
     notify_change("sales", "updated", {
@@ -219,7 +241,7 @@ def get_metrics(filter_date: str = "today", db: Session = Depends(get_db)):
         sales_query = sales_query.filter(Sale.date == today_str)
         redemptions_query = redemptions_query.filter(Redemption.date == today_str)
     elif filter_date == "yesterday":
-        yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        yesterday_str = (ist_now() - timedelta(days=1)).strftime("%Y-%m-%d")
         sales_query = sales_query.filter(Sale.date == yesterday_str)
         redemptions_query = redemptions_query.filter(Redemption.date == yesterday_str)
     elif filter_date == "all":

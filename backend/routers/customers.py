@@ -9,7 +9,13 @@ from backend.schemas import CustomerCreate, CustomerResponse, CustomerLoyaltyRes
 router = APIRouter(prefix="/api/customers", tags=["Customers & Loyalty"])
 
 def clean_phone_number(phone: str) -> str:
-    return re.sub(r"\D", "", phone or "").strip()
+    raw = re.sub(r"\D", "", phone or "").strip()
+    # Normalize Indian 10-digit mobile numbers with +91 or 0 prefix
+    if len(raw) == 12 and raw.startswith("91"):
+        return raw[2:]
+    if len(raw) == 11 and raw.startswith("0"):
+        return raw[1:]
+    return raw
 
 def calculate_customer_loyalty(phone: str, db: Session) -> dict:
     clean_phone = clean_phone_number(phone)
@@ -109,7 +115,12 @@ def calculate_customer_loyalty(phone: str, db: Session) -> dict:
     }
 
 @router.get("", response_model=List[CustomerResponse])
-def get_customers(search: Optional[str] = None, db: Session = Depends(get_db)):
+def get_customers(
+    search: Optional[str] = None,
+    limit: int = Query(default=100, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db)
+):
     query = db.query(Customer)
     if search:
         clean = search.strip().lower()
@@ -117,12 +128,12 @@ def get_customers(search: Optional[str] = None, db: Session = Depends(get_db)):
         query = query.filter(
             (Customer.name.ilike(f"%{clean}%")) | (Customer.phone.contains(digits if digits else clean))
         )
-    return query.order_by(Customer.created_at.desc()).all()
+    return query.order_by(Customer.created_at.desc()).offset(offset).limit(limit).all()
 
 @router.get("/{phone}", response_model=CustomerLoyaltyResponse)
 def get_customer_loyalty(phone: str, db: Session = Depends(get_db)):
     clean_phone = clean_phone_number(phone)
-    if not clean_phone:
+    if not clean_phone or len(clean_phone) < 7:
         raise HTTPException(status_code=400, detail="Invalid phone number provided")
     
     customer = db.query(Customer).filter(Customer.phone == clean_phone).first()
@@ -136,8 +147,8 @@ def get_customer_loyalty(phone: str, db: Session = Depends(get_db)):
 @router.post("", response_model=CustomerResponse)
 def upsert_customer(cust_in: CustomerCreate, db: Session = Depends(get_db)):
     clean_phone = clean_phone_number(cust_in.phone)
-    if not clean_phone:
-        raise HTTPException(status_code=400, detail="Valid phone number is required")
+    if not clean_phone or len(clean_phone) < 7:
+        raise HTTPException(status_code=400, detail="Valid phone number with at least 7 digits is required")
 
     customer = db.query(Customer).filter(Customer.phone == clean_phone).first()
     name = (cust_in.name or "Valued Guest").strip()

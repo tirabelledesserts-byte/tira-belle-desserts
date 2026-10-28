@@ -71,24 +71,50 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Middleware
+# CORS Middleware: sanitize origins to prevent wildcard with credentials
+cors_origins = [o for o in CORS_ORIGINS if o != "*"] or ["http://localhost:8001", "http://127.0.0.1:8001"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 from fastapi.responses import JSONResponse
-from fastapi import Request
+from fastapi import Request, HTTPException, Response
+from starlette.exceptions import HTTPException as StarletteHTTPException
+import logging
+
+logger = logging.getLogger("tirabelle.backend")
+
+# Global Security Headers Middleware (OWASP Secure Headers Recommendation)
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response: Response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    import traceback
+    if isinstance(exc, (HTTPException, StarletteHTTPException)):
+        headers = getattr(exc, "headers", None)
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=headers
+        )
+    logger.error(f"Unhandled Exception at {request.method} {request.url.path}: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"error": str(exc), "type": type(exc).__name__, "traceback": traceback.format_exc()}
+        content={"detail": "Internal server error. Please try again or contact support."}
     )
 
 # Mount API Routers
@@ -110,13 +136,6 @@ def health_check(db: Session = Depends(get_db)):
         db.execute(text("SELECT 1"))
     except Exception as e:
         db_status = f"error: {str(e)}"
-    url_obj = None
-    try:
-        from backend.config import DATABASE_URL
-        from sqlalchemy.engine.url import make_url
-        url_obj = make_url(DATABASE_URL)
-    except Exception:
-        pass
 
     return {
         "status": "ok",
@@ -125,8 +144,6 @@ def health_check(db: Session = Depends(get_db)):
         "database": db_status,
         "database_engine": engine.name,
         "database_driver": getattr(engine.dialect, "driver", None),
-        "db_host": url_obj.host if url_obj else None,
-        "db_user": url_obj.username if url_obj else None,
         "timestamp": utcnow_iso()
     }
 

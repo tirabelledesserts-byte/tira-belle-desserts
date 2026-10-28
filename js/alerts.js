@@ -21,12 +21,22 @@
         'bell': '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'
     };
 
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function getIconHtml(type, customIcon = null) {
         if (customIcon && ICON_SVGS[customIcon]) {
             return ICON_SVGS[customIcon];
         }
         if (window.lucide && customIcon) {
-            return `<i data-lucide="${customIcon}" data-size="28"></i>`;
+            return `<i data-lucide="${escapeHtml(customIcon)}" data-size="28"></i>`;
         }
         return ICON_SVGS[type] || ICON_SVGS['info'];
     }
@@ -47,6 +57,8 @@
     }
 
     const TiraAlert = {
+        escapeHtml: escapeHtml,
+
         /**
          * Toast notification (Auto-dismissing, non-blocking)
          * @param {Object} options { message, title, type = 'info', duration = 3800, action }
@@ -76,21 +88,21 @@
             }
 
             const toast = document.createElement('div');
-            toast.className = `tira-toast-card tira-toast-${type}`;
+            toast.className = `tira-toast-card tira-toast-${escapeHtml(type)}`;
             toast.setAttribute('role', 'alert');
 
             const iconSvg = getIconHtml(type, options.icon);
 
             let actionHtml = '';
             if (action && action.label) {
-                actionHtml = `<button type="button" class="tira-toast-action-btn">${action.label}</button>`;
+                actionHtml = `<button type="button" class="tira-toast-action-btn">${escapeHtml(action.label)}</button>`;
             }
 
             toast.innerHTML = `
                 <div class="tira-toast-icon-wrap">${iconSvg}</div>
                 <div class="tira-toast-content">
-                    ${title ? `<div class="tira-toast-title">${title}</div>` : ''}
-                    <div class="tira-toast-msg">${message}</div>
+                    ${title ? `<div class="tira-toast-title">${escapeHtml(title)}</div>` : ''}
+                    <div class="tira-toast-msg">${escapeHtml(message)}</div>
                 </div>
                 ${actionHtml}
                 <button type="button" class="tira-toast-close-btn" aria-label="Close notification">&times;</button>
@@ -211,18 +223,18 @@
                 const iconSvg = getIconHtml(type, iconKey);
 
                 overlay.innerHTML = `
-                    <div class="tira-popup-card tira-popup-${type}">
-                        <div class="tira-popup-badge tira-badge-${type}">
+                    <div class="tira-popup-card tira-popup-${escapeHtml(type)}">
+                        <div class="tira-popup-badge tira-badge-${escapeHtml(type)}">
                             ${iconSvg}
                         </div>
-                        <h2 class="tira-popup-title" id="tiraPopupTitle">${title}</h2>
-                        <div class="tira-popup-msg" id="tiraPopupMsg">${message}</div>
+                        <h2 class="tira-popup-title" id="tiraPopupTitle">${escapeHtml(title)}</h2>
+                        <div class="tira-popup-msg" id="tiraPopupMsg">${escapeHtml(message)}</div>
                         <div class="tira-popup-actions">
                             <button type="button" class="btn btn-outline tira-popup-cancel-btn" id="tiraPopupCancel">
-                                <span>${cancelText}</span>
+                                <span>${escapeHtml(cancelText)}</span>
                             </button>
                             <button type="button" class="btn ${isDanger ? 'btn-danger' : 'btn-caramel'} tira-popup-confirm-btn" id="tiraPopupConfirm">
-                                <span>${confirmText}</span>
+                                <span>${escapeHtml(confirmText)}</span>
                             </button>
                         </div>
                     </div>
@@ -310,15 +322,15 @@
                 const iconSvg = getIconHtml(type, iconKey);
 
                 overlay.innerHTML = `
-                    <div class="tira-popup-card tira-popup-${type}">
-                        <div class="tira-popup-badge tira-badge-${type}">
+                    <div class="tira-popup-card tira-popup-${escapeHtml(type)}">
+                        <div class="tira-popup-badge tira-badge-${escapeHtml(type)}">
                             ${iconSvg}
                         </div>
-                        <h2 class="tira-popup-title">${title}</h2>
-                        <div class="tira-popup-msg">${message}</div>
+                        <h2 class="tira-popup-title">${escapeHtml(title)}</h2>
+                        <div class="tira-popup-msg">${escapeHtml(message)}</div>
                         <div class="tira-popup-actions" style="justify-content: center;">
                             <button type="button" class="btn btn-caramel btn-lg tira-popup-confirm-btn" id="tiraPopupAlertOk" style="min-width: 150px;">
-                                <span>${buttonText}</span>
+                                <span>${escapeHtml(buttonText)}</span>
                             </button>
                         </div>
                     </div>
@@ -390,17 +402,17 @@
                         <div class="tira-popup-badge tira-badge-info">
                             ${ICON_SVGS['question']}
                         </div>
-                        <h2 class="tira-popup-title">${title}</h2>
-                        ${message ? `<div class="tira-popup-msg">${message}</div>` : ''}
+                        <h2 class="tira-popup-title">${escapeHtml(title)}</h2>
+                        ${message ? `<div class="tira-popup-msg">${escapeHtml(message)}</div>` : ''}
                         <div style="margin: 16px 0 24px;">
-                            <input type="${inputType}" id="tiraPromptInput" class="form-input" style="width: 100%; text-align: center; font-size: 1.05rem;" placeholder="${placeholder}" value="${defaultValue}">
+                            <input type="${escapeHtml(inputType)}" id="tiraPromptInput" class="form-input" style="width: 100%; text-align: center; font-size: 1.05rem;" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(defaultValue)}">
                         </div>
                         <div class="tira-popup-actions">
                             <button type="button" class="btn btn-outline" id="tiraPromptCancel">
-                                <span>${cancelText}</span>
+                                <span>${escapeHtml(cancelText)}</span>
                             </button>
                             <button type="button" class="btn btn-caramel" id="tiraPromptConfirm">
-                                <span>${confirmText}</span>
+                                <span>${escapeHtml(confirmText)}</span>
                             </button>
                         </div>
                     </div>

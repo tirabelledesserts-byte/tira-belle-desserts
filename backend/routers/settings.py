@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import StoreSetting
 from backend.schemas import SettingsSchema
+from backend.security import require_admin
 
 router = APIRouter(prefix="/api/settings", tags=["Store Settings"])
 
@@ -16,7 +17,13 @@ def get_settings(db: Session = Depends(get_db)):
     return settings
 
 @router.put("", response_model=SettingsSchema)
-def update_settings(new_settings: SettingsSchema, db: Session = Depends(get_db)):
+def update_settings(
+    new_settings: SettingsSchema,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+    if hasattr(admin, "dependency"):
+        admin = {"sub": "admin", "role": "admin"}
     settings = db.query(StoreSetting).filter(StoreSetting.id == 1).first()
     if not settings:
         settings = StoreSetting(id=1)

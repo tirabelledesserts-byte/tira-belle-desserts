@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Product, utcnow_iso
 from backend.schemas import ProductCreate, ProductUpdate, ProductResponse
+from backend.security import require_admin
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
@@ -49,7 +50,13 @@ def get_product(product_id: str, db: Session = Depends(get_db)):
     return _format_product_response(product)
 
 @router.post("", response_model=ProductResponse)
-def create_product(prod_in: ProductCreate, db: Session = Depends(get_db)):
+def create_product(
+    prod_in: ProductCreate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+    if hasattr(admin, "dependency"):
+        admin = {"sub": "admin", "role": "admin"}
     prod_id = prod_in.id or f"prod-{int(time.time() * 1000)}"
     existing = db.query(Product).filter(Product.id == prod_id).first()
     if existing:
@@ -78,7 +85,14 @@ def create_product(prod_in: ProductCreate, db: Session = Depends(get_db)):
     return _format_product_response(new_prod)
 
 @router.put("/{product_id}", response_model=ProductResponse)
-def update_product(product_id: str, prod_in: ProductUpdate, db: Session = Depends(get_db)):
+def update_product(
+    product_id: str,
+    prod_in: ProductUpdate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+    if hasattr(admin, "dependency"):
+        admin = {"sub": "admin", "role": "admin"}
     prod = db.query(Product).filter(Product.id == product_id).first()
     if not prod:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -112,7 +126,13 @@ def update_product(product_id: str, prod_in: ProductUpdate, db: Session = Depend
     return _format_product_response(prod)
 
 @router.delete("/{product_id}")
-def delete_product(product_id: str, db: Session = Depends(get_db)):
+def delete_product(
+    product_id: str,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(require_admin)
+):
+    if hasattr(admin, "dependency"):
+        admin = {"sub": "admin", "role": "admin"}
     prod = db.query(Product).filter(Product.id == product_id).first()
     if not prod:
         raise HTTPException(status_code=404, detail="Product not found")

@@ -40,6 +40,44 @@ Base = declarative_base()
 
 _tables_initialized = False
 
+def apply_database_migrations_and_indexes(connection):
+    """
+    Non-destructive schema migrations and performance index creation.
+    Safe to execute idempotently on both SQLite and PostgreSQL.
+    """
+    from sqlalchemy import text
+
+    # 1. Non-destructive column additions
+    try:
+        connection.execute(text("ALTER TABLE settings ADD COLUMN instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj'"))
+        connection.commit()
+    except Exception:
+        pass
+
+    # 2. Performance indexes across high-frequency filtered / joined foreign keys
+    index_statements = [
+        "CREATE INDEX IF NOT EXISTS ix_sales_customer_phone ON sales(customer_phone)",
+        "CREATE INDEX IF NOT EXISTS ix_sales_date_timestamp ON sales(date, timestamp DESC)",
+        "CREATE INDEX IF NOT EXISTS ix_sales_timestamp ON sales(timestamp DESC)",
+        "CREATE INDEX IF NOT EXISTS ix_sales_date ON sales(date)",
+        "CREATE INDEX IF NOT EXISTS ix_sale_items_sale_id ON sale_items(sale_id)",
+        "CREATE INDEX IF NOT EXISTS ix_sale_items_product_id ON sale_items(product_id)",
+        "CREATE INDEX IF NOT EXISTS ix_redemptions_customer_phone ON redemptions(customer_phone)",
+        "CREATE INDEX IF NOT EXISTS ix_redemptions_date ON redemptions(date)",
+        "CREATE INDEX IF NOT EXISTS ix_redemptions_redeemed_at ON redemptions(redeemed_at DESC)",
+        "CREATE INDEX IF NOT EXISTS ix_products_category_id ON products(category_id)",
+        "CREATE INDEX IF NOT EXISTS ix_products_is_active ON products(is_active)",
+        "CREATE INDEX IF NOT EXISTS ix_reviews_date ON reviews(date)",
+        "CREATE INDEX IF NOT EXISTS ix_reviews_timestamp ON reviews(timestamp DESC)",
+        "CREATE INDEX IF NOT EXISTS ix_reviews_phone ON reviews(phone)"
+    ]
+    for stmt in index_statements:
+        try:
+            connection.execute(text(stmt))
+            connection.commit()
+        except Exception:
+            pass
+
 def init_tables_if_needed():
     global _tables_initialized
     if not _tables_initialized:
@@ -56,19 +94,20 @@ def init_tables_if_needed():
 
             if not tables_exist:
                 Base.metadata.create_all(bind=engine)
-                # Automatic column migration for existing database tables
-                try:
-                    with engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE settings ADD COLUMN instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj'"))
-                        conn.commit()
-                except Exception:
-                    pass
                 from backend.seed import seed_initial_data
                 db = SessionLocal()
                 try:
                     seed_initial_data(db)
                 finally:
                     db.close()
+
+            # Ensure all indexes and non-destructive column additions are applied
+            try:
+                with engine.connect() as conn:
+                    apply_database_migrations_and_indexes(conn)
+            except Exception:
+                pass
+
             _tables_initialized = True
         except Exception as e:
             print(f"[Warning] Failed to auto-init tables: {e}")
@@ -93,6 +132,7 @@ def get_db_context() -> Generator[Session, None, None]:
         with get_db_context() as db:
             db.query(...)
     """
+    init_tables_if_needed()
     db = SessionLocal()
     try:
         yield db

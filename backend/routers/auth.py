@@ -1,14 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import StoreSetting
 from backend.schemas import LoginRequest, TokenResponse, UpdateCredentialsRequest
-from backend.security import verify_hash, hash_credential, create_access_token, require_admin
+from backend.security import (
+    verify_hash,
+    hash_credential,
+    create_access_token,
+    require_admin,
+    check_login_rate_limit,
+    record_login_failure,
+    reset_login_failures
+)
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.post("/login", response_model=TokenResponse)
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+def login(req: LoginRequest, request: Request = None, db: Session = Depends(get_db)):
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
+    check_login_rate_limit(client_ip)
+
     settings = db.query(StoreSetting).filter(StoreSetting.id == 1).first()
     if not settings:
         from backend.seed import seed_initial_data
@@ -22,13 +34,20 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 
     is_user_match = (username.lower() == settings.admin_username.lower())
     if not is_user_match:
+        record_login_failure(client_ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
-    # Verify secret strictly against configured admin password
+    # Verify secret against configured admin password or admin PIN (if configured)
     is_password_valid = verify_hash(secret, settings.admin_password_hash)
-    if not is_password_valid:
+    is_pin_valid = False
+    if settings.admin_pin_hash:
+        is_pin_valid = verify_hash(secret, settings.admin_pin_hash)
+
+    if not is_password_valid and not is_pin_valid:
+        record_login_failure(client_ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
 
+    reset_login_failures(client_ip)
     token = create_access_token({"sub": settings.admin_username, "role": "admin"})
     return TokenResponse(access_token=token, username=settings.admin_username)
 
@@ -59,8 +78,16 @@ def update_credentials(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect old password")
         settings.admin_password_hash = hash_credential(req.password.strip())
 
+    if req.pin is not None:
+        pin_val = req.pin.strip()
+        settings.admin_pin_hash = hash_credential(pin_val) if pin_val else None
+
     if req.username and req.username.strip():
         settings.admin_username = req.username.strip()
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
     return {"success": True, "message": "Credentials updated successfully", "username": settings.admin_username}

@@ -9,6 +9,18 @@ let currentPaymentMode = 'Cash';
 let activeSection = 'dashboard';
 let isAuthenticated = false;
 
+// ----------------- SANITIZATION HELPER -----------------
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
 // ----------------- TOAST SYSTEM -----------------
 function showToast(message, type = 'info', title = null) {
     if (window.TiraAlert && typeof window.TiraAlert.toast === 'function') {
@@ -125,6 +137,8 @@ function checkAdminAuth() {
     } else {
         sessionStorage.removeItem('TIRA_ADMIN_AUTH');
         sessionStorage.removeItem('TIRA_ADMIN_AUTH_TIME');
+        sessionStorage.removeItem('TIRA_ADMIN_TOKEN');
+        sessionStorage.removeItem('tira_preferred_api');
         document.body.classList.remove('admin-authenticated');
         document.getElementById('adminLoginModal').style.display = 'flex';
         document.getElementById('adminMainLayout').style.display = 'none';
@@ -177,6 +191,8 @@ window.logoutAdmin = function() {
     if (sessionTimer) clearTimeout(sessionTimer);
     sessionStorage.removeItem('TIRA_ADMIN_AUTH');
     sessionStorage.removeItem('TIRA_ADMIN_AUTH_TIME');
+    sessionStorage.removeItem('TIRA_ADMIN_TOKEN');
+    sessionStorage.removeItem('tira_preferred_api');
     window.location.reload();
 };
 
@@ -895,8 +911,8 @@ window.loadDashboardMetrics = async function(filterDateParam) {
                     const itemRev = Number(item.revenue ?? 0);
                     const itemQty = Number(item.quantity ?? 0);
                     tr.innerHTML = `
-                        <td><strong>${item.name}</strong></td>
-                        <td><span class="badge" style="background: var(--color-bg);">${item.weight || 'Standard'}</span></td>
+                        <td><strong>${escapeHtml(item.name)}</strong></td>
+                        <td><span class="badge" style="background: var(--color-bg);">${escapeHtml(item.weight || 'Standard')}</span></td>
                         <td>${curr}${item.price}</td>
                         <td><strong style="color: var(--color-espresso);">${itemQty} cups</strong></td>
                         <td><strong style="color: var(--color-caramel);">${curr}${itemRev.toLocaleString('en-IN')}</strong></td>
@@ -1049,11 +1065,11 @@ window.renderPosCatalog = function() {
             const card = document.createElement('div');
             card.className = 'pos-item-card';
             card.innerHTML = `
-                <img src="${p.image || 'assets/classic/tiramisu-classic-150 g.png'}" alt="${p.name}" class="pos-item-img" onerror="this.src='assets/poster/tiramisu-classic-poster.png'">
-                <div class="pos-item-name">${p.name}</div>
-                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 6px;">Size: ${p.weight}</div>
+                <img src="${p.image || 'assets/classic/tiramisu-classic-150 g.png'}" alt="${escapeHtml(p.name)}" class="pos-item-img" onerror="this.src='assets/poster/tiramisu-classic-poster.png'">
+                <div class="pos-item-name">${escapeHtml(p.name)}</div>
+                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 6px;">Size: ${escapeHtml(p.weight || '')}</div>
                 <div class="pos-item-price">${curr}${p.price}</div>
-                <button class="btn btn-caramel btn-sm" onclick="addToCart('${p.id}')" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                <button class="btn btn-caramel btn-sm" onclick="addToCart('${escapeHtml(p.id)}')" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
                     <i data-lucide="plus" data-size="14"></i>
                     <span>Add to Cart</span>
                 </button>
@@ -1199,13 +1215,13 @@ function updateCartUI() {
 
             row.innerHTML = `
                 <div>
-                    <div class="cart-item-title">${item.productName}</div>
+                    <div class="cart-item-title">${escapeHtml(item.productName)}</div>
                     <div class="cart-item-unit">${curr}${item.price} each</div>
                 </div>
                 <div class="cart-qty-ctrl">
-                    <button class="qty-btn" onclick="updateCartQty('${item.productId}', -1)">−</button>
+                    <button class="qty-btn" onclick="updateCartQty('${escapeHtml(item.productId)}', -1)">−</button>
                     <span style="font-weight: 700; min-width: 20px; text-align: center;">${item.quantity}</span>
-                    <button class="qty-btn" onclick="updateCartQty('${item.productId}', 1)">+</button>
+                    <button class="qty-btn" onclick="updateCartQty('${escapeHtml(item.productId)}', 1)">+</button>
                     <span style="font-weight: 700; margin-left: 10px; min-width: 48px; text-align: right;">${curr}${itemTotal}</span>
                 </div>
             `;
@@ -1266,7 +1282,7 @@ window.handlePosPhoneInput = function(phoneVal) {
                 item.className = 'customer-suggest-item';
                 const loyalty = window.TiraDB.getCustomerLoyalty(c.phone);
                 item.innerHTML = `
-                    <div><strong>${c.name}</strong> • ${c.phone}</div>
+                    <div><strong>${escapeHtml(c.name)}</strong> • ${escapeHtml(c.phone)}</div>
                     <span class="badge ${loyalty.isEligible ? 'badge-success' : 'badge-warning'}">
                         ${loyalty.isEligible ? 'Eligible for Free Cup!' : `${loyalty.currentCycleProgress}/${loyalty.threshold} Purchases`}
                     </span>
@@ -1443,7 +1459,11 @@ window.toggleRewardInOrder = function(checked) {
     }
 };
 
+let isSubmittingSale = false;
+
 window.submitPosSale = async function() {
+    if (isSubmittingSale) return;
+
     const saveBtn = document.getElementById('btnSaveSale');
     const phone = document.getElementById('posCustomerPhone').value.trim();
     const name = document.getElementById('posCustomerName').value.trim();
@@ -1461,9 +1481,11 @@ window.submitPosSale = async function() {
         return;
     }
 
+    isSubmittingSale = true;
     if (saveBtn) {
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i data-lucide="loader" data-size="16"></i> <span>Saving Sale...</span>';
+        if (window.lucide) window.lucide.createIcons();
     }
 
     try {
@@ -1508,6 +1530,7 @@ window.submitPosSale = async function() {
         console.error('POS Sale submission error:', err);
         showToast('Error saving sale: ' + (err.message || 'Please try again'), 'error');
     } finally {
+        isSubmittingSale = false;
         if (saveBtn) {
             saveBtn.disabled = false;
             saveBtn.innerHTML = '<i data-lucide="circle-check" data-size="16"></i> <span>Complete Order & Print Bill</span>';
@@ -1752,7 +1775,7 @@ window.viewReceipt = function(saleId) {
         const itQty = Number(it.quantity ?? 1);
         const itTotal = Number(it.total ?? (itPrice * itQty));
         row.innerHTML = `
-            <span>${pName} x ${itQty}</span>
+            <span>${escapeHtml(pName)} x ${itQty}</span>
             <span>${isRew ? 'FREE' : `${curr}${itTotal.toLocaleString('en-IN')}`}</span>
         `;
         itemsContainer.appendChild(row);
@@ -2796,19 +2819,20 @@ window.viewCustomerHistory = function(phone) {
     } else {
         loyalty.salesHistory.forEach(s => {
             const dateStr = new Date(s.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-            const itemNames = s.items.map(it => `${it.productName} (x${it.quantity})`).join(', ');
+            const safeItems = escapeHtml(s.items.map(it => `${it.productName || it.product_name || 'Tiramisu'} (x${it.quantity || 1})`).join(', '));
+            const safeId = escapeHtml(s.id);
             const card = document.createElement('div');
             card.className = 'history-item';
             card.innerHTML = `
                 <div>
-                    <div><strong>${s.id}</strong> • <span style="font-size: 0.8rem; color: var(--color-text-muted);">${dateStr}</span></div>
-                    <div style="font-size: 0.85rem; color: var(--color-text-main); margin-top: 2px;">${itemNames}</div>
+                    <div><strong>${safeId}</strong> • <span style="font-size: 0.8rem; color: var(--color-text-muted);">${dateStr}</span></div>
+                    <div style="font-size: 0.85rem; color: var(--color-text-main); margin-top: 2px;">${safeItems}</div>
                 </div>
                 <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                     <div style="font-weight: 800; color: var(--color-espresso);">${curr}${s.totalAmount}</div>
-                    <span class="badge ${s.paymentMode === 'Cash' ? 'badge-cash' : 'badge-online'}" style="font-size: 0.7rem;">${s.paymentMode}</span>
+                    <span class="badge ${s.paymentMode === 'Cash' ? 'badge-cash' : 'badge-online'}" style="font-size: 0.7rem;">${escapeHtml(s.paymentMode || '')}</span>
                     <div style="display: flex; gap: 4px; margin-top: 4px;">
-                        <button class="btn btn-outline btn-xs" onclick="viewReceipt('${s.id}')" style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; font-size: 0.72rem;" title="View Receipt">
+                        <button class="btn btn-outline btn-xs" onclick="viewReceipt('${safeId}')" style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; font-size: 0.72rem;" title="View Receipt">
                             <i data-lucide="printer" data-size="12"></i>
                             <span>Receipt</span>
                         </button>
@@ -2825,6 +2849,20 @@ window.viewCustomerHistory = function(phone) {
 window.closeCustomerModal = function() {
     document.getElementById('customerHistoryModal').classList.remove('active');
 };
+
+function downloadCSV(csvContent, filename) {
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+        if (link.parentNode) link.remove();
+        URL.revokeObjectURL(url);
+    }, 100);
+}
 
 window.exportCustomersCSV = function() {
     const dateInput = document.getElementById('customerDatePicker');
@@ -2853,8 +2891,7 @@ window.exportCustomersCSV = function() {
             return;
         }
 
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Customer Name,Phone,Date,Cups Purchased On Date,Orders On Date,Total Spend On Date (INR),Payment Modes,Items Purchased,Lifetime Cups,Current Cycle Progress,Eligible For Free Reward,Offer Claimed On Date\n";
+        let csvContent = "Customer Name,Phone,Date,Cups Purchased On Date,Orders On Date,Total Spend On Date (INR),Payment Modes,Items Purchased,Lifetime Cups,Current Cycle Progress,Eligible For Free Reward,Offer Claimed On Date\n";
 
         filteredCustomers.forEach(c => {
             const cleanPhone = (c.phone || '').replace(/\D/g, '');
@@ -2882,20 +2919,13 @@ window.exportCustomersCSV = function() {
             csvContent += `"${c.name}","${c.phone}","${selectedDate}",${dayCups},${custDaySales.length},${daySpend},"${paymentModes}","${itemsStr}",${loyalty.totalCupsPurchased},"${loyalty.currentCycleProgress}/${loyalty.threshold}",${loyalty.isEligible ? 'YES' : 'NO'},${claimedOnDate}\n`;
         });
 
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `tira_belle_customers_${selectedDate}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+        downloadCSV(csvContent, `tira_belle_customers_${selectedDate}.csv`);
         showToast(`Exported ${filteredCustomers.length} customer records for ${formatDisplayDate(selectedDate)} to CSV.`, 'success');
         return;
     }
 
     // Default: Lifetime export for all registered customers
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Customer Name,Phone,Total Cups Purchased,Loyalty Eligible Cups,Completed Purchases,Total Spend (INR),Current Cycle Progress,Threshold,Eligible For Free Reward,Total Rewards Claimed\n";
+    let csvContent = "Customer Name,Phone,Total Cups Purchased,Loyalty Eligible Cups,Completed Purchases,Total Spend (INR),Current Cycle Progress,Threshold,Eligible For Free Reward,Total Rewards Claimed\n";
 
     customers.forEach(c => {
         const loyalty = window.TiraDB.getCustomerLoyalty(c.phone);
@@ -2909,13 +2939,7 @@ window.exportCustomersCSV = function() {
         csvContent += `"${c.name}","${c.phone}",${totalCups},${loyalty.totalCupsPurchased},${loyalty.completedPurchasesCount},${totalSpend},"${loyalty.currentCycleProgress}",${loyalty.threshold},${loyalty.isEligible ? 'YES' : 'NO'},${loyalty.claimedCount}\n`;
     });
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `tira_belle_customers_all_time_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    downloadCSV(csvContent, `tira_belle_customers_all_time_${new Date().toISOString().split('T')[0]}.csv`);
     showToast('All-time customer records exported to CSV.', 'success');
 };
 
@@ -3068,10 +3092,13 @@ function renderAdminLoyaltyCard(phone) {
             const dateStr = new Date(r.redeemedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
             const item = document.createElement('div');
             item.className = 'history-item';
+            const safeReward = escapeHtml(r.rewardItem || 'Free Reward');
+            const safeAdmin = escapeHtml(r.adminUser || 'Staff');
+            const safeNotes = escapeHtml(r.notes || 'In-store');
             item.innerHTML = `
                 <div>
-                    <strong>${r.rewardItem}</strong> • <span style="font-size: 0.8rem; color: var(--color-text-muted);">${dateStr}</span>
-                    <div style="font-size: 0.75rem; color: var(--color-text-light);">Staff: ${r.adminUser} • ${r.notes || 'In-store'}</div>
+                    <strong>${safeReward}</strong> • <span style="font-size: 0.8rem; color: var(--color-text-muted);">${dateStr}</span>
+                    <div style="font-size: 0.75rem; color: var(--color-text-light);">Staff: ${safeAdmin} • ${safeNotes}</div>
                 </div>
                 <span class="badge badge-success">Claimed</span>
             `;

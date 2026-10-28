@@ -9,6 +9,37 @@ from backend.config import SECRET_KEY, CREDENTIAL_SALT, ACCESS_TOKEN_EXPIRE_MINU
 # Bearer security scheme (auto_error=False to allow optional authentication endpoints)
 security_scheme = HTTPBearer(auto_error=False)
 
+# In-memory rate limiter for failed login attempts to prevent brute-force attacks (CWE-307)
+_login_failures = {}
+MAX_FAILED_LOGIN_ATTEMPTS = 5
+LOCKOUT_DURATION_SECONDS = 300  # 5 minutes lockout
+
+def check_login_rate_limit(client_ip: str):
+    if not client_ip:
+        return
+    now = time.time()
+    attempts = [t for t in _login_failures.get(client_ip, []) if now - t < LOCKOUT_DURATION_SECONDS]
+    _login_failures[client_ip] = attempts
+    if len(attempts) >= MAX_FAILED_LOGIN_ATTEMPTS:
+        retry_after = int(LOCKOUT_DURATION_SECONDS - (now - attempts[0]))
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed login attempts. Please wait {max(1, retry_after)} seconds before trying again.",
+            headers={"Retry-After": str(max(1, retry_after))}
+        )
+
+def record_login_failure(client_ip: str):
+    if not client_ip:
+        return
+    now = time.time()
+    if client_ip not in _login_failures:
+        _login_failures[client_ip] = []
+    _login_failures[client_ip].append(now)
+
+def reset_login_failures(client_ip: str):
+    if client_ip in _login_failures:
+        del _login_failures[client_ip]
+
 def hash_credential(value: str, salt: str = CREDENTIAL_SALT) -> str:
     """
     Computes SHA-256(value + salt) to match the frontend Web Crypto hashing.

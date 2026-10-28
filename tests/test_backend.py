@@ -364,6 +364,7 @@ class TestFastAPIBackendSuite(unittest.TestCase):
 
     def tearDown(self):
         self.db.close()
+        self.engine.dispose()
 
     def test_backend_file_structure(self):
         root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -616,8 +617,234 @@ class TestFastAPIBackendSuite(unittest.TestCase):
         self.assertGreater(v2, v1)
         self.assertIsNotNone(get_last_updated())
 
+
+    def test_phone_number_normalization_indian_formats(self):
+        from backend.routers.customers import clean_phone_number
+        self.assertEqual(clean_phone_number('+91 98765 43210'), '9876543210')
+        self.assertEqual(clean_phone_number('+919876543210'), '9876543210')
+        self.assertEqual(clean_phone_number('09876543210'), '9876543210')
+        self.assertEqual(clean_phone_number('9876543210'), '9876543210')
+
+    def test_sales_phone_validation_and_atomicity(self):
+        from backend.schemas import SaleCreate, SaleItemSchema
+        from backend.routers.sales import create_sale
+        from fastapi import HTTPException
+
+        # Phone with fewer than 7 digits should be rejected
+        with self.assertRaises(HTTPException) as ctx:
+            create_sale(SaleCreate(
+                customerPhone='123',
+                customerName='Invalid Phone',
+                items=[SaleItemSchema(productId='prod-150', productName='Tiramisu 150g', price=150.0, quantity=1)]
+            ), db=self.db)
+        self.assertEqual(ctx.exception.status_code, 400)
+
+    def test_pydantic_schema_boundary_validation(self):
+        from backend.schemas import ProductCreate, ReviewCreate, SaleItemSchema
+        from pydantic import ValidationError
+
+        # Negative price should fail
+        with self.assertRaises(ValidationError):
+            ProductCreate(name='Negative Price Cup', price=-50.0)
+
+        # Rating out of range (1-5) should fail
+        with self.assertRaises(ValidationError):
+            ReviewCreate(name='Tester', rating=6, comment='Great')
+        with self.assertRaises(ValidationError):
+            ReviewCreate(name='Tester', rating=0, comment='Bad')
+
+        # SaleItem quantity < 1 should fail
+        with self.assertRaises(ValidationError):
+            SaleItemSchema(productId='prod-1', productName='Cup', price=100.0, quantity=0)
+
+    def test_pin_authentication_and_update(self):
+        from backend.schemas import LoginRequest, UpdateCredentialsRequest
+        from backend.routers.auth import login, update_credentials
+        from backend.security import hash_credential
+        from backend.models import StoreSetting
+
+        # Update PIN to 1234
+        update_credentials(UpdateCredentialsRequest(pin='1234'), admin_payload={'sub': 'admin'}, db=self.db)
+        settings = self.db.query(StoreSetting).filter(StoreSetting.id == 1).first()
+        self.assertEqual(settings.admin_pin_hash, hash_credential('1234'))
+
+        # Login with PIN
+        res = login(LoginRequest(username=settings.admin_username, secret='1234'), db=self.db)
+        self.assertIsNotNone(res.access_token)
+
+    def test_timezone_ist_calculation(self):
+        from backend.models import ist_now, today_date_str
+        now_ist = ist_now()
+        self.assertEqual(today_date_str(), now_ist.strftime('%Y-%m-%d'))
+
+class TestDatabaseArchitectureAndIntegrity(unittest.TestCase):
+
+    def setUp(self):
+        from sqlalchemy import create_engine, event, text
+        from sqlalchemy.orm import sessionmaker
+        from backend.models import Base
+        from backend.database import apply_database_migrations_and_indexes
+        from backend.seed import seed_initial_data
+
+        self.engine = create_engine('sqlite:///:memory:', connect_args={'check_same_thread': False})
+
+        @event.listens_for(self.engine, 'connect')
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute('PRAGMA foreign_keys=ON')
+            cursor.close()
+
+        Base.metadata.create_all(bind=self.engine)
+        with self.engine.connect() as conn:
+            apply_database_migrations_and_indexes(conn)
+
+        self.Session = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+        self.db = self.Session()
+        seed_initial_data(self.db)
+
+    def tearDown(self):
+        self.db.close()
+        self.engine.dispose()
+
+    def test_database_indexes_applied(self):
+        from sqlalchemy import text
+        with self.engine.connect() as conn:
+            sales_indexes = [r[1] for r in conn.execute(text("PRAGMA index_list('sales')")).fetchall()]
+            self.assertIn('ix_sales_customer_phone', sales_indexes)
+            self.assertIn('ix_sales_date_timestamp', sales_indexes)
+
+            items_indexes = [r[1] for r in conn.execute(text("PRAGMA index_list('sale_items')")).fetchall()]
+            self.assertIn('ix_sale_items_sale_id', items_indexes)
+            self.assertIn('ix_sale_items_product_id', items_indexes)
+
+            rdm_indexes = [r[1] for r in conn.execute(text("PRAGMA index_list('redemptions')")).fetchall()]
+            self.assertIn('ix_redemptions_customer_phone', rdm_indexes)
+            self.assertIn('ix_redemptions_date', rdm_indexes)
+
+    def test_foreign_key_enforcement(self):
+        from backend.models import Sale
+        from sqlalchemy.exc import IntegrityError
+        # Attempting to insert a sale for a non-existent customer must fail
+        with self.assertRaises(IntegrityError):
+            bad_sale = Sale(id='TXN-ORPHAN-1', customer_phone='0000000000', total_amount=100.0)
+            self.db.add(bad_sale)
+            self.db.commit()
+        self.db.rollback()
+
+    def test_cascade_delete_integrity(self):
+        from backend.models import Customer, Sale
+        cust = Customer(phone='9111222333', name='Cascade Tester')
+        self.db.add(cust)
+        self.db.commit()
+
+        sale = Sale(id='TXN-CASC-1', customer_phone=cust.phone, total_amount=150.0)
+        self.db.add(sale)
+        self.db.commit()
+
+        self.assertEqual(self.db.query(Sale).filter(Sale.customer_phone == cust.phone).count(), 1)
+        self.db.delete(cust)
+        self.db.commit()
+
+        self.assertEqual(self.db.query(Sale).filter(Sale.customer_phone == cust.phone).count(), 0)
+
+    def test_loyalty_double_redemption_protection(self):
+        from backend.schemas import SaleCreate, SaleItemSchema, RedemptionCreate
+        from backend.routers.sales import create_sale
+        from backend.routers.redemptions import redeem_reward
+        from fastapi import HTTPException
+
+        phone = '9888777666'
+        create_sale(SaleCreate(
+            customerPhone=phone,
+            customerName='Loyal Guest',
+            items=[SaleItemSchema(productId='prod-150', productName='Classic 150g', price=100.0, quantity=5)]
+        ), db=self.db)
+
+        # First redemption succeeds
+        res1 = redeem_reward(RedemptionCreate(customerPhone=phone, adminUser='admin'), db=self.db)
+        self.assertTrue(res1['success'])
+
+        # Immediate second redemption attempt must be rejected (0 available rewards)
+        with self.assertRaises(HTTPException) as ctx:
+            redeem_reward(RedemptionCreate(customerPhone=phone, adminUser='admin'), db=self.db)
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertIn('not eligible', ctx.exception.detail.lower())
+
+    def test_database_pragmas_and_integrity_check(self):
+        from sqlalchemy import text
+        with self.engine.connect() as conn:
+            fk_check = conn.execute(text("PRAGMA foreign_keys")).scalar()
+            self.assertEqual(fk_check, 1)
+
+            integrity = conn.execute(text("PRAGMA integrity_check")).fetchall()
+            self.assertEqual(integrity, [('ok',)])
+
+
+class TestSecurityAuditSuite(unittest.TestCase):
+
+    def test_require_admin_guard_blocks_unauthenticated(self):
+        from backend.security import require_admin
+        from fastapi import HTTPException
+        # Missing credentials -> 401
+        with self.assertRaises(HTTPException) as ctx:
+            require_admin(None)
+        self.assertEqual(ctx.exception.status_code, 401)
+
+    def test_require_admin_guard_blocks_invalid_token(self):
+        from backend.security import require_admin
+        from fastapi.security import HTTPAuthorizationCredentials
+        from fastapi import HTTPException
+        # Fake / tampered token -> 401
+        fake_creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="bad.signature")
+        with self.assertRaises(HTTPException) as ctx:
+            require_admin(fake_creds)
+        self.assertEqual(ctx.exception.status_code, 401)
+
+    def test_require_admin_guard_accepts_valid_token(self):
+        from backend.security import require_admin, create_access_token
+        from fastapi.security import HTTPAuthorizationCredentials
+        token = create_access_token({"sub": "admin", "role": "admin"})
+        creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+        payload = require_admin(creds)
+        self.assertEqual(payload["sub"], "admin")
+        self.assertEqual(payload["role"], "admin")
+
+    def test_login_brute_force_rate_limiting(self):
+        from backend.security import check_login_rate_limit, record_login_failure, reset_login_failures
+        from fastapi import HTTPException
+        test_ip = "192.168.1.100"
+        reset_login_failures(test_ip)
+
+        # 4 failed attempts should still be allowed
+        for _ in range(4):
+            record_login_failure(test_ip)
+            check_login_rate_limit(test_ip)
+
+        # 5th failed attempt triggers 429 Too Many Requests
+        record_login_failure(test_ip)
+        with self.assertRaises(HTTPException) as ctx:
+            check_login_rate_limit(test_ip)
+        self.assertEqual(ctx.exception.status_code, 429)
+        self.assertIn("Retry-After", ctx.exception.headers)
+
+        # Resetting failures clears lockout
+        reset_login_failures(test_ip)
+        check_login_rate_limit(test_ip)
+
+    def test_health_check_information_leakage_prevented(self):
+        from backend.main import health_check
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        engine = create_engine("sqlite:///:memory:")
+        Session = sessionmaker(bind=engine)
+        db = Session()
+        res = health_check(db=db)
+        db.close()
+        engine.dispose()
+        self.assertEqual(res["status"], "ok")
+        self.assertNotIn("db_host", res)
+        self.assertNotIn("db_user", res)
+
+
 if __name__ == '__main__':
     unittest.main()
-
-
-

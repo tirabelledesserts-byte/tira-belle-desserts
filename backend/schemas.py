@@ -57,7 +57,7 @@ class ProductBase(CamelModel):
     category_id: Optional[str] = Field(default=None, alias="categoryId")
     name: str
     short_name: Optional[str] = Field(default=None, alias="shortName")
-    price: float
+    price: float = Field(ge=0.0, description="Product price must be non-negative")
     weight: Optional[str] = ""
     description: Optional[str] = ""
     image: Optional[str] = "assets/tira-belle-logo.png"
@@ -72,7 +72,7 @@ class ProductUpdate(BaseModel):
     category_id: Optional[str] = Field(default=None, alias="categoryId")
     name: Optional[str] = None
     short_name: Optional[str] = Field(default=None, alias="shortName")
-    price: Optional[float] = None
+    price: Optional[float] = Field(default=None, ge=0.0, description="Product price must be non-negative")
     weight: Optional[str] = None
     description: Optional[str] = None
     image: Optional[str] = None
@@ -121,9 +121,9 @@ class SaleItemSchema(CamelModel):
     product_id: str = Field(alias="productId")
     product_name: str = Field(alias="productName")
     weight: Optional[str] = ""
-    price: float = 0.0
-    quantity: int = 1
-    total: float = 0.0
+    price: float = Field(default=0.0, ge=0.0)
+    quantity: int = Field(default=1, ge=1)
+    total: float = Field(default=0.0, ge=0.0)
     is_reward: bool = Field(default=False, alias="isReward")
 
 class SaleCreate(CamelModel):
@@ -173,7 +173,7 @@ class RedemptionResponse(CamelModel):
 class ReviewCreate(CamelModel):
     name: str
     phone: Optional[str] = ""
-    rating: int = 5
+    rating: int = Field(default=5, ge=1, le=5, description="Rating must be between 1 and 5")
     favorite_item: Optional[str] = Field(default="Classic – 150 g", alias="favoriteItem")
     comment: str
 

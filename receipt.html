@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Digital Receipt | TIRA Belle Desserts</title>
     <meta name="description" content="View and download your official digital receipt for your handcrafted tiramisu from TIRA Belle Desserts.">
     <link rel="icon" type="image/png" href="assets/tira-belle-logo.png">
@@ -442,6 +442,16 @@
     </div>
 
     <script>
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         (async function() {
             const params = new URLSearchParams(window.location.search);
             const saleId = params.get('id') || params.get('saleId') || params.get('receipt');
@@ -472,7 +482,7 @@
             // 2. Fallback to localStorage (TiraDB) if running locally or cached
             if (!saleData) {
                 try {
-                    const localRaw = localStorage.getItem('TiraDB');
+                    const localRaw = localStorage.getItem('TIRA_BELLE_DATA_V1') || localStorage.getItem('TiraDB');
                     if (localRaw) {
                         const parsed = JSON.parse(localRaw);
                         const found = (parsed.sales || []).find(s => s.id === saleId);
@@ -559,10 +569,10 @@
 
                 tr.innerHTML = `
                     <td>
-                        <div class="item-name">${pName}${isRew ? '<span class="reward-tag">REWARD</span>' : ''}</div>
-                        <div class="item-sub">${pSize} • Qty: ${qty}</div>
+                        <div class="item-name">${escapeHtml(pName)}${isRew ? '<span class="reward-tag">REWARD</span>' : ''}</div>
+                        <div class="item-sub">${escapeHtml(pSize)} • Qty: ${qty}</div>
                     </td>
-                    <td>${lineTotal}</td>
+                    <td>${escapeHtml(lineTotal)}</td>
                 `;
                 itemsBody.appendChild(tr);
             });

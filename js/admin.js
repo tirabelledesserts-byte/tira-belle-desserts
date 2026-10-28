@@ -1467,6 +1467,16 @@ window.submitPosSale = async function() {
             // Open receipt modal
             viewReceipt(result.sale.id);
 
+            // Automatically open customer's WhatsApp chat with digital receipt
+            const targetPhone = formatWhatsAppPhone(phone);
+            if (targetPhone) {
+                try {
+                    window.shareSaleOnWhatsApp(result.sale.id);
+                } catch (waErr) {
+                    console.warn('[WhatsApp] Auto-redirect notice:', waErr);
+                }
+            }
+
             // Reset cart and inputs
             resetNewSale(true);
 
@@ -1541,9 +1551,7 @@ function generateWhatsAppReceiptMessage(orderData, storeConfig = {}) {
         : {};
     const config = Object.assign({}, settings, storeConfig);
 
-    const bizName = (config.businessName || 'TIRA Belle').toUpperCase();
-    const tagline = config.tagline || 'LITTLE LAYERS • BIG LOVE';
-    const slogan = config.slogan || 'Handcrafted Italian Tiramisu';
+    const bizName = config.businessName || 'Tira Belle Desserts';
     const address = config.address || 'Physical Dessert Studio & Artisan Counter, Pune';
     const phone = config.phone || '9373484198';
     const phoneSec = config.phoneSecondary ? ` / ${config.phoneSecondary}` : '';
@@ -1570,11 +1578,9 @@ function generateWhatsAppReceiptMessage(orderData, storeConfig = {}) {
     }
 
     const lines = [];
-    lines.push(`🍰 *${bizName}*`);
-    lines.push(`_${tagline}_`);
-    lines.push(`_${slogan}_`);
+    lines.push(`🍰 *${bizName.toUpperCase()}*`);
     lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`🧾 *DIGITAL TAX INVOICE / RECEIPT*`);
+    lines.push(`🧾 *ORDER RECEIPT*`);
     lines.push(`*Receipt No:* \`${receiptId}\``);
     lines.push(`*Date:* ${dateFormatted}`);
     lines.push(`*Customer:* ${custName}`);
@@ -1583,7 +1589,7 @@ function generateWhatsAppReceiptMessage(orderData, storeConfig = {}) {
     }
     lines.push(`*Payment Mode:* ${payMode}`);
     lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`*ORDER ITEMS:*`);
+    lines.push(`*ITEMS PURCHASED:*`);
 
     const items = Array.isArray(orderData.items) ? orderData.items : [];
     if (items.length === 0) {
@@ -1601,38 +1607,11 @@ function generateWhatsAppReceiptMessage(orderData, storeConfig = {}) {
     }
 
     lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`*TOTAL AMOUNT PAID:* *${curr}${totalAmt.toLocaleString('en-IN')}*`);
+    lines.push(`*TOTAL AMOUNT:* *${curr}${totalAmt.toLocaleString('en-IN')}*`);
     lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-
-    // Loyalty Rewards summary
-    const threshold = Number(orderData.loyaltyThreshold || config.stampsThreshold || 5);
-    const earned = Number(orderData.paidCupsEarned || 0);
-    const hasBalance = typeof orderData.loyaltyBalance === 'number';
-
-    lines.push(`🎁 *LOYALTY REWARDS*`);
-    if (orderData.rewardClaimed) {
-        lines.push(`🎉 *Free Reward Cup Claimed/Redeemed in this Order!*`);
-    }
-    if (earned > 0) {
-        lines.push(`☕ Cups/Stamps Earned Today: *+${earned}*`);
-    }
-
-    if (hasBalance) {
-        const bal = orderData.loyaltyBalance;
-        const cycleProgress = bal % threshold === 0 && bal > 0 ? threshold : (bal % threshold);
-        const remaining = Math.max(0, threshold - cycleProgress);
-        lines.push(`⭐ Current Stamp Card: *${cycleProgress} / ${threshold}* Stamps`);
-        if (remaining === 0) {
-            lines.push(`🥳 *You have unlocked 1 Free 150g Cup! Redeem on your next visit!*`);
-        } else {
-            lines.push(`👉 _Only ${remaining} more cup${remaining !== 1 ? 's' : ''} to unlock your next FREE reward!_`);
-        }
-    } else {
-        lines.push(`⭐ Ask our counter staff about our Cup Loyalty Rewards!`);
-    }
-
+    lines.push(`Thank you for choosing ${bizName}! 💖`);
+    lines.push(`We hope you enjoyed your treats. See you again soon! 🍰`);
     lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`✨ *Thank you for tasting the love in every spoon!*`);
     lines.push(`📍 ${address}`);
     lines.push(`📞 Contact: ${phone}${phoneSec}`);
 

@@ -45,21 +45,30 @@ def init_tables_if_needed():
     if not _tables_initialized:
         try:
             import backend.models  # noqa: F401
-            Base.metadata.create_all(bind=engine)
-            # Automatic column migration for existing database tables
             from sqlalchemy import text
+            tables_exist = False
             try:
                 with engine.connect() as conn:
-                    conn.execute(text("ALTER TABLE settings ADD COLUMN instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj'"))
-                    conn.commit()
+                    conn.execute(text("SELECT 1 FROM settings LIMIT 1"))
+                    tables_exist = True
             except Exception:
-                pass
-            from backend.seed import seed_initial_data
-            db = SessionLocal()
-            try:
-                seed_initial_data(db)
-            finally:
-                db.close()
+                tables_exist = False
+
+            if not tables_exist:
+                Base.metadata.create_all(bind=engine)
+                # Automatic column migration for existing database tables
+                try:
+                    with engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE settings ADD COLUMN instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj'"))
+                        conn.commit()
+                except Exception:
+                    pass
+                from backend.seed import seed_initial_data
+                db = SessionLocal()
+                try:
+                    seed_initial_data(db)
+                finally:
+                    db.close()
             _tables_initialized = True
         except Exception as e:
             print(f"[Warning] Failed to auto-init tables: {e}")

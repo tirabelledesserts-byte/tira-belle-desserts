@@ -292,10 +292,24 @@ class TiraBelleDB {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
+        const method = (options.method || 'GET').toUpperCase();
+        // Give mutations (POST, PUT, PATCH, DELETE) a generous timeout (25s) to handle serverless cold starts & remote DB
+        const defaultTimeout = (method === 'GET') ? 12000 : 25000;
+        const timeoutMs = options.timeout || defaultTimeout;
+
         const executeFetch = async (base) => {
             const url = base + endpoint;
             const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-            const timeoutId = controller ? setTimeout(() => controller.abort(), options.timeout || 4000) : null;
+            let timedOut = false;
+            const timeoutId = controller ? setTimeout(() => {
+                timedOut = true;
+                try {
+                    controller.abort(new DOMException(`Request timed out after ${timeoutMs}ms`, 'TimeoutError'));
+                } catch (_) {
+                    controller.abort();
+                }
+            }, timeoutMs) : null;
+
             try {
                 const resp = await fetch(url, {
                     ...options,
@@ -311,7 +325,11 @@ class TiraBelleDB {
                 return { ok: true, status: resp.status, data };
             } catch (e) {
                 if (timeoutId) clearTimeout(timeoutId);
-                return { ok: false, error: e.message || 'Network error' };
+                let errMsg = e.message || 'Network error';
+                if (timedOut || e.name === 'TimeoutError' || (e.message && e.message.toLowerCase().includes('abort'))) {
+                    errMsg = `Request timed out after ${Math.round(timeoutMs / 1000)}s`;
+                }
+                return { ok: false, error: errMsg, isTimeout: timedOut };
             }
         };
 
@@ -487,6 +505,63 @@ class TiraBelleDB {
         }
     }
 
+    async syncPendingSales() {
+        if (!this.data || !Array.isArray(this.data.sales)) return;
+        const unsyncedSales = this.data.sales.filter(s => s.synced === false);
+        if (!unsyncedSales.length) return;
+
+        for (const sale of unsyncedSales) {
+            try {
+                const apiRes = await this.apiRequest('/sales', {
+                    method: 'POST',
+                    timeout: 25000,
+                    body: JSON.stringify({
+                        customerPhone: sale.customerPhone,
+                        customerName: sale.customerName,
+                        items: sale.items,
+                        paymentMode: sale.paymentMode || 'Cash',
+                        notes: sale.notes || '',
+                        redeemFreeReward: !!sale.rewardRedeemedInSale
+                    })
+                });
+                if (apiRes && apiRes.ok && apiRes.data && apiRes.data.saleId) {
+                    sale.id = apiRes.data.saleId;
+                    sale.synced = true;
+                    this.save();
+                }
+            } catch (e) {
+                console.warn('[TiraDB] Retry sync for sale failed:', sale.id, e);
+            }
+        }
+    }
+
+    async syncPendingRedemptions() {
+        if (!this.data || !Array.isArray(this.data.redemptions)) return;
+        const unsynced = this.data.redemptions.filter(r => r.synced === false);
+        if (!unsynced.length) return;
+
+        for (const rdm of unsynced) {
+            try {
+                const apiRes = await this.apiRequest('/redemptions', {
+                    method: 'POST',
+                    timeout: 25000,
+                    body: JSON.stringify({
+                        customerPhone: rdm.customerPhone,
+                        adminUser: rdm.adminUser || 'admin',
+                        notes: rdm.notes || ''
+                    })
+                });
+                if (apiRes && apiRes.ok && apiRes.data && apiRes.data.redemptionId) {
+                    rdm.id = apiRes.data.redemptionId;
+                    rdm.synced = true;
+                    this.save();
+                }
+            } catch (e) {
+                console.warn('[TiraDB] Retry sync for redemption failed:', rdm.id, e);
+            }
+        }
+    }
+
     async syncWithBackend() {
         if (this.isSyncing) return false;
         this.isSyncing = true;
@@ -495,6 +570,10 @@ class TiraBelleDB {
             if (!isOnline) {
                 return false;
             }
+
+            // Sync any local pending offline records first
+            await this.syncPendingSales().catch(() => {});
+            await this.syncPendingRedemptions().catch(() => {});
 
             const [settRes, prodRes, catRes, revRes, custRes, salesRes, rdmRes] = await Promise.all([
                 this.apiRequest('/settings'),
@@ -538,11 +617,19 @@ class TiraBelleDB {
                 changed = true;
             }
             if (salesRes.ok && Array.isArray(salesRes.data)) {
-                this.data.sales = salesRes.data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const backendSales = salesRes.data;
+                const backendIds = new Set(backendSales.map(s => s.id));
+                const localUnsynced = (this.data.sales || []).filter(s => s.synced === false && !backendIds.has(s.id));
+                this.data.sales = [...localUnsynced, ...backendSales].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                this.save();
                 changed = true;
             }
             if (rdmRes.ok && Array.isArray(rdmRes.data)) {
-                this.data.redemptions = rdmRes.data.sort((a, b) => new Date(b.redeemedAt) - new Date(a.redeemedAt));
+                const backendRdms = rdmRes.data;
+                const backendRdmIds = new Set(backendRdms.map(r => r.id));
+                const localUnsyncedRdms = (this.data.redemptions || []).filter(r => r.synced === false && !backendRdmIds.has(r.id));
+                this.data.redemptions = [...localUnsyncedRdms, ...backendRdms].sort((a, b) => new Date(b.redeemedAt) - new Date(a.redeemedAt));
+                this.save();
                 changed = true;
             }
 
@@ -569,17 +656,45 @@ class TiraBelleDB {
 
     // ----------------- DATA PERSISTENCE & MIGRATION -----------------
     /**
-     * Data is held in-memory and persisted exclusively to the Supabase backend database via API.
-     * localStorage is intentionally NOT used for data persistence.
+     * Local storage persistence ensures zero data loss during network disruptions,
+     * coupled with resilient cloud synchronization to Supabase.
      */
     load() {
-        return this.getDefaultState();
+        const defaultState = this.getDefaultState();
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === 'object') {
+                        return {
+                            ...defaultState,
+                            settings: { ...defaultState.settings, ...(parsed.settings || {}) },
+                            categories: Array.isArray(parsed.categories) && parsed.categories.length ? parsed.categories : defaultState.categories,
+                            products: Array.isArray(parsed.products) && parsed.products.length ? parsed.products : defaultState.products,
+                            customers: Array.isArray(parsed.customers) ? parsed.customers : [],
+                            sales: Array.isArray(parsed.sales) ? parsed.sales : [],
+                            redemptions: Array.isArray(parsed.redemptions) ? parsed.redemptions : [],
+                            reviews: Array.isArray(parsed.reviews) ? parsed.reviews : []
+                        };
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[TiraDB] Local storage load warning:', e);
+        }
+        return defaultState;
     }
 
     save(data = this.data) {
         this.data = data;
-        // Data persistence is handled via Supabase API calls.
-        // localStorage is deliberately not used for business data.
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+            }
+        } catch (e) {
+            console.warn('[TiraDB] Local storage save warning:', e);
+        }
         return this.data;
     }
 
@@ -1381,21 +1496,24 @@ class TiraBelleDB {
             return { success: false, message: 'Customer is not eligible for a free reward yet.' };
         }
 
+        const localRedemptionId = 'RDM-' + Date.now().toString().slice(-6) + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
         const redemption = {
-            id: 'RDM-' + Date.now().toString().slice(-6),
+            id: localRedemptionId,
             customerPhone: loyalty.customer.phone,
             customerName: loyalty.customer.name,
             rewardItem: this.data.settings.rewardItemName || '1 Free 150g Tiramisu Cup',
             redeemedAt: new Date().toISOString(),
             date: getTodayDateString(0),
             adminUser: adminUser,
-            notes: notes || 'Redeemed over counter'
+            notes: notes || 'Redeemed over counter',
+            synced: false
         };
 
-        let apiError = null;
+        let isSynced = false;
         try {
             const apiRes = await this.apiRequest('/redemptions', {
                 method: 'POST',
+                timeout: 25000,
                 body: JSON.stringify({
                     customerPhone: loyalty.customer.phone,
                     adminUser: adminUser || 'admin',
@@ -1404,24 +1522,23 @@ class TiraBelleDB {
             });
             if (apiRes && apiRes.ok && apiRes.data && apiRes.data.redemptionId) {
                 redemption.id = apiRes.data.redemptionId;
+                redemption.synced = true;
+                isSynced = true;
                 this.isBackendOnline = true;
             } else {
-                apiError = (apiRes && apiRes.data && apiRes.data.detail) || (apiRes && apiRes.error) || 'Failed to save redemption to database.';
+                console.warn('[TiraDB] Backend redemption sync deferred:', (apiRes && apiRes.data && apiRes.data.detail) || (apiRes && apiRes.error));
             }
         } catch (e) {
-            apiError = e.message || 'Network error saving redemption to database.';
+            console.warn('[TiraDB] Backend redemption network error, queued for retry:', e.message);
         }
 
-        if (apiError) {
-            console.error('[TIRA Belle] Redemption database error:', apiError);
-            return {
-                success: false,
-                message: `Database Error: ${apiError}`
-            };
-        }
-
+        // ALWAYS save redemption locally to avoid cashier blockage or data loss
         this.data.redemptions.push(redemption);
         this.save();
+
+        if (!isSynced) {
+            setTimeout(() => this.syncPendingRedemptions(), 3000);
+        }
 
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('tira-sales-changed', { detail: this.data.sales }));
@@ -1432,6 +1549,7 @@ class TiraBelleDB {
             success: true,
             redemption,
             updatedLoyalty: this.getCustomerLoyalty(phone),
+            synced: isSynced,
             message: `Successfully redeemed 1 free reward for ${loyalty.customer.name}!`
         };
     }
@@ -1507,8 +1625,9 @@ class TiraBelleDB {
             });
         }
 
+        const localTxnId = 'TXN-' + Date.now().toString().slice(-6) + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
         const saleRecord = {
-            id: 'TXN-' + Date.now().toString().slice(-6),
+            id: localTxnId,
             customerPhone: cleanPhone,
             customerName: customer.name,
             items: processedItems,
@@ -1520,14 +1639,16 @@ class TiraBelleDB {
             timestamp: new Date().toISOString(),
             date: getTodayDateString(0),
             notes: notes || '',
-            rewardRedeemedInSale: !!redeemedItem
+            rewardRedeemedInSale: !!redeemedItem,
+            synced: false
         };
 
         // Persist directly to Supabase via backend REST API
-        let apiError = null;
+        let isSynced = false;
         try {
             const apiRes = await this.apiRequest('/sales', {
                 method: 'POST',
+                timeout: 25000,
                 body: JSON.stringify({
                     customerPhone: cleanPhone,
                     customerName: customer.name,
@@ -1539,24 +1660,24 @@ class TiraBelleDB {
             });
             if (apiRes && apiRes.ok && apiRes.data && apiRes.data.saleId) {
                 saleRecord.id = apiRes.data.saleId;
+                saleRecord.synced = true;
+                isSynced = true;
                 this.isBackendOnline = true;
             } else {
-                apiError = (apiRes && apiRes.data && apiRes.data.detail) || (apiRes && apiRes.error) || 'Failed to save transaction to database.';
+                console.warn('[TIRA Belle] Sale cloud sync deferred:', (apiRes && apiRes.data && apiRes.data.detail) || (apiRes && apiRes.error));
             }
         } catch (e) {
-            apiError = e.message || 'Network error saving transaction to database.';
+            console.warn('[TIRA Belle] Sale cloud sync delayed (offline or slow connection):', e.message);
         }
 
-        if (apiError) {
-            console.error('[TIRA Belle] Sale database error:', apiError);
-            return {
-                success: false,
-                message: `Database Error: ${apiError}`
-            };
-        }
-
+        // ALWAYS save transaction locally to guarantee zero data loss & unblock cashier workflow
         this.data.sales.push(saleRecord);
         this.save();
+
+        // If cloud push was slow or offline, schedule background synchronization
+        if (!isSynced) {
+            setTimeout(() => this.syncPendingSales(), 3000);
+        }
 
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('tira-sales-changed', { detail: this.data.sales }));
@@ -1569,7 +1690,8 @@ class TiraBelleDB {
             success: true,
             sale: saleRecord,
             loyalty: updatedLoyalty,
-            message: 'Sale recorded and persisted successfully!'
+            synced: isSynced,
+            message: isSynced ? 'Sale recorded and persisted successfully!' : 'Sale recorded locally! Cloud synchronization in progress.'
         };
     }
 

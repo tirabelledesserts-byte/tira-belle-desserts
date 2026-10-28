@@ -1543,87 +1543,186 @@ window.formatWhatsAppPhone = formatWhatsAppPhone;
  * @param {Object} storeConfig 
  * @returns {string} Unicode formatted receipt text
  */
+/**
+ * Short, sweet thank-you message to accompany the receipt in WhatsApp.
+ * @param {Object} orderData 
+ * @param {Object} storeConfig 
+ * @returns {string} Friendly message
+ */
 function generateWhatsAppReceiptMessage(orderData, storeConfig = {}) {
-    if (!orderData) return '';
-
-    const settings = (window.TiraDB && typeof window.TiraDB.getSettings === 'function') 
-        ? window.TiraDB.getSettings() 
-        : {};
-    const config = Object.assign({}, settings, storeConfig);
-
-    const bizName = config.businessName || 'Tira Belle Desserts';
-    const address = config.address || 'Physical Dessert Studio & Artisan Counter, Pune';
-    const phone = config.phone || '9373484198';
-    const phoneSec = config.phoneSecondary ? ` / ${config.phoneSecondary}` : '';
-    const curr = config.currency || '₹';
-
-    const receiptId = orderData.receiptId || 'TXN-000000';
-    const custName = (orderData.customerName || 'Valued Guest').trim();
-    const custPhone = orderData.customerPhone || '';
-    const payMode = orderData.paymentMode || 'Cash';
-    const totalAmt = Number(orderData.totalAmount || 0);
-
-    let dateFormatted = '';
-    try {
-        const d = orderData.timestamp ? new Date(orderData.timestamp) : new Date();
-        dateFormatted = d.toLocaleString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } catch (_) {
-        dateFormatted = new Date().toLocaleString('en-IN');
-    }
-
-    const lines = [];
-    lines.push(`🍰 *${bizName.toUpperCase()}*`);
-    lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`🧾 *ORDER RECEIPT*`);
-    lines.push(`*Receipt No:* \`${receiptId}\``);
-    lines.push(`*Date:* ${dateFormatted}`);
-    lines.push(`*Customer:* ${custName}`);
-    if (custPhone) {
-        lines.push(`*Phone:* +${custPhone}`);
-    }
-    lines.push(`*Payment Mode:* ${payMode}`);
-    lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`*ITEMS PURCHASED:*`);
-
-    const items = Array.isArray(orderData.items) ? orderData.items : [];
-    if (items.length === 0) {
-        lines.push(`• 1x Handcrafted Tiramisu — ${curr}${totalAmt.toLocaleString('en-IN')}`);
-    } else {
-        items.forEach(it => {
-            const name = it.name || it.productName || 'Tiramisu';
-            const sizeStr = (it.size || it.weight) ? ` (${it.size || it.weight})` : '';
-            const qty = Number(it.quantity || 1);
-            const price = Number(it.price || 0);
-            const isRew = !!(it.isReward || it.is_reward);
-            const itemTotal = isRew ? 'FREE (Reward 🎉)' : `${curr}${(price * qty).toLocaleString('en-IN')}`;
-            lines.push(`• *${qty}x* ${name}${sizeStr} — ${itemTotal}`);
-        });
-    }
-
-    lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`*TOTAL AMOUNT:* *${curr}${totalAmt.toLocaleString('en-IN')}*`);
-    lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`Thank you for choosing ${bizName}! 💖`);
-    lines.push(`We hope you enjoyed your treats. See you again soon! 🍰`);
-    lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
-    lines.push(`📍 ${address}`);
-    lines.push(`📞 Contact: ${phone}${phoneSec}`);
-
-    return lines.join('\n');
+    return `Thank you for choosing Tira Belle Desserts! 💖\nWe hope you enjoyed your treats. See you again soon! 🍰`;
 }
 window.generateWhatsAppReceiptMessage = generateWhatsAppReceiptMessage;
 
 /**
- * Prepares order payload and redirects directly to WhatsApp chat with prefilled unicode digital receipt.
+ * Builds the data model for the graphical receipt canvas matching the reference design.
+ * @param {Object} sale 
+ * @returns {Promise<Object>}
+ */
+async function buildReceiptCanvasData(sale) {
+    if (!sale) return null;
+    const settings = (window.TiraDB && typeof window.TiraDB.getSettings === 'function') 
+        ? window.TiraDB.getSettings() 
+        : {};
+    const curr = settings.currency || '₹';
+    const rawPhone = sale.customerPhone || sale.customer_phone || '';
+    const formattedPhone = formatWhatsAppPhone(rawPhone) || rawPhone;
+    const custName = sale.customerName || sale.customer_name || 'Valued Guest';
+    const payMode = sale.paymentMode || sale.payment_mode || 'Cash';
+    const totalAmt = Number(sale.totalAmount ?? sale.total_amount ?? 0);
+    const loyalty = (window.TiraDB && formattedPhone) ? window.TiraDB.getCustomerLoyalty(formattedPhone) : null;
+
+    let dateStr = '';
+    try {
+        const d = sale.timestamp ? new Date(sale.timestamp) : new Date();
+        dateStr = d.toLocaleString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    } catch (_) {
+        dateStr = new Date().toLocaleString('en-IN');
+    }
+
+    const threshold = settings.stampsThreshold || 5;
+    const rewardName = settings.rewardItemName || '1 Free 150g Cup';
+    let loyaltyStatus = `Loyalty Progress: 0 / ${threshold} Cups`;
+    let loyaltyNote = 'Ask counter staff about our loyalty rewards!';
+
+    if (loyalty) {
+        if (loyalty.isEligible) {
+            loyaltyStatus = `Loyalty Progress: ${loyalty.threshold} / ${loyalty.threshold} Cups (Eligible!)`;
+            loyaltyNote = `Customer is eligible for ${rewardName}!`;
+        } else {
+            loyaltyStatus = `Loyalty Progress: ${loyalty.currentCycleProgress} / ${loyalty.threshold} Cups`;
+            loyaltyNote = `${loyalty.cupsRemaining} more cup(s) to unlock your free reward!`;
+        }
+    }
+
+    const items = Array.isArray(sale.items) ? sale.items : [];
+    const itemsFormatted = items.map(it => {
+        const pName = it.name || it.productName || it.product_name || 'Tiramisu';
+        const pWeight = (it.size || it.weight) ? ` – ${it.size || it.weight}` : '';
+        const qty = Number(it.quantity || 1);
+        const price = Number(it.price || 0);
+        const isRew = !!(it.isReward || it.is_reward);
+        const lineTotal = isRew ? 'FREE' : `${curr}${(price * qty).toLocaleString('en-IN')}`;
+        return {
+            name: `${pName}${pWeight} x ${qty}`,
+            price: lineTotal
+        };
+    });
+
+    const phoneSec = settings.phoneSecondary ? ` / ${settings.phoneSecondary}` : '';
+    const footerContact = `Owners: ${settings.owner || 'Yash Chauhan & Tejas Chauhan'} • ${settings.phone || '9373484198'}${phoneSec}`;
+
+    return {
+        logoSrc: settings.logo || 'assets/tira-belle-logo.png',
+        bizName: settings.businessName || 'TIRA Belle',
+        tagline: settings.tagline || 'LITTLE LAYERS • BIG LOVE',
+        slogan: settings.slogan || 'Layers of Love in Every Spoon',
+        address: settings.address || 'Physical Dessert Studio & Artisan Counter, Pune',
+        date: dateStr,
+        recId: sale.id || 'TXN-000000',
+        custName: custName,
+        custPhone: rawPhone || 'Not Provided',
+        payMode: payMode,
+        items: itemsFormatted.length ? itemsFormatted : [{ name: 'Handcrafted Tiramisu x 1', price: `${curr}${totalAmt}` }],
+        grandTotal: `${curr}${totalAmt.toLocaleString('en-IN')}`,
+        loyaltyStatus: loyaltyStatus,
+        loyaltyNote: loyaltyNote,
+        footerSlogan: 'Thank you for tasting the love in every spoon!',
+        footerContact: footerContact
+    };
+}
+window.buildReceiptCanvasData = buildReceiptCanvasData;
+
+/**
+ * Generates an actual PNG Blob of the styled receipt card from canvas.
+ * @param {string} saleId
+ * @returns {Promise<Blob|null>}
+ */
+async function generateReceiptImageBlob(saleId) {
+    const sale = window.TiraDB ? window.TiraDB.getSales().find(s => s.id === saleId) : null;
+    if (!sale) return null;
+    const canvasData = await buildReceiptCanvasData(sale);
+    const canvas = await createReceiptImageCanvas(canvasData);
+    return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/png'));
+}
+window.generateReceiptImageBlob = generateReceiptImageBlob;
+
+/**
+ * Downloads the current receipt as a high-resolution PNG image file.
+ * @param {string} [saleId]
+ */
+window.downloadCurrentReceiptImage = async function(saleId) {
+    const id = saleId || window.currentReceiptSaleId || document.getElementById('recId')?.textContent?.trim();
+    if (!id) {
+        showToast('No receipt selected to download.', 'warning');
+        return;
+    }
+    showToast('Generating receipt image...', 'info');
+    const blob = await generateReceiptImageBlob(id);
+    if (!blob) {
+        showToast('Failed to generate receipt image.', 'error');
+        return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `TiraBelle-Receipt-${id}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 6000);
+    showToast('Receipt image downloaded!', 'success');
+};
+
+/**
+ * Copies the current receipt image directly to clipboard for instant Ctrl+V pasting.
+ * @param {string} [saleId]
+ */
+window.copyCurrentReceiptImage = async function(saleId) {
+    const id = saleId || window.currentReceiptSaleId || document.getElementById('recId')?.textContent?.trim();
+    if (!id) {
+        showToast('No receipt selected.', 'warning');
+        return false;
+    }
+    showToast('Copying receipt image to clipboard...', 'info');
+    const blob = await generateReceiptImageBlob(id);
+    if (!blob) {
+        showToast('Failed to generate receipt image.', 'error');
+        return false;
+    }
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        try {
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+            ]);
+            showToast('Receipt image copied! Press Ctrl+V in WhatsApp to send.', 'success');
+            return true;
+        } catch (e) {
+            console.warn('Clipboard write error:', e);
+            showToast('Could not write image to clipboard directly.', 'warning');
+            return false;
+        }
+    } else {
+        showToast('Clipboard image copying is not supported on this browser.', 'warning');
+        return false;
+    }
+};
+
+/**
+ * Shares the graphical receipt via WhatsApp:
+ * 1. Generates the high-resolution receipt card matching reference design.
+ * 2. Attempts Web Share API with image attachment if supported.
+ * 3. Falls back to copying image to clipboard, downloading PNG, and opening customer's WhatsApp chat with thank-you message.
  * @param {string} saleId 
  */
-window.shareSaleOnWhatsApp = function(saleId) {
+window.shareSaleOnWhatsApp = async function(saleId) {
     if (!saleId && window.currentReceiptSaleId) {
         saleId = window.currentReceiptSaleId;
     }
@@ -1653,38 +1752,71 @@ window.shareSaleOnWhatsApp = function(saleId) {
         return;
     }
 
-    const settings = window.TiraDB ? window.TiraDB.getSettings() : {};
-    const loyalty = window.TiraDB ? window.TiraDB.getCustomerLoyalty(formattedPhone) : null;
-
-    const payload = {
-        receiptId: sale.id,
-        timestamp: sale.timestamp,
-        customerName: sale.customerName || sale.customer_name || 'Valued Guest',
-        customerPhone: formattedPhone,
-        items: (sale.items || []).map(it => ({
-            name: it.productName || it.product_name || 'Tiramisu',
-            size: it.weight || it.size || '',
-            quantity: Number(it.quantity || 1),
-            price: Number(it.price || 0),
-            isReward: !!(it.isReward || it.is_reward)
-        })),
-        totalAmount: Number(sale.totalAmount ?? sale.total_amount ?? 0),
-        paymentMode: sale.paymentMode || sale.payment_mode || 'Cash',
-        paidCupsEarned: Number(sale.paidCupsCount ?? sale.paid_cups_count ?? 0),
-        loyaltyBalance: loyalty ? loyalty.totalEligibleCups : undefined,
-        loyaltyThreshold: settings.stampsThreshold || 5,
-        rewardClaimed: !!(sale.rewardRedeemedInSale || sale.reward_redeemed_in_sale)
-    };
-
-    const message = generateWhatsAppReceiptMessage(payload, settings);
-    const encodedMessage = encodeURIComponent(message);
+    const thankYouText = `Thank you for choosing Tira Belle Desserts! 💖\nWe hope you enjoyed your treats. See you again soon! 🍰`;
+    const fileName = `TiraBelle-Receipt-${sale.id}.png`;
     const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+
+    // Generate high-resolution receipt image Blob
+    let blob = null;
+    try {
+        blob = await generateReceiptImageBlob(sale.id);
+    } catch (err) {
+        console.warn('[Receipt Canvas Error]:', err);
+    }
+
+    // 1. Web Share API (Direct file attachment on mobile / supported devices)
+    if (blob && navigator.canShare) {
+        try {
+            const receiptFile = new File([blob], fileName, { type: 'image/png' });
+            if (navigator.canShare({ files: [receiptFile] })) {
+                await navigator.share({
+                    title: `Receipt ${sale.id} - Tira Belle Desserts`,
+                    text: thankYouText,
+                    files: [receiptFile]
+                });
+                showToast('Receipt shared successfully!', 'success');
+                return;
+            }
+        } catch (shareErr) {
+            if (shareErr.name === 'AbortError') {
+                return; // User cancelled share dialog
+            }
+            console.warn('[Web Share API failed, falling back]:', shareErr);
+        }
+    }
+
+    // 2. WhatsApp Web Desktop Fallback Workflow:
+    // A. Copy high-res image directly to system clipboard for instant Ctrl+V pasting
+    let copied = false;
+    if (blob && navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        try {
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+            ]);
+            copied = true;
+        } catch (clipErr) {
+            console.warn('[Clipboard write warning]:', clipErr);
+        }
+    }
+
+    // B. Open customer's WhatsApp chat with only the short, sweet thank-you message
+    const encodedText = encodeURIComponent(thankYouText);
     const waUrl = isMobile
-        ? `https://wa.me/${formattedPhone}?text=${encodedMessage}`
-        : `https://web.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
+        ? `https://wa.me/${formattedPhone}?text=${encodedText}`
+        : `https://web.whatsapp.com/send?phone=${formattedPhone}&text=${encodedText}`;
 
     window.open(waUrl, '_blank', 'noopener,noreferrer');
-    showToast(`Redirecting to WhatsApp for ${payload.customerName}...`, 'success');
+
+    // C. Update on-screen receipt modal instructions & notify cashier
+    const hintBox = document.getElementById('receiptWhatsAppHint');
+    if (hintBox) {
+        hintBox.style.display = 'block';
+    }
+    if (copied) {
+        showToast('Receipt image copied! In WhatsApp, press Ctrl+V to attach.', 'success', 6000);
+    } else {
+        showToast('Opening WhatsApp chat for customer...', 'info', 4000);
+    }
 };
 
 window.shareCurrentReceiptViaWhatsApp = function() {
@@ -1894,7 +2026,9 @@ async function createReceiptImageCanvas(data) {
         try {
             const logoImg = await new Promise(resolve => {
                 const img = new Image();
-                img.crossOrigin = 'anonymous';
+                if (data.logoSrc && (data.logoSrc.startsWith('http://') || data.logoSrc.startsWith('https://'))) {
+                    img.crossOrigin = 'anonymous';
+                }
                 img.onload = () => resolve(img);
                 img.onerror = () => resolve(null);
                 img.src = data.logoSrc;

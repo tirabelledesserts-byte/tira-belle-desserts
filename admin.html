@@ -1505,6 +1505,15 @@
                             </svg>
                             <span>Share Bill via WhatsApp</span>
                         </button>
+                        <div style="margin-top: 8px;">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="copyCurrentReceiptImage()" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; padding: 6px 10px;" title="Copy Receipt Image to Clipboard">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                <span>Copy Receipt Image (Ctrl+V)</span>
+                            </button>
+                        </div>
+                        <div id="receiptWhatsAppHint" style="font-size: 0.74rem; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 10px; margin-top: 8px; text-align: center; display: none;">
+                            📎 Receipt image copied to clipboard! In WhatsApp, press <strong>Ctrl + V</strong> to attach and send.
+                        </div>
                     </div>
 
                     <!-- Prompt state (customer phone missing / unattached) -->

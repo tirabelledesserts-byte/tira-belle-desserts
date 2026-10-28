@@ -315,3 +315,51 @@ def get_metrics(filter_date: str = "today", db: Session = Depends(get_db)):
         "recentSales": recent_sales_data,
         "filterDate": filter_date
     }
+
+@router.get("/{sale_id}", response_model=dict)
+def get_sale_by_id(sale_id: str, db: Session = Depends(get_db)):
+    sale = db.query(Sale).filter(Sale.id == sale_id).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+
+    settings = db.query(StoreSetting).filter(StoreSetting.id == 1).first()
+    loyalty = calculate_customer_loyalty(sale.customer_phone, db) if sale.customer_phone else None
+
+    return {
+        "id": sale.id,
+        "customerPhone": sale.customer_phone,
+        "customerName": sale.customer_name,
+        "subtotal": sale.subtotal,
+        "discount": sale.discount,
+        "totalAmount": sale.total_amount,
+        "paymentMode": sale.payment_mode,
+        "paidCupsCount": sale.paid_cups_count,
+        "timestamp": sale.timestamp,
+        "date": sale.date,
+        "notes": sale.notes,
+        "rewardRedeemedInSale": sale.reward_redeemed_in_sale,
+        "items": [
+            {
+                "productId": it.product_id,
+                "productName": it.product_name,
+                "weight": it.weight,
+                "price": it.price,
+                "quantity": it.quantity,
+                "total": it.total,
+                "isReward": it.is_reward
+            }
+            for it in sale.items
+        ],
+        "loyalty": loyalty,
+        "store": {
+            "businessName": settings.business_name if settings else "TIRA Belle",
+            "tagline": settings.tagline if settings else "LITTLE LAYERS • BIG LOVE",
+            "slogan": settings.slogan if settings else "Handcrafted Italian Tiramisu",
+            "address": settings.address if settings else "Physical Dessert Studio & Artisan Counter, Pune",
+            "owners": settings.owner if settings else "Yash Chauhan & Tejas Chauhan",
+            "phone": settings.phone if settings else "9373484198",
+            "phoneSecondary": settings.phone_secondary if settings else "8484870543",
+            "currency": settings.currency if settings else "₹",
+            "logo": settings.logo if settings else "assets/tira-belle-logo.png"
+        }
+    }

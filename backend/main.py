@@ -159,6 +159,14 @@ def get_tracker():
 def get_admin():
     return FileResponse(BASE_DIR / "admin.html")
 
+@app.get("/receipt.html")
+def get_receipt():
+    return FileResponse(BASE_DIR / "receipt.html")
+
+@app.get("/receipt")
+def get_receipt_direct():
+    return FileResponse(BASE_DIR / "receipt.html")
+
 @app.get("/manifest.json")
 def get_manifest():
     return FileResponse(BASE_DIR / "manifest.json", media_type="application/manifest+json")

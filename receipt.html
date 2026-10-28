@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Digital Receipt | TIRA Belle Desserts</title>
+    <meta name="description" content="View and download your official digital receipt for your handcrafted tiramisu from TIRA Belle Desserts.">
+    <link rel="icon" type="image/png" href="assets/tira-belle-logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-espresso: #24140e;
+            --color-caramel: #b7793d;
+            --color-cream: #fdfaf5;
+            --color-border: #e8dbcb;
+            --color-muted: #736257;
+            --color-success: #15803d;
+            --shadow-subtle: 0 4px 20px rgba(36, 20, 14, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(180deg, #f7efe6 0%, #fdfaf5 100%);
+            color: var(--color-espresso);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px 40px;
+        }
+
+        .receipt-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 440px;
+            border-radius: 16px;
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-subtle);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .receipt-card::before {
+            content: "";
+            display: block;
+            height: 6px;
+            background: linear-gradient(90deg, #b7793d 0%, #d4a373 50%, #b7793d 100%);
+        }
+
+        .receipt-body {
+            padding: 24px 22px;
+        }
+
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .receipt-logo {
+            height: 52px;
+            max-width: 150px;
+            object-fit: contain;
+            margin: 0 auto 10px;
+            display: block;
+        }
+
+        .brand-name {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--color-espresso);
+            letter-spacing: -0.5px;
+        }
+
+        .brand-tagline {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: var(--color-caramel);
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .brand-slogan {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-style: italic;
+            font-size: 0.85rem;
+            color: var(--color-muted);
+            margin-top: 4px;
+        }
+
+        .brand-address {
+            font-size: 0.75rem;
+            color: #8c7b70;
+            margin-top: 4px;
+        }
+
+        .receipt-badge-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--color-cream);
+            border: 1px dashed var(--color-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin: 16px 0;
+            font-size: 0.78rem;
+        }
+
+        .receipt-badge-row strong {
+            color: var(--color-espresso);
+        }
+
+        .details-grid {
+            font-size: 0.82rem;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .details-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+
+        .details-label {
+            color: var(--color-muted);
+        }
+
+        .details-val {
+            font-weight: 600;
+            color: var(--color-espresso);
+            text-align: right;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px dashed var(--color-border);
+            margin: 14px 0;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin: 12px 0;
+        }
+
+        .items-table th {
+            text-align: left;
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--color-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .items-table th:last-child {
+            text-align: right;
+        }
+
+        .items-table td {
+            padding: 10px 0;
+            border-bottom: 1px solid #f2ece4;
+        }
+
+        .items-table td:last-child {
+            text-align: right;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: var(--color-espresso);
+        }
+
+        .item-sub {
+            font-size: 0.74rem;
+            color: var(--color-muted);
+            margin-top: 2px;
+        }
+
+        .reward-tag {
+            display: inline-block;
+            background: #dcfce7;
+            color: #15803d;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 4px;
+        }
+
+        .total-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 14px 0 6px;
+            border-top: 2px solid var(--color-espresso);
+            margin-top: 8px;
+        }
+
+        .total-label {
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .total-amount {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--color-caramel);
+        }
+
+        .loyalty-banner {
+            background: var(--color-cream);
+            border: 1px dashed var(--color-caramel);
+            border-radius: 10px;
+            padding: 12px;
+            margin: 18px 0 12px;
+            text-align: center;
+        }
+
+        .loyalty-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--color-espresso);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .loyalty-desc {
+            font-size: 0.76rem;
+            color: var(--color-muted);
+            margin-top: 4px;
+        }
+
+        .footer-note {
+            text-align: center;
+            font-size: 0.74rem;
+            color: var(--color-muted);
+            margin-top: 18px;
+            line-height: 1.5;
+        }
+
+        .footer-slogan {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-style: italic;
+            font-size: 0.85rem;
+            color: var(--color-caramel);
+            margin-bottom: 4px;
+        }
+
+        .action-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            max-width: 440px;
+            margin-top: 18px;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: none;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--color-espresso);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #3b2319;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #ffffff;
+            color: var(--color-espresso);
+            border: 1px solid var(--color-border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--color-cream);
+        }
+
+        .loading-state, .error-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--color-border);
+            border-top-color: var(--color-caramel);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+            .receipt-card {
+                box-shadow: none;
+                border: none;
+                max-width: 100%;
+            }
+            .action-bar, .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="receipt-card" id="receiptContainer">
+        <div class="loading-state" id="loadingState">
+            <div class="spinner"></div>
+            <div style="font-weight: 600; font-size: 0.9rem;">Loading your digital receipt...</div>
+        </div>
+
+        <div class="error-state" id="errorState" style="display: none;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">🍰</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 6px;">Receipt Not Found</h3>
+            <p style="font-size: 0.8rem; color: var(--color-muted); margin-bottom: 16px;">
+                The receipt you are looking for might have expired or the link is incomplete.
+            </p>
+            <a href="index.html" class="btn-action btn-primary" style="display: inline-flex; width: auto; padding: 8px 16px;">
+                Visit TIRA Belle
+            </a>
+        </div>
+
+        <div class="receipt-body" id="receiptContent" style="display: none;">
+            <div class="receipt-header">
+                <img id="recLogo" src="assets/tira-belle-logo.png" alt="TIRA Belle Logo" class="receipt-logo" onerror="this.style.display='none'">
+                <h1 class="brand-name" id="recBizName">TIRA Belle</h1>
+                <div class="brand-tagline" id="recTagline">LITTLE LAYERS • BIG LOVE</div>
+                <div class="brand-slogan" id="recSlogan">Handcrafted Italian Tiramisu</div>
+                <div class="brand-address" id="recAddress">Physical Dessert Studio &amp; Artisan Counter, Pune</div>
+            </div>
+
+            <div class="receipt-badge-row">
+                <span>Receipt: <strong id="recId">TXN-000000</strong></span>
+                <span id="recDate">Today</span>
+            </div>
+
+            <div class="details-grid">
+                <div class="details-row">
+                    <span class="details-label">Guest</span>
+                    <span class="details-val" id="recCustomerName">Valued Guest</span>
+                </div>
+                <div class="details-row">
+                    <span class="details-label">Phone</span>
+                    <span class="details-val" id="recCustomerPhone">+91 ••••• •••••</span>
+                </div>
+                <div class="details-row">
+                    <span class="details-label">Payment Mode</span>
+                    <span class="details-val" id="recPaymentMode">Online (UPI)</span>
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="recItemsBody">
+                    <!-- Populated dynamically -->
+                </tbody>
+            </table>
+
+            <div class="total-box">
+                <span class="total-label">TOTAL PAID</span>
+                <span class="total-amount" id="recTotal">₹0</span>
+            </div>
+
+            <div class="loyalty-banner" id="recLoyaltyBanner">
+                <div class="loyalty-title">
+                    <span>✨</span>
+                    <span id="recLoyaltyStatus">Loyalty Progress: 1 / 5 Cups</span>
+                </div>
+                <div class="loyalty-desc" id="recLoyaltyNote">
+                    4 more cups to unlock your free 150g reward!
+                </div>
+            </div>
+
+            <div class="footer-note">
+                <div class="footer-slogan" id="recFooterSlogan">Thank you for tasting the love in every spoon!</div>
+                <div id="recFooterContact">Owners: Yash Chauhan &amp; Tejas Chauhan • 9373484198 / 8484870543</div>
+                <div style="margin-top: 6px; font-size: 0.7rem; color: #999;">
+                    Follow our journey on Instagram @tirabelle.desserts
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-bar no-print" id="actionBar" style="display: none;">
+        <button type="button" class="btn-action btn-primary" onclick="window.print()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            <span>Save as PDF / Print</span>
+        </button>
+        <a href="tracker.html" id="trackerLink" class="btn-action btn-secondary">
+            <span>🍰 Check Loyalty Stamps &amp; Menu</span>
+        </a>
+    </div>
+
+    <script>
+        (async function() {
+            const params = new URLSearchParams(window.location.search);
+            const saleId = params.get('id') || params.get('saleId') || params.get('receipt');
+
+            const loadingEl = document.getElementById('loadingState');
+            const errorEl = document.getElementById('errorState');
+            const contentEl = document.getElementById('receiptContent');
+            const actionsEl = document.getElementById('actionBar');
+
+            if (!saleId) {
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            let saleData = null;
+
+            // 1. Attempt API fetch from backend
+            try {
+                const res = await fetch(`/api/sales/${encodeURIComponent(saleId)}`);
+                if (res.ok) {
+                    saleData = await res.json();
+                }
+            } catch (err) {
+                console.warn('API fetch failed, checking local database fallback:', err);
+            }
+
+            // 2. Fallback to localStorage (TiraDB) if running locally or cached
+            if (!saleData) {
+                try {
+                    const localRaw = localStorage.getItem('TiraDB');
+                    if (localRaw) {
+                        const parsed = JSON.parse(localRaw);
+                        const found = (parsed.sales || []).find(s => s.id === saleId);
+                        if (found) {
+                            const settings = parsed.settings || {};
+                            saleData = {
+                                id: found.id,
+                                customerPhone: found.customerPhone || found.customer_phone,
+                                customerName: found.customerName || found.customer_name,
+                                totalAmount: found.totalAmount ?? found.total_amount,
+                                paymentMode: found.paymentMode || found.payment_mode,
+                                timestamp: found.timestamp,
+                                date: found.date,
+                                items: found.items || [],
+                                store: {
+                                    businessName: settings.businessName || 'TIRA Belle',
+                                    tagline: settings.tagline || 'LITTLE LAYERS • BIG LOVE',
+                                    slogan: settings.slogan || 'Handcrafted Italian Tiramisu',
+                                    address: settings.address || 'Physical Dessert Studio & Artisan Counter, Pune',
+                                    owners: settings.owner || 'Yash Chauhan & Tejas Chauhan',
+                                    phone: settings.phone || '9373484198',
+                                    phoneSecondary: settings.phoneSecondary || '8484870543',
+                                    currency: settings.currency || '₹',
+                                    logo: settings.logo || 'assets/tira-belle-logo.png'
+                                }
+                            };
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Local storage fallback error:', e);
+                }
+            }
+
+            if (!saleData) {
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            // Render details
+            const store = saleData.store || {};
+            const curr = store.currency || '₹';
+
+            if (store.logo) document.getElementById('recLogo').src = store.logo;
+            if (store.businessName) document.getElementById('recBizName').textContent = store.businessName;
+            if (store.tagline) document.getElementById('recTagline').textContent = store.tagline.toUpperCase();
+            if (store.slogan) document.getElementById('recSlogan').textContent = store.slogan;
+            if (store.address) document.getElementById('recAddress').textContent = store.address;
+
+            document.getElementById('recId').textContent = saleData.id;
+
+            let formattedDate = saleData.date || '';
+            try {
+                const dt = saleData.timestamp ? new Date(saleData.timestamp) : new Date();
+                formattedDate = dt.toLocaleString('en-IN', {
+                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+                });
+            } catch (_) {}
+            document.getElementById('recDate').textContent = formattedDate;
+
+            document.getElementById('recCustomerName').textContent = saleData.customerName || 'Valued Guest';
+            
+            const rawPhone = saleData.customerPhone || '';
+            let maskedPhone = rawPhone;
+            if (rawPhone && rawPhone.length >= 10) {
+                const last4 = rawPhone.slice(-4);
+                maskedPhone = '+91 ••••• ' + last4;
+            }
+            document.getElementById('recCustomerPhone').textContent = maskedPhone || 'Counter Guest';
+            document.getElementById('recPaymentMode').textContent = saleData.paymentMode || 'Cash';
+
+            // Items
+            const itemsBody = document.getElementById('recItemsBody');
+            itemsBody.innerHTML = '';
+            const items = Array.isArray(saleData.items) ? saleData.items : [];
+            items.forEach(it => {
+                const tr = document.createElement('tr');
+                const pName = it.productName || it.name || 'Handcrafted Tiramisu';
+                const pSize = it.weight || it.size ? ` (${it.weight || it.size})` : '';
+                const qty = Number(it.quantity || 1);
+                const isRew = !!it.isReward;
+                const price = Number(it.price || 0);
+                const lineTotal = isRew ? 'FREE' : `${curr}${(Number(it.total || (price * qty))).toLocaleString('en-IN')}`;
+
+                tr.innerHTML = `
+                    <td>
+                        <div class="item-name">${pName}${isRew ? '<span class="reward-tag">REWARD</span>' : ''}</div>
+                        <div class="item-sub">${pSize} • Qty: ${qty}</div>
+                    </td>
+                    <td>${lineTotal}</td>
+                `;
+                itemsBody.appendChild(tr);
+            });
+
+            const totalNum = Number(saleData.totalAmount || 0);
+            document.getElementById('recTotal').textContent = `${curr}${totalNum.toLocaleString('en-IN')}`;
+
+            // Loyalty
+            const loyalty = saleData.loyalty;
+            const loyaltyBanner = document.getElementById('recLoyaltyBanner');
+            if (loyalty) {
+                loyaltyBanner.style.display = 'block';
+                if (loyalty.isEligible) {
+                    document.getElementById('recLoyaltyStatus').textContent = `Loyalty Progress: ${loyalty.threshold} / ${loyalty.threshold} Cups (Eligible!)`;
+                    document.getElementById('recLoyaltyNote').textContent = 'You have unlocked a Free 150g Tiramisu Cup! Redeem on your next visit.';
+                } else {
+                    document.getElementById('recLoyaltyStatus').textContent = `Loyalty Progress: ${loyalty.currentCycleProgress || 0} / ${loyalty.threshold || 5} Cups`;
+                    document.getElementById('recLoyaltyNote').textContent = `${loyalty.cupsRemaining || 1} more cup(s) to unlock your next free dessert reward!`;
+                }
+            }
+
+            if (store.owners || store.phone) {
+                const phone2 = store.phoneSecondary ? ` / ${store.phoneSecondary}` : '';
+                document.getElementById('recFooterContact').textContent = `Owners: ${store.owners || 'Yash Chauhan & Tejas Chauhan'} • ${store.phone || '9373484198'}${phone2}`;
+            }
+
+            if (rawPhone) {
+                const trk = document.getElementById('trackerLink');
+                if (trk) trk.href = `tracker.html?phone=${encodeURIComponent(rawPhone.slice(-10))}`;
+            }
+
+            loadingEl.style.display = 'none';
+            contentEl.style.display = 'block';
+            actionsEl.style.display = 'flex';
+        })();
+    </script>
+</body>
+</html>

@@ -239,18 +239,28 @@ def get_metrics(filter_date: str = "today", db: Session = Depends(get_db)):
     cash_collection = 0.0
     online_collection = 0.0
     total_paid_quantity = 0
+    def norm_key(name: str, weight: str = "") -> str:
+        clean_name = (name or "").replace("–", "-").replace("—", "-").replace("\ufffd", "-")
+        clean_name = " ".join(clean_name.split()).lower()
+        clean_weight = (weight or "").replace(" ", "").lower()
+        return f"{clean_name}::{clean_weight}"
+
     product_summary_dict = {}
+    norm_to_pid = {}
 
     all_products = db.query(Product).all()
     for p in all_products:
-        product_summary_dict[p.id] = {
+        entry = {
             "id": p.id,
             "name": p.name,
-            "weight": p.weight,
+            "weight": p.weight or "",
             "price": p.price,
             "quantity": 0,
             "revenue": 0.0
         }
+        product_summary_dict[p.id] = entry
+        nk = norm_key(p.name, p.weight)
+        norm_to_pid[nk] = p.id
 
     for s in sales:
         total_revenue += s.total_amount
@@ -266,17 +276,32 @@ def get_metrics(filter_date: str = "today", db: Session = Depends(get_db)):
         for it in s.items:
             if not it.is_reward:
                 pid = it.product_id
-                if pid not in product_summary_dict:
-                    product_summary_dict[pid] = {
-                        "id": pid,
-                        "name": it.product_name,
-                        "weight": it.weight or "",
-                        "price": it.price,
-                        "quantity": 0,
-                        "revenue": 0.0
-                    }
-                product_summary_dict[pid]["quantity"] += it.quantity
-                product_summary_dict[pid]["revenue"] += it.total
+                target_entry = None
+
+                # 1. Match by exact product_id in catalog
+                if pid and pid in product_summary_dict:
+                    target_entry = product_summary_dict[pid]
+                else:
+                    # 2. Match by normalized product name and weight
+                    nk = norm_key(it.product_name, it.weight)
+                    if nk in norm_to_pid:
+                        target_entry = product_summary_dict[norm_to_pid[nk]]
+                    else:
+                        # 3. Custom / standalone product
+                        new_id = pid or f"custom-{len(product_summary_dict) + 1}"
+                        target_entry = {
+                            "id": new_id,
+                            "name": it.product_name,
+                            "weight": it.weight or "",
+                            "price": it.price,
+                            "quantity": 0,
+                            "revenue": 0.0
+                        }
+                        product_summary_dict[new_id] = target_entry
+                        norm_to_pid[nk] = new_id
+
+                target_entry["quantity"] += it.quantity
+                target_entry["revenue"] += it.total
 
     recent_sales_data = [
         {

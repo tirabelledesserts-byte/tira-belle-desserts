@@ -865,7 +865,28 @@ window.loadDashboardMetrics = async function(filterDateParam) {
         const summaryTbody = document.getElementById('dashProductSummaryTbody');
         if (summaryTbody) {
             summaryTbody.innerHTML = '';
-            const prodList = metrics.productSummary || metrics.product_summary || [];
+            const rawList = metrics.productSummary || metrics.product_summary || [];
+
+            // Consolidate any duplicate products by normalized name and weight
+            const consolidatedMap = new Map();
+            rawList.forEach(item => {
+                const cleanName = (item.name || '').replace(/[–—\ufffd]/g, '-').replace(/\s+/g, ' ').trim().toLowerCase();
+                const cleanWeight = (item.weight || '').replace(/\s+/g, '').toLowerCase();
+                const key = `${cleanName}::${cleanWeight}`;
+                if (consolidatedMap.has(key)) {
+                    const existing = consolidatedMap.get(key);
+                    existing.quantity += Number(item.quantity ?? 0);
+                    existing.revenue += Number(item.revenue ?? 0);
+                } else {
+                    consolidatedMap.set(key, {
+                        ...item,
+                        quantity: Number(item.quantity ?? 0),
+                        revenue: Number(item.revenue ?? 0)
+                    });
+                }
+            });
+            const prodList = Array.from(consolidatedMap.values());
+
             if (!prodList.length) {
                 summaryTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--color-text-muted);">No sales recorded for this period.</td></tr>`;
             } else {

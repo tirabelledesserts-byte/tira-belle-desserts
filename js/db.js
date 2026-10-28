@@ -1793,6 +1793,13 @@ class TiraBelleDB {
         let onlineCollection = 0;
         let totalPaidQuantity = 0;
         const productSummary = {};
+        const normToPid = {};
+
+        function normKey(name, weight = '') {
+            const cleanName = (name || '').replace(/[–—\ufffd]/g, '-').replace(/\s+/g, ' ').trim().toLowerCase();
+            const cleanWeight = (weight || '').replace(/\s+/g, '').toLowerCase();
+            return `${cleanName}::${cleanWeight}`;
+        }
 
         // Pre-populate product summary with current products
         this.data.products.forEach(p => {
@@ -1804,6 +1811,7 @@ class TiraBelleDB {
                 quantity: 0,
                 revenue: 0
             };
+            normToPid[normKey(p.name, p.weight)] = p.id;
         });
 
         filteredSales.forEach(sale => {
@@ -1825,22 +1833,34 @@ class TiraBelleDB {
             items.forEach(item => {
                 const isRew = item.isReward ?? item.is_reward ?? false;
                 if (!isRew) {
-                    const pid = item.productId || item.product_id || 'custom';
+                    const pid = item.productId || item.product_id || '';
                     const pPrice = Number(item.price ?? 0);
                     const pQty = Number(item.quantity ?? 1);
                     const pTotal = Number(item.total ?? (pPrice * pQty));
-                    if (!productSummary[pid]) {
-                        productSummary[pid] = {
-                            id: pid,
-                            name: item.productName || item.product_name || 'Tiramisu',
-                            weight: item.weight || '',
-                            price: pPrice,
-                            quantity: 0,
-                            revenue: 0
-                        };
+                    
+                    let target = null;
+                    if (pid && productSummary[pid]) {
+                        target = productSummary[pid];
+                    } else {
+                        const nk = normKey(item.productName || item.product_name, item.weight);
+                        if (normToPid[nk] && productSummary[normToPid[nk]]) {
+                            target = productSummary[normToPid[nk]];
+                        } else {
+                            const newId = pid || `custom-${Object.keys(productSummary).length + 1}`;
+                            target = {
+                                id: newId,
+                                name: item.productName || item.product_name || 'Tiramisu',
+                                weight: item.weight || '',
+                                price: pPrice,
+                                quantity: 0,
+                                revenue: 0
+                            };
+                            productSummary[newId] = target;
+                            normToPid[nk] = newId;
+                        }
                     }
-                    productSummary[pid].quantity += pQty;
-                    productSummary[pid].revenue += pTotal;
+                    target.quantity += pQty;
+                    target.revenue += pTotal;
                 }
             });
         });

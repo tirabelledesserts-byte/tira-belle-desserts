@@ -1753,10 +1753,13 @@ window.shareSaleOnWhatsApp = async function(saleId) {
     }
 
     const thankYouText = `Thank you for choosing Tira Belle Desserts! 💖\nWe hope you enjoyed your treats. See you again soon! 🍰`;
-    const fileName = `TiraBelle-Receipt-${sale.id}.png`;
     const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+    const encodedText = encodeURIComponent(thankYouText);
+    const waUrl = isMobile
+        ? `https://wa.me/${formattedPhone}?text=${encodedText}`
+        : `https://web.whatsapp.com/send?phone=${formattedPhone}&text=${encodedText}`;
 
-    // Generate high-resolution receipt image Blob
+    // 1. Generate high-resolution receipt image Blob matching reference design
     let blob = null;
     try {
         blob = await generateReceiptImageBlob(sale.id);
@@ -1764,29 +1767,7 @@ window.shareSaleOnWhatsApp = async function(saleId) {
         console.warn('[Receipt Canvas Error]:', err);
     }
 
-    // 1. Web Share API (Direct file attachment on mobile / supported devices)
-    if (blob && navigator.canShare) {
-        try {
-            const receiptFile = new File([blob], fileName, { type: 'image/png' });
-            if (navigator.canShare({ files: [receiptFile] })) {
-                await navigator.share({
-                    title: `Receipt ${sale.id} - Tira Belle Desserts`,
-                    text: thankYouText,
-                    files: [receiptFile]
-                });
-                showToast('Receipt shared successfully!', 'success');
-                return;
-            }
-        } catch (shareErr) {
-            if (shareErr.name === 'AbortError') {
-                return; // User cancelled share dialog
-            }
-            console.warn('[Web Share API failed, falling back]:', shareErr);
-        }
-    }
-
-    // 2. WhatsApp Web Desktop Fallback Workflow:
-    // A. Copy high-res image directly to system clipboard for instant Ctrl+V pasting
+    // 2. Automatically copy high-res image directly to system clipboard for instant Ctrl+V pasting in WhatsApp
     let copied = false;
     if (blob && navigator.clipboard && typeof ClipboardItem !== 'undefined') {
         try {
@@ -1799,21 +1780,16 @@ window.shareSaleOnWhatsApp = async function(saleId) {
         }
     }
 
-    // B. Open customer's WhatsApp chat with only the short, sweet thank-you message
-    const encodedText = encodeURIComponent(thankYouText);
-    const waUrl = isMobile
-        ? `https://wa.me/${formattedPhone}?text=${encodedText}`
-        : `https://web.whatsapp.com/send?phone=${formattedPhone}&text=${encodedText}`;
-
+    // 3. Open customer's WhatsApp chat directly with the short, sweet thank-you message
     window.open(waUrl, '_blank', 'noopener,noreferrer');
 
-    // C. Update on-screen receipt modal instructions & notify cashier
+    // 4. Update on-screen receipt modal instructions & notify cashier
     const hintBox = document.getElementById('receiptWhatsAppHint');
     if (hintBox) {
         hintBox.style.display = 'block';
     }
     if (copied) {
-        showToast('Receipt image copied! In WhatsApp, press Ctrl+V to attach.', 'success', 6000);
+        showToast('WhatsApp opened! Receipt image copied to clipboard — press Ctrl+V to attach and send.', 'success', 7000);
     } else {
         showToast('Opening WhatsApp chat for customer...', 'info', 4000);
     }
@@ -1908,7 +1884,8 @@ window.viewReceipt = function(saleId) {
     const readyBox = document.getElementById('receiptWhatsAppReady');
     const promptBox = document.getElementById('receiptWhatsAppPrompt');
     const phoneInput = document.getElementById('receiptPhoneInput');
-    const phoneError = document.getElementById('receiptPhoneError');
+    const hintBox = document.getElementById('receiptWhatsAppHint');
+    if (hintBox) hintBox.style.display = 'none';
 
     if (phoneError) phoneError.style.display = 'none';
 

@@ -1573,6 +1573,50 @@ class TiraBelleDB {
         };
     }
 
+    async patchSaleCustomer(saleId, customerPhone, customerName) {
+        const cleanPhone = (customerPhone || '').trim().replace(/\D/g, '');
+        if (!cleanPhone) {
+            return { success: false, message: 'Valid customer phone number is required.' };
+        }
+
+        const sale = this.data.sales.find(s => s.id === saleId);
+        if (!sale) {
+            return { success: false, message: 'Sale transaction not found.' };
+        }
+
+        const custName = (customerName || sale.customerName || sale.customer_name || 'Valued Guest').trim();
+        this.upsertCustomer(cleanPhone, custName);
+
+        sale.customerPhone = cleanPhone;
+        sale.customerName = custName;
+        this.save();
+
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('tira-sales-changed', { detail: this.data.sales }));
+            window.dispatchEvent(new CustomEvent('tira-backend-synced', { detail: this.data }));
+        }
+
+        // Attempt backend sync
+        try {
+            await this.apiRequest(`/sales/${encodeURIComponent(saleId)}/customer`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    customerPhone: cleanPhone,
+                    customerName: custName
+                })
+            });
+        } catch (e) {
+            console.warn('[TiraDB] Backend patch sale customer warning:', e);
+        }
+
+        return {
+            success: true,
+            sale,
+            customerPhone: cleanPhone,
+            customerName: custName
+        };
+    }
+
     getSales() {
         return [...this.data.sales].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }

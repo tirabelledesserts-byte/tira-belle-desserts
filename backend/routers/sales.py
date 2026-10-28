@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Sale, SaleItem, Customer, Product, Redemption, StoreSetting, utcnow_iso, today_date_str
-from backend.schemas import SaleCreate, SaleResponse, DashboardMetricsResponse
+from backend.schemas import SaleCreate, SalePatchCustomer, SaleResponse, DashboardMetricsResponse
 from backend.routers.customers import clean_phone_number, calculate_customer_loyalty
 
 router = APIRouter(prefix="/api/sales", tags=["Sales & POS"])
@@ -167,6 +167,46 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
         "saleId": sale.id,
         "totalAmount": sale.total_amount,
         "loyalty": updated_loyalty
+    }
+
+@router.patch("/{sale_id}/customer", response_model=dict)
+def patch_sale_customer(sale_id: str, data: SalePatchCustomer, db: Session = Depends(get_db)):
+    clean_phone = clean_phone_number(data.customer_phone)
+    if not clean_phone:
+        raise HTTPException(status_code=400, detail="Valid customer phone number is required")
+
+    sale = db.query(Sale).filter(Sale.id == sale_id).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale not found")
+
+    cust_name = (data.customer_name or sale.customer_name or "Valued Guest").strip()
+    customer = db.query(Customer).filter(Customer.phone == clean_phone).first()
+    if not customer:
+        customer = Customer(phone=clean_phone, name=cust_name)
+        db.add(customer)
+        db.commit()
+    elif data.customer_name and customer.name != cust_name:
+        customer.name = cust_name
+        customer.updated_at = utcnow_iso()
+        db.commit()
+
+    sale.customer_phone = clean_phone
+    sale.customer_name = cust_name
+    db.commit()
+
+    from backend.routers.realtime import notify_change
+    notify_change("sales", "updated", {
+        "saleId": sale.id,
+        "phone": clean_phone,
+        "customerName": cust_name
+    })
+    notify_change("customers", "updated", {"phone": clean_phone})
+
+    return {
+        "success": True,
+        "saleId": sale.id,
+        "customerPhone": clean_phone,
+        "customerName": cust_name
     }
 
 @router.get("/metrics", response_model=DashboardMetricsResponse)

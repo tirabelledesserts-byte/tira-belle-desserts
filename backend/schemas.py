@@ -134,6 +134,10 @@ class SaleCreate(CamelModel):
     notes: Optional[str] = ""
     redeem_free_reward: bool = Field(default=False, alias="redeemFreeReward")
 
+class SalePatchCustomer(CamelModel):
+    customer_phone: str = Field(alias="customerPhone")
+    customer_name: Optional[str] = Field(default=None, alias="customerName")
+
 class SaleResponse(CamelModel):
     id: str
     customer_phone: str = Field(alias="customerPhone")

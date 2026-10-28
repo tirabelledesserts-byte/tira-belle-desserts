@@ -7514,6 +7514,53 @@ main {
     flex-shrink: 0;
 }
 
+.btn-whatsapp-primary {
+    background: #25D366;
+    color: #ffffff !important;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.96rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    min-height: 48px;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+    transition: var(--transition-fast);
+    cursor: pointer;
+    text-decoration: none;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.btn-whatsapp-primary:hover {
+    background: #20bd5a;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.48);
+}
+
+.btn-whatsapp-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+}
+
+.btn-whatsapp-primary:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-whatsapp-primary svg {
+    flex-shrink: 0;
+}
+
+.receipt-whatsapp-section {
+    margin-top: 14px;
+}
+
 /* ==========================================================================
    Admin Loyalty Tracker: Customers Near Reward Component
    ========================================================================== */

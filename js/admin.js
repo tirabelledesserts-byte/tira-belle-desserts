@@ -931,10 +931,16 @@ window.loadDashboardMetrics = async function(filterDateParam) {
                                 ${pMode}
                             </span>
                         </td>
-                        <td>
-                            <button class="btn btn-outline btn-sm" onclick="viewReceipt('${safeId}')" style="display: inline-flex; align-items: center; gap: 4px;">
-                                <i data-lucide="file-text" data-size="14"></i>
+                        <td style="white-space: nowrap;">
+                            <button class="btn btn-outline btn-sm" onclick="viewReceipt('${safeId}')" style="display: inline-flex; align-items: center; gap: 4px;" title="Print / View Receipt">
+                                <i data-lucide="printer" data-size="14"></i>
                                 <span>Receipt</span>
+                            </button>
+                            <button class="btn btn-whatsapp btn-sm" onclick="shareSaleOnWhatsApp('${safeId}')" style="display: inline-flex; align-items: center; gap: 4px; margin-left: 4px;" title="Share Bill via WhatsApp">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                </svg>
+                                <span>WhatsApp</span>
                             </button>
                         </td>
                     `;
@@ -1486,9 +1492,289 @@ window.submitPosSale = async function() {
 };
 
 // ----------------- RECEIPT MODAL & PRINTING -----------------
+window.currentReceiptSaleId = null;
+
+/**
+ * Normalizes and sanitizes phone numbers according to WhatsApp international standards.
+ * - Strips all non-digit characters.
+ * - 10-digit Indian numbers: prepends '91'.
+ * - 11-digit numbers starting with '0': strips leading '0' and prepends '91'.
+ * - 12-digit numbers starting with '91': keeps as is.
+ * - Validates length between 10 and 15 digits according to E.164 standards without '+'.
+ * - Returns null if invalid or empty.
+ * @param {string|number} phone 
+ * @param {string} defaultCountryCode 
+ * @returns {string|null}
+ */
+function formatWhatsAppPhone(phone, defaultCountryCode = '91') {
+    if (!phone) return null;
+    let digits = String(phone).replace(/\D/g, '');
+    if (!digits) return null;
+
+    if (digits.length === 10) {
+        digits = defaultCountryCode + digits;
+    } else if (digits.length === 11 && digits.startsWith('0')) {
+        digits = defaultCountryCode + digits.slice(1);
+    } else if (digits.length === 12 && digits.startsWith(defaultCountryCode)) {
+        // Keep as is
+    }
+
+    if (digits.length >= 10 && digits.length <= 15) {
+        return digits;
+    }
+    return null;
+}
+window.formatWhatsAppPhone = formatWhatsAppPhone;
+
+/**
+ * Generates a clean, beautifully formatted unicode digital receipt for WhatsApp chat.
+ * Adheres strictly to the OrderWhatsAppPayload contract and store branding configuration.
+ * @param {Object} orderData 
+ * @param {Object} storeConfig 
+ * @returns {string} Unicode formatted receipt text
+ */
+function generateWhatsAppReceiptMessage(orderData, storeConfig = {}) {
+    if (!orderData) return '';
+
+    const settings = (window.TiraDB && typeof window.TiraDB.getSettings === 'function') 
+        ? window.TiraDB.getSettings() 
+        : {};
+    const config = Object.assign({}, settings, storeConfig);
+
+    const bizName = (config.businessName || 'TIRA Belle').toUpperCase();
+    const tagline = config.tagline || 'LITTLE LAYERS • BIG LOVE';
+    const slogan = config.slogan || 'Handcrafted Italian Tiramisu';
+    const address = config.address || 'Physical Dessert Studio & Artisan Counter, Pune';
+    const phone = config.phone || '9373484198';
+    const phoneSec = config.phoneSecondary ? ` / ${config.phoneSecondary}` : '';
+    const curr = config.currency || '₹';
+
+    const receiptId = orderData.receiptId || 'TXN-000000';
+    const custName = (orderData.customerName || 'Valued Guest').trim();
+    const custPhone = orderData.customerPhone || '';
+    const payMode = orderData.paymentMode || 'Cash';
+    const totalAmt = Number(orderData.totalAmount || 0);
+
+    let dateFormatted = '';
+    try {
+        const d = orderData.timestamp ? new Date(orderData.timestamp) : new Date();
+        dateFormatted = d.toLocaleString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (_) {
+        dateFormatted = new Date().toLocaleString('en-IN');
+    }
+
+    const lines = [];
+    lines.push(`🍰 *${bizName}*`);
+    lines.push(`_${tagline}_`);
+    lines.push(`_${slogan}_`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`🧾 *DIGITAL TAX INVOICE / RECEIPT*`);
+    lines.push(`*Receipt No:* \`${receiptId}\``);
+    lines.push(`*Date:* ${dateFormatted}`);
+    lines.push(`*Customer:* ${custName}`);
+    if (custPhone) {
+        lines.push(`*Phone:* +${custPhone}`);
+    }
+    lines.push(`*Payment Mode:* ${payMode}`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`*ORDER ITEMS:*`);
+
+    const items = Array.isArray(orderData.items) ? orderData.items : [];
+    if (items.length === 0) {
+        lines.push(`• 1x Handcrafted Tiramisu — ${curr}${totalAmt.toLocaleString('en-IN')}`);
+    } else {
+        items.forEach(it => {
+            const name = it.name || it.productName || 'Tiramisu';
+            const sizeStr = (it.size || it.weight) ? ` (${it.size || it.weight})` : '';
+            const qty = Number(it.quantity || 1);
+            const price = Number(it.price || 0);
+            const isRew = !!(it.isReward || it.is_reward);
+            const itemTotal = isRew ? 'FREE (Reward 🎉)' : `${curr}${(price * qty).toLocaleString('en-IN')}`;
+            lines.push(`• *${qty}x* ${name}${sizeStr} — ${itemTotal}`);
+        });
+    }
+
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`*TOTAL AMOUNT PAID:* *${curr}${totalAmt.toLocaleString('en-IN')}*`);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
+
+    // Loyalty Rewards summary
+    const threshold = Number(orderData.loyaltyThreshold || config.stampsThreshold || 5);
+    const earned = Number(orderData.paidCupsEarned || 0);
+    const hasBalance = typeof orderData.loyaltyBalance === 'number';
+
+    lines.push(`🎁 *LOYALTY REWARDS*`);
+    if (orderData.rewardClaimed) {
+        lines.push(`🎉 *Free Reward Cup Claimed/Redeemed in this Order!*`);
+    }
+    if (earned > 0) {
+        lines.push(`☕ Cups/Stamps Earned Today: *+${earned}*`);
+    }
+
+    if (hasBalance) {
+        const bal = orderData.loyaltyBalance;
+        const cycleProgress = bal % threshold === 0 && bal > 0 ? threshold : (bal % threshold);
+        const remaining = Math.max(0, threshold - cycleProgress);
+        lines.push(`⭐ Current Stamp Card: *${cycleProgress} / ${threshold}* Stamps`);
+        if (remaining === 0) {
+            lines.push(`🥳 *You have unlocked 1 Free 150g Cup! Redeem on your next visit!*`);
+        } else {
+            lines.push(`👉 _Only ${remaining} more cup${remaining !== 1 ? 's' : ''} to unlock your next FREE reward!_`);
+        }
+    } else {
+        lines.push(`⭐ Ask our counter staff about our Cup Loyalty Rewards!`);
+    }
+
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`✨ *Thank you for tasting the love in every spoon!*`);
+    lines.push(`📍 ${address}`);
+    lines.push(`📞 Contact: ${phone}${phoneSec}`);
+
+    return lines.join('\n');
+}
+window.generateWhatsAppReceiptMessage = generateWhatsAppReceiptMessage;
+
+/**
+ * Prepares order payload and redirects directly to WhatsApp chat with prefilled unicode digital receipt.
+ * @param {string} saleId 
+ */
+window.shareSaleOnWhatsApp = function(saleId) {
+    if (!saleId && window.currentReceiptSaleId) {
+        saleId = window.currentReceiptSaleId;
+    }
+    if (!saleId) {
+        showToast('No receipt selected to share.', 'warning');
+        return;
+    }
+
+    const sale = window.TiraDB ? window.TiraDB.getSales().find(s => s.id === saleId) : null;
+    if (!sale) {
+        showToast(`Transaction ${saleId} not found in database.`, 'error');
+        return;
+    }
+
+    const rawPhone = sale.customerPhone || sale.customer_phone || '';
+    const formattedPhone = formatWhatsAppPhone(rawPhone);
+
+    // If phone number is missing or invalid, open receipt modal to prompt cashier for phone
+    if (!formattedPhone) {
+        window.viewReceipt(saleId);
+        showToast('Please enter customer phone number to share WhatsApp bill.', 'info');
+        const phoneInput = document.getElementById('receiptPhoneInput');
+        if (phoneInput) {
+            phoneInput.focus();
+            phoneInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+    }
+
+    const settings = window.TiraDB ? window.TiraDB.getSettings() : {};
+    const loyalty = window.TiraDB ? window.TiraDB.getCustomerLoyalty(formattedPhone) : null;
+
+    const payload = {
+        receiptId: sale.id,
+        timestamp: sale.timestamp,
+        customerName: sale.customerName || sale.customer_name || 'Valued Guest',
+        customerPhone: formattedPhone,
+        items: (sale.items || []).map(it => ({
+            name: it.productName || it.product_name || 'Tiramisu',
+            size: it.weight || it.size || '',
+            quantity: Number(it.quantity || 1),
+            price: Number(it.price || 0),
+            isReward: !!(it.isReward || it.is_reward)
+        })),
+        totalAmount: Number(sale.totalAmount ?? sale.total_amount ?? 0),
+        paymentMode: sale.paymentMode || sale.payment_mode || 'Cash',
+        paidCupsEarned: Number(sale.paidCupsCount ?? sale.paid_cups_count ?? 0),
+        loyaltyBalance: loyalty ? loyalty.totalEligibleCups : undefined,
+        loyaltyThreshold: settings.stampsThreshold || 5,
+        rewardClaimed: !!(sale.rewardRedeemedInSale || sale.reward_redeemed_in_sale)
+    };
+
+    const message = generateWhatsAppReceiptMessage(payload, settings);
+    const encodedMessage = encodeURIComponent(message);
+    const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+    const waUrl = isMobile
+        ? `https://wa.me/${formattedPhone}?text=${encodedMessage}`
+        : `https://web.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
+
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    showToast(`Redirecting to WhatsApp for ${payload.customerName}...`, 'success');
+};
+
+window.shareCurrentReceiptViaWhatsApp = function() {
+    if (window.currentReceiptSaleId) {
+        window.shareSaleOnWhatsApp(window.currentReceiptSaleId);
+    } else {
+        const recId = document.getElementById('recId')?.textContent?.trim();
+        if (recId) window.shareSaleOnWhatsApp(recId);
+    }
+};
+
+window.attachPhoneAndShareWhatsApp = async function() {
+    const input = document.getElementById('receiptPhoneInput');
+    const errElem = document.getElementById('receiptPhoneError');
+    const phoneVal = input ? input.value.trim() : '';
+
+    const formatted = formatWhatsAppPhone(phoneVal);
+    if (!formatted) {
+        if (errElem) {
+            errElem.textContent = 'Please enter a valid 10-digit mobile number.';
+            errElem.style.display = 'block';
+        }
+        if (input) input.focus();
+        showToast('Please enter a valid 10-digit mobile number.', 'warning');
+        return;
+    }
+
+    if (errElem) errElem.style.display = 'none';
+
+    const saleId = window.currentReceiptSaleId || document.getElementById('recId')?.textContent?.trim();
+    if (!saleId) {
+        showToast('No active receipt found.', 'error');
+        return;
+    }
+
+    // Patch order record in TiraDB & backend
+    if (window.TiraDB && typeof window.TiraDB.patchSaleCustomer === 'function') {
+        const patchRes = await window.TiraDB.patchSaleCustomer(saleId, formatted);
+        if (!patchRes.success) {
+            showToast(patchRes.message || 'Failed to update order with phone number.', 'error');
+            return;
+        }
+    }
+
+    // Update receipt DOM details
+    const recPhone = document.getElementById('recCustPhone');
+    if (recPhone) recPhone.textContent = formatted;
+
+    // Toggle UI in receipt modal
+    const readyBox = document.getElementById('receiptWhatsAppReady');
+    const promptBox = document.getElementById('receiptWhatsAppPrompt');
+    if (readyBox) readyBox.style.display = 'block';
+    if (promptBox) promptBox.style.display = 'none';
+
+    // Refresh dashboard tables so patched customer is reflected
+    if (typeof loadDashboardMetrics === 'function') loadDashboardMetrics();
+    if (typeof renderCustomersTable === 'function') renderCustomersTable();
+
+    showToast('Customer phone attached to receipt!', 'success');
+
+    // Launch WhatsApp
+    window.shareSaleOnWhatsApp(saleId);
+};
+
 window.viewReceipt = function(saleId) {
     const sale = window.TiraDB.getSales().find(s => s.id === saleId);
     if (!sale) return;
+
+    window.currentReceiptSaleId = sale.id;
 
     const settings = window.TiraDB.getSettings();
     const curr = settings.currency || '₹';
@@ -1503,9 +1789,29 @@ window.viewReceipt = function(saleId) {
         day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
     document.getElementById('recCustName').textContent = custName;
-    document.getElementById('recCustPhone').textContent = custPhone;
+    document.getElementById('recCustPhone').textContent = custPhone || 'Not Provided';
     document.getElementById('recPayMode').textContent = payMode;
     document.getElementById('recGrandTotal').textContent = `${curr}${totalAmt.toLocaleString('en-IN')}`;
+
+    // WhatsApp Section States (Primary Button vs Inline Phone Prompt)
+    const readyBox = document.getElementById('receiptWhatsAppReady');
+    const promptBox = document.getElementById('receiptWhatsAppPrompt');
+    const phoneInput = document.getElementById('receiptPhoneInput');
+    const phoneError = document.getElementById('receiptPhoneError');
+
+    if (phoneError) phoneError.style.display = 'none';
+
+    const formattedPhone = formatWhatsAppPhone(custPhone);
+    if (formattedPhone) {
+        if (readyBox) readyBox.style.display = 'block';
+        if (promptBox) promptBox.style.display = 'none';
+    } else {
+        if (readyBox) readyBox.style.display = 'none';
+        if (promptBox) promptBox.style.display = 'block';
+        if (phoneInput) {
+            phoneInput.value = custPhone || '';
+        }
+    }
 
     // Items list
     const itemsContainer = document.getElementById('recItemsList');
@@ -1763,168 +2069,11 @@ async function createReceiptImageCanvas(data) {
 }
 
 /**
- * Feature: Share Receipt Image on WhatsApp
- * Generates the authentic receipt image for the selected transaction, validates
- * and formats the customer's WhatsApp number with country code, and opens WhatsApp
- * with the image prepared/attached for immediate sending.
+ * Share Receipt on WhatsApp:
+ * Automatically formats the dynamic unicode digital receipt and redirects to customer WhatsApp chat.
  */
-window.shareReceiptOnWhatsApp = async function() {
-    const btn = document.getElementById('btnShareWhatsAppReceipt');
-    const originalHtml = btn ? btn.innerHTML : '';
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i data-lucide="loader" data-size="16"></i> <span>Preparing Image...</span>';
-        if (window.lucide) window.lucide.createIcons();
-    }
-
-    try {
-        // 1. Retrieve all current receipt details
-        const recId = document.getElementById('recId')?.textContent?.trim() || 'TXN-1001';
-        const recDate = document.getElementById('recDate')?.textContent?.trim() || '';
-        const custName = document.getElementById('recCustName')?.textContent?.trim() || 'Valued Guest';
-        const custPhone = document.getElementById('recCustPhone')?.textContent?.trim() || '';
-        const payMode = document.getElementById('recPayMode')?.textContent?.trim() || 'Cash';
-        const grandTotal = document.getElementById('recGrandTotal')?.textContent?.trim() || '₹0';
-        const loyaltyStatus = document.getElementById('recLoyaltyStatus')?.textContent?.trim() || '';
-        const loyaltyNote = document.getElementById('recLoyaltyNote')?.textContent?.trim() || '';
-        const bizName = document.getElementById('recBizName')?.textContent?.trim() || 'TIRA Belle';
-        const tagline = document.getElementById('recTagline')?.textContent?.trim() || 'LITTLE LAYERS • BIG LOVE';
-        const slogan = document.getElementById('recSlogan')?.textContent?.trim() || 'Layers of Love in Every Spoon';
-        const address = document.getElementById('recAddress')?.textContent?.trim() || 'Physical Dessert Studio & Artisan Counter, Pune';
-        const footerSlogan = document.getElementById('recFooterSlogan')?.textContent?.trim() || 'Thank you for tasting the love in every spoon!';
-        const footerContact = document.getElementById('recFooterContact')?.textContent?.trim() || '';
-        const logoSrc = document.getElementById('recLogo')?.src || 'assets/tira-belle-logo.png';
-
-        // 2. Validate customer WhatsApp number
-        const digitsOnly = custPhone.replace(/\D/g, '');
-        if (!digitsOnly || digitsOnly.length < 10) {
-            showToast(`Cannot share on WhatsApp: Customer phone number is invalid or missing ("${custPhone || 'empty'}"). Please ensure a valid 10-digit number.`, 'error');
-            return;
-        }
-
-        // Format with country code (defaults to India 91 for 10-digit numbers)
-        let formattedPhone = digitsOnly;
-        if (digitsOnly.length === 10) {
-            formattedPhone = '91' + digitsOnly;
-        }
-
-        // 3. Extract items list
-        const items = [];
-        document.querySelectorAll('#recItemsList .receipt-item-row').forEach(row => {
-            const spans = row.querySelectorAll('span');
-            if (spans.length >= 2) {
-                items.push({
-                    name: spans[0].textContent.trim(),
-                    price: spans[1].textContent.trim()
-                });
-            }
-        });
-
-        // 4. Generate the high-resolution receipt Canvas & Image Blob
-        const receiptData = {
-            recId, date: recDate, custName, custPhone, payMode, grandTotal,
-            loyaltyStatus, loyaltyNote, bizName, tagline, slogan, address,
-            footerSlogan, footerContact, logoSrc, items
-        };
-
-        const canvas = await createReceiptImageCanvas(receiptData);
-
-        const blob = await new Promise((resolve, reject) => {
-            canvas.toBlob(b => {
-                if (b) resolve(b);
-                else reject(new Error('Failed to generate receipt image blob from canvas'));
-            }, 'image/png');
-        });
-
-        const receiptFileName = `tira-belle-receipt-${recId}.png`;
-        let receiptFile = null;
-        try {
-            receiptFile = new File([blob], receiptFileName, { type: 'image/png' });
-        } catch (_) {
-            receiptFile = null;
-        }
-
-        // 5. WhatsApp Message
-        const waMessage = `Thank you for your purchase at ${bizName}! Here is your receipt (${recId}).`;
-        const encodedMessage = encodeURIComponent(waMessage);
-
-        const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
-        const waUrlApp = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
-        const waUrlWeb = `https://web.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`;
-
-        // 6. Native Share API with File (Supported on mobile and supporting desktop environments)
-        if (navigator.share && receiptFile && navigator.canShare && navigator.canShare({ files: [receiptFile] })) {
-            try {
-                await navigator.share({
-                    title: `${bizName} Receipt #${recId}`,
-                    text: waMessage,
-                    files: [receiptFile]
-                });
-                showToast(`Receipt image prepared for sharing with ${custName}!`, 'success');
-                return;
-            } catch (shareErr) {
-                if (shareErr.name === 'AbortError') {
-                    // User dismissed share dialog
-                    return;
-                }
-                console.warn('Native share error, continuing with WhatsApp Web flow:', shareErr);
-            }
-        }
-
-        // 7. Desktop & WhatsApp Web Flow:
-        // Copy image directly to Clipboard (PNG Image Item)
-        let copiedToClipboard = false;
-        if (navigator.clipboard && window.ClipboardItem) {
-            try {
-                await navigator.clipboard.write([
-                    new ClipboardItem({ 'image/png': blob })
-                ]);
-                copiedToClipboard = true;
-            } catch (clipErr) {
-                console.warn('Clipboard image write failed:', clipErr);
-            }
-        }
-
-        // Download receipt image file so it is readily accessible on device
-        try {
-            const downloadUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = receiptFileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
-        } catch (dlErr) {
-            console.warn('Auto-download error:', dlErr);
-        }
-
-        // Open WhatsApp directly to the customer's conversation
-        const targetUrl = isMobile ? waUrlApp : waUrlWeb;
-        window.open(targetUrl, '_blank', 'noopener,noreferrer');
-
-        // Clear, explicit guidance for user confirmation
-        if (window.TiraAlert && typeof window.TiraAlert.alert === 'function') {
-            window.TiraAlert.alert({
-                title: 'WhatsApp Chat Opened',
-                message: `Opened WhatsApp chat for <strong>${custName}</strong> (+${formattedPhone}).<br><br>The receipt image has been <strong>copied to your clipboard</strong> and downloaded.<br><br>👉 <strong>Press Ctrl+V (Paste)</strong> in the WhatsApp chat to send the receipt image!`,
-                type: 'info',
-                buttonText: 'Got it!'
-            });
-        } else {
-            showToast(`Opened WhatsApp for ${custName}! Receipt image copied to clipboard — press Ctrl+V to send image.`, 'info');
-        }
-
-    } catch (error) {
-        console.error('Error sharing receipt on WhatsApp:', error);
-        showToast('Could not share receipt image: ' + (error.message || 'Unknown error'), 'error');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-            if (window.lucide) window.lucide.createIcons();
-        }
-    }
+window.shareReceiptOnWhatsApp = function() {
+    window.shareCurrentReceiptViaWhatsApp();
 };
 
 // ----------------- SECTION: CATEGORY MANAGEMENT -----------------
@@ -2922,9 +3071,21 @@ window.viewCustomerHistory = function(phone) {
                     <div><strong>${s.id}</strong> • <span style="font-size: 0.8rem; color: var(--color-text-muted);">${dateStr}</span></div>
                     <div style="font-size: 0.85rem; color: var(--color-text-main); margin-top: 2px;">${itemNames}</div>
                 </div>
-                <div style="text-align: right;">
+                <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                     <div style="font-weight: 800; color: var(--color-espresso);">${curr}${s.totalAmount}</div>
                     <span class="badge ${s.paymentMode === 'Cash' ? 'badge-cash' : 'badge-online'}" style="font-size: 0.7rem;">${s.paymentMode}</span>
+                    <div style="display: flex; gap: 4px; margin-top: 4px;">
+                        <button class="btn btn-outline btn-xs" onclick="viewReceipt('${s.id}')" style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; font-size: 0.72rem;" title="Print Receipt">
+                            <i data-lucide="printer" data-size="12"></i>
+                            <span>Receipt</span>
+                        </button>
+                        <button class="btn btn-whatsapp btn-xs" onclick="shareSaleOnWhatsApp('${s.id}')" style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; font-size: 0.72rem;" title="Share via WhatsApp">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                            <span>WhatsApp</span>
+                        </button>
+                    </div>
                 </div>
             `;
             list.appendChild(card);

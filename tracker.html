@@ -18,7 +18,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TIRA Belle">
-    <link rel="stylesheet" href="css/style.css?v=43">
+    <link rel="stylesheet" href="css/style.css?v=75">
 </head>
 <body class="tracker-page-wrapper">
 
@@ -32,7 +32,7 @@
     <header class="navbar">
         <div class="container navbar-container">
             <a href="index.html" class="nav-brand">
-                <img src="assets/tira-belle-logo.png" alt="TIRA Belle Logo" class="nav-logo-img" data-brand="logo">
+                <img src="assets/tira-belle-logo.png" alt="TIRA Belle Logo" class="nav-logo-img" width="48" height="48" data-brand="logo">
                 <div class="nav-brand-text">
                     <span class="brand-title" data-brand="name">TIRA Belle</span>
                     <span class="brand-subtitle" data-brand="tagline">Little Layers • Big Love</span>
@@ -56,7 +56,10 @@
     <main class="container tracker-container" id="main-content">
         
         <div class="tracker-brand-header">
-            <span class="section-pretitle">Loyalty Rewards Program</span>
+            <div class="tracker-badge-pill">
+                <i data-lucide="sparkles" data-size="14"></i>
+                <span>Exclusive Guest Perks</span>
+            </div>
             <h1 class="section-title">Track Your <span data-brand="name">TIRA Belle</span> Rewards</h1>
             <p class="section-desc">Buy <span id="trackerRuleThreshold">5</span> eligible tiramisu cups, get <strong id="trackerRuleReward">1 free 150g Tiramisu</strong>. Enter your phone number or name below to check your stamps.</p>
         </div>
@@ -149,22 +152,30 @@
                     </div>
                 </div>
 
-                <!-- 5-Slot Loyalty Stamp Card -->
-                <div style="margin-top: 28px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <h4 style="font-size: 1rem; font-weight: 700; color: var(--color-espresso);">
-                            Your Digital Loyalty Card
-                        </h4>
-                        <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-caramel);" id="resStampFraction">
+                <!-- Digital Loyalty Card Container -->
+                <div class="digital-stamp-card-container">
+                    <div class="stamp-card-header-bar">
+                        <div class="stamp-card-header-left">
+                            <div class="stamp-card-badge-icon" aria-hidden="true"><i data-lucide="award" data-size="16"></i></div>
+                            <h4 class="stamp-card-heading">
+                                Your Digital Loyalty Card
+                            </h4>
+                        </div>
+                        <span class="stamp-fraction-badge" id="resStampFraction">
                             3 / 5 Purchases
                         </span>
+                    </div>
+
+                    <!-- Visual Progress Bar -->
+                    <div class="tracker-progress-track" aria-hidden="true">
+                        <div class="tracker-progress-fill" id="resTrackerProgressBar" style="width: 0%;"></div>
                     </div>
                     
                     <div class="stamp-grid-large" id="resStampsGrid">
                         <!-- Stamps dynamically injected -->
                     </div>
                     
-                    <p style="text-align: center; font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">
+                    <p class="stamp-card-disclaimer">
                         *Each eligible cup purchased earns 1 stamp toward your free reward. Free reward cups do not count toward the next stamp.
                     </p>
                 </div>
@@ -331,11 +342,11 @@
     </button>
 
     <!-- Scripts -->
-    <script src="js/icons.js?v=43"></script>
-    <script src="js/pwa.js?v=43"></script>
-    <script src="js/alerts.js?v=43"></script>
-    <script src="js/db.js?v=43"></script>
-    <script src="js/tracker.js?v=43"></script>
+    <script src="js/icons.js?v=75"></script>
+    <script src="js/pwa.js?v=75"></script>
+    <script src="js/alerts.js?v=75"></script>
+    <script src="js/db.js?v=75"></script>
+    <script src="js/tracker.js?v=75"></script>
     <script>
         function fillAndSearch(query) {
             document.getElementById('trackerInput').value = query;

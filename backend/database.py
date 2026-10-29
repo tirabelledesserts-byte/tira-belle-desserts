@@ -54,6 +54,24 @@ def apply_database_migrations_and_indexes(connection):
     except Exception:
         pass
 
+    try:
+        connection.execute(text("ALTER TABLE sales ADD COLUMN discount_type VARCHAR(20) DEFAULT 'flat'"))
+        connection.commit()
+    except Exception:
+        pass
+
+    try:
+        connection.execute(text("ALTER TABLE sales ADD COLUMN discount_value FLOAT DEFAULT 0.0"))
+        connection.commit()
+    except Exception:
+        pass
+
+    try:
+        connection.execute(text("ALTER TABLE sales ADD COLUMN eligible_cups_count INTEGER DEFAULT 0"))
+        connection.commit()
+    except Exception:
+        pass
+
     # 2. Performance indexes across high-frequency filtered / joined foreign keys
     index_statements = [
         "CREATE INDEX IF NOT EXISTS ix_sales_customer_phone ON sales(customer_phone)",

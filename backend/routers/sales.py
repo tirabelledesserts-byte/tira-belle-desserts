@@ -38,9 +38,12 @@ def get_sales(
             "customerName": s.customer_name,
             "subtotal": s.subtotal,
             "discount": s.discount,
+            "discountType": getattr(s, "discount_type", "flat") or "flat",
+            "discountValue": getattr(s, "discount_value", 0.0) or 0.0,
             "totalAmount": s.total_amount,
             "paymentMode": s.payment_mode,
             "paidCupsCount": s.paid_cups_count,
+            "eligibleCupsCount": getattr(s, "eligible_cups_count", None) if getattr(s, "eligible_cups_count", None) is not None else s.paid_cups_count,
             "timestamp": s.timestamp,
             "date": s.date,
             "notes": s.notes,
@@ -112,7 +115,8 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
 
         # Process cart items
         subtotal = 0.0
-        paid_cups_count = 0
+        total_cups_count = 0
+        eligible_cups_count = 0
         db_items = []
 
         for item in sale_in.items:
@@ -122,8 +126,12 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
             item_total = price * qty
             subtotal += item_total
 
-            if not item.is_reward and (prod.counts_towards_loyalty if prod else True):
-                paid_cups_count += qty
+            if not item.is_reward:
+                # Total cup count includes ALL purchased cups (both eligible and excluded)
+                total_cups_count += qty
+                # Loyalty points only count eligible products
+                if (prod.counts_towards_loyalty if prod else True):
+                    eligible_cups_count += qty
 
             db_items.append(SaleItem(
                 product_id=item.product_id,
@@ -146,16 +154,33 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
                 is_reward=True
             ))
 
+        # Compute discount
+        discount_type = (sale_in.discount_type or "flat").lower()
+        discount_value = max(0.0, float(sale_in.discount_value or 0.0))
+        final_discount = max(0.0, float(sale_in.discount or 0.0))
+
+        if discount_type == "percent" and discount_value > 0:
+            pct = min(100.0, discount_value)
+            final_discount = round((subtotal * pct) / 100.0, 2)
+        elif final_discount == 0.0 and discount_value > 0 and discount_type == "flat":
+            final_discount = min(subtotal, discount_value)
+
+        final_discount = min(subtotal, final_discount)
+        total_amount = max(0.0, round(subtotal - final_discount, 2))
+
         sale_id = f"TXN-{int(time.time() * 1000)}-{secrets.token_hex(2).upper()}"
         sale = Sale(
             id=sale_id,
             customer_phone=clean_phone,
             customer_name=customer.name,
             subtotal=subtotal,
-            discount=0.0,
-            total_amount=subtotal,
+            discount=final_discount,
+            discount_type=discount_type,
+            discount_value=discount_value,
+            total_amount=total_amount,
             payment_mode=sale_in.payment_mode or "Cash",
-            paid_cups_count=paid_cups_count,
+            paid_cups_count=total_cups_count,
+            eligible_cups_count=eligible_cups_count,
             timestamp=utcnow_iso(),
             date=today_date_str(),
             notes=sale_in.notes or "",
@@ -182,6 +207,7 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
         "totalAmount": sale.total_amount,
         "paymentMode": sale.payment_mode,
         "paidCupsCount": sale.paid_cups_count,
+        "eligibleCupsCount": getattr(sale, "eligible_cups_count", None) if getattr(sale, "eligible_cups_count", None) is not None else sale.paid_cups_count,
         "items": [it.product_name for it in sale.items]
     })
     notify_change("customers", "updated", {"phone": clean_phone})
@@ -393,9 +419,12 @@ def get_sale_by_id(sale_id: str, db: Session = Depends(get_db)):
         "customerName": sale.customer_name,
         "subtotal": sale.subtotal,
         "discount": sale.discount,
+        "discountType": getattr(sale, "discount_type", "flat") or "flat",
+        "discountValue": getattr(sale, "discount_value", 0.0) or 0.0,
         "totalAmount": sale.total_amount,
         "paymentMode": sale.payment_mode,
         "paidCupsCount": sale.paid_cups_count,
+        "eligibleCupsCount": getattr(sale, "eligible_cups_count", None) if getattr(sale, "eligible_cups_count", None) is not None else sale.paid_cups_count,
         "timestamp": sale.timestamp,
         "date": sale.date,
         "notes": sale.notes,

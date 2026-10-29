@@ -257,8 +257,22 @@ function renderLoyaltyResult(loyalty) {
         desc.innerHTML = `You have purchased <strong>${loyalty.currentCycleProgress} out of ${loyalty.threshold}</strong> eligible cups in this cycle. Buy ${remaining} more to claim your free reward!`;
     }
 
-    // Stamp Fraction text
+    // Stamp Fraction text & Progress Bar
     const fraction = document.getElementById('resStampFraction');
+    const progressBar = document.getElementById('resTrackerProgressBar');
+    const thresholdVal = Math.max(1, loyalty.threshold || 5);
+    const progressVal = Math.min(thresholdVal, loyalty.currentCycleProgress || 0);
+    const progressPct = loyalty.isEligible ? 100 : Math.round((progressVal / thresholdVal) * 100);
+
+    if (progressBar) {
+        progressBar.style.width = `${progressPct}%`;
+        if (loyalty.isEligible) {
+            progressBar.classList.add('completed');
+        } else {
+            progressBar.classList.remove('completed');
+        }
+    }
+
     if (fraction) {
         if (loyalty.isEligible) {
             fraction.textContent = `${loyalty.threshold} / ${loyalty.threshold} Cups • READY!`;
@@ -438,6 +452,11 @@ window.clearLoyaltyTracker = function() {
     const skeleton = document.getElementById('trackerLoadingSkeleton');
     if (skeleton) skeleton.style.display = 'none';
     if (ambiguous) ambiguous.style.display = 'none';
+    const progressBar = document.getElementById('resTrackerProgressBar');
+    if (progressBar) {
+        progressBar.style.width = '0%';
+        progressBar.classList.remove('completed');
+    }
     if (input) input.focus();
     showToast('Loyalty tracker cleared.', 'info');
 };

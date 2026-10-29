@@ -131,6 +131,9 @@ class SaleCreate(CamelModel):
     customer_name: Optional[str] = Field(default="Valued Guest", alias="customerName")
     items: List[SaleItemSchema]
     payment_mode: str = Field(default="Cash", alias="paymentMode")
+    discount: Optional[float] = Field(default=0.0, ge=0.0)
+    discount_type: Optional[str] = Field(default="flat", alias="discountType")
+    discount_value: Optional[float] = Field(default=0.0, ge=0.0, alias="discountValue")
     notes: Optional[str] = ""
     redeem_free_reward: bool = Field(default=False, alias="redeemFreeReward")
 
@@ -144,9 +147,12 @@ class SaleResponse(CamelModel):
     customer_name: Optional[str] = Field(alias="customerName")
     subtotal: float
     discount: float
+    discount_type: Optional[str] = Field(default="flat", alias="discountType")
+    discount_value: Optional[float] = Field(default=0.0, alias="discountValue")
     total_amount: float = Field(alias="totalAmount")
     payment_mode: str = Field(alias="paymentMode")
     paid_cups_count: int = Field(alias="paidCupsCount")
+    eligible_cups_count: Optional[int] = Field(default=0, alias="eligibleCupsCount")
     timestamp: str
     date: str
     notes: Optional[str] = ""

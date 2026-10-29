@@ -197,6 +197,38 @@ async function runAllTests() {
     assert(onlineTotal === 590, 'Online collection is 590');
     assert(cashTotal + onlineTotal === totalRevenue, 'Sum of cash and online equals total revenue');
 
+    // Discount Engine Validation
+    const posSubtotal = 500;
+    const flatDisc = 50;
+    const posTotalFlat = Math.max(0, posSubtotal - flatDisc);
+    assert(posTotalFlat === 450, 'Flat discount: 500 - 50 = 450');
+
+    const pctVal = 10;
+    const pctDisc = (posSubtotal * pctVal) / 100;
+    const posTotalPct = Math.max(0, posSubtotal - pctDisc);
+    assert(pctDisc === 50 && posTotalPct === 450, 'Percentage discount: 10% on 500 = 50 discount, 450 total');
+
+    const excessDisc = 600;
+    const cappedDisc = Math.min(posSubtotal, excessDisc);
+    const posTotalCapped = Math.max(0, posSubtotal - cappedDisc);
+    assert(cappedDisc === 500 && posTotalCapped === 0, 'Excess discount capped at subtotal (cannot be negative)');
+
+    // Multi-mode Payment (Cash, UPI, Card)
+    const modernSalesMock = [
+        { totalAmount: 450, paymentMode: 'Cash' },
+        { totalAmount: 300, paymentMode: 'UPI' },
+        { totalAmount: 250, paymentMode: 'Card' }
+    ];
+    let modernCash = 0;
+    let modernDigital = 0;
+    modernSalesMock.forEach(s => {
+        if (s.paymentMode === 'Cash') modernCash += s.totalAmount;
+        else modernDigital += s.totalAmount;
+    });
+    assert(modernCash === 450, 'Modern cash collection equals 450');
+    assert(modernDigital === 550, 'Modern digital (UPI + Card) collection equals 550 (300 + 250)');
+    assert(modernCash + modernDigital === 1000, 'Sum of cash and modern digital equals 1000');
+
     console.log("\n==================================================");
     console.log(`🏁 TEST RESULTS: ${passed} PASSED | ${failed} FAILED`);
     console.log("==================================================");

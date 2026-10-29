@@ -95,9 +95,12 @@ class Sale(Base):
     customer_name = Column(String(100))
     subtotal = Column(Float, default=0.0)
     discount = Column(Float, default=0.0)
+    discount_type = Column(String(20), default="flat")  # "flat" | "percent"
+    discount_value = Column(Float, default=0.0)
     total_amount = Column(Float, default=0.0)
     payment_mode = Column(String(20), default="Cash")  # "Cash" | "Online"
     paid_cups_count = Column(Integer, default=0)
+    eligible_cups_count = Column(Integer, default=0)
     timestamp = Column(String(50), default=utcnow_iso, index=True)
     date = Column(String(20), default=today_date_str, index=True)
     notes = Column(Text, default="")

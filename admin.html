@@ -1,2009 +1,3796 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Admin Panel | TIRA Belle Sales & Loyalty Management</title>
+
     <meta name="description" content="TIRA Belle Admin Dashboard for Sales Management, Product Catalog, Customer Records, and Loyalty Rewards.">
+
     <meta name="robots" content="noindex, nofollow">
+
     <!-- Preconnect & DNS-Prefetch for Font & Asset Delivery -->
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
+
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <link rel="dns-prefetch" href="https://fonts.googleapis.com">
 
     <link rel="icon" type="image/png" href="assets/tira-belle-logo.png">
+
     <link rel="apple-touch-icon" href="assets/icon-192.png">
+
     <link rel="manifest" href="manifest.json">
+
     <meta name="theme-color" content="#24140e">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
+
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <meta name="apple-mobile-web-app-title" content="TIRA Belle Admin">
-    <link rel="stylesheet" href="css/style.css?v=68?v=60">
+
+    <link rel="stylesheet" href="css/style.css?v=77">
+
     <style>
+
         /* POS Slide to Continue Slider */
+
         .pos-slide-wrapper {
+
             width: 100%;
+
         }
+
         .pos-slide-btn {
+
             position: relative;
+
             width: 100%;
+
             height: 56px;
+
             background: linear-gradient(135deg, var(--color-caramel, #c58940) 0%, #a86c2e 100%);
+
             border-radius: var(--radius-pill, 9999px);
+
             overflow: hidden;
+
             user-select: none;
+
             -webkit-user-select: none;
+
             touch-action: pan-y;
+
             display: flex;
+
             align-items: center;
+
             justify-content: center;
+
             box-shadow: 0 4px 16px rgba(197, 137, 64, 0.35);
+
             cursor: pointer;
+
             outline: none;
+
             transition: box-shadow 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+
         }
+
         .pos-slide-btn:hover {
+
             box-shadow: 0 6px 22px rgba(197, 137, 64, 0.45);
+
         }
+
         .pos-slide-btn:focus-visible {
+
             box-shadow: 0 0 0 3px rgba(197, 137, 64, 0.3), 0 6px 20px rgba(197, 137, 64, 0.45);
+
         }
+
         .pos-slide-btn.submitting {
+
             pointer-events: none;
+
             opacity: 0.92;
+
             filter: brightness(0.96);
+
         }
+
         .pos-slide-progress {
+
             position: absolute;
+
             top: 0;
+
             left: 0;
+
             bottom: 0;
+
             width: 0;
+
             background: linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.32) 100%);
+
             border-radius: var(--radius-pill, 9999px);
+
             pointer-events: none;
+
             transition: width 0s linear;
+
         }
+
         .pos-slide-btn.animating .pos-slide-progress {
+
             transition: width 0.32s cubic-bezier(0.25, 1, 0.5, 1);
+
         }
+
         .pos-slide-text {
+
             position: absolute;
+
             inset: 0;
+
             display: flex;
+
             align-items: center;
+
             justify-content: center;
+
             color: #ffffff;
+
             font-family: var(--font-body, inherit);
+
             font-size: clamp(0.86rem, 2.4vw, 0.98rem);
+
             font-weight: 700;
+
             letter-spacing: 0.2px;
+
             pointer-events: none;
+
             padding-left: 36px;
+
             padding-right: 12px;
+
             transition: opacity 0.2s ease;
+
             z-index: 1;
+
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+
             white-space: nowrap;
+
         }
+
         .pos-slide-handle {
+
             position: absolute;
+
             top: 4px;
+
             left: 4px;
+
             width: 48px;
+
             height: 48px;
+
             border-radius: 50%;
+
             background: #ffffff;
+
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+
             display: flex;
+
             align-items: center;
+
             justify-content: center;
+
             color: var(--color-caramel, #c58940);
+
             cursor: grab;
+
             z-index: 2;
+
             touch-action: none;
+
             transform: translateX(0px);
+
             transition: transform 0s linear, box-shadow 0.2s ease;
+
             border: none;
+
             padding: 0;
+
         }
+
         .pos-slide-handle:active,
+
         .pos-slide-btn.dragging .pos-slide-handle {
+
             cursor: grabbing;
+
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.32);
+
         }
+
         .pos-slide-btn.animating .pos-slide-handle {
+
             transition: transform 0.32s cubic-bezier(0.25, 1, 0.5, 1);
+
         }
+
         .pos-slide-icon {
+
             transition: transform 0.2s ease, opacity 0.2s ease;
+
             display: inline-flex;
+
             align-items: center;
+
             justify-content: center;
+
         }
+
         .pos-slide-btn.submitting .pos-slide-icon {
+
             display: none !important;
+
         }
+
         .pos-slide-spinner {
+
             display: none;
+
             animation: pos-spin 0.8s linear infinite;
+
             color: var(--color-caramel, #c58940);
+
         }
+
         .pos-slide-btn.submitting .pos-slide-spinner {
+
             display: flex !important;
+
             align-items: center;
+
             justify-content: center;
+
         }
+
         @keyframes pos-spin {
+
             from { transform: rotate(0deg); }
+
             to { transform: rotate(360deg); }
+
         }
 
         /* Admin specific custom helpers */
+
         .login-overlay {
+
             position: fixed;
+
             top: 0; left: 0; right: 0; bottom: 0;
+
             background: rgba(36, 20, 14, 0.94);
+
             z-index: 2000;
+
             display: flex;
+
             align-items: center;
+
             justify-content: center;
+
             padding: 20px;
+
         }
+
         .login-box {
+
             background: #fff;
+
             border-radius: var(--radius-lg);
+
             padding: 40px;
+
             width: 100%;
+
             max-width: 420px;
+
             box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+
             text-align: center;
+
         }
+
         .login-logo {
+
             height: 70px;
+
             margin: 0 auto 16px;
+
         }
+
         .pos-cart-badge {
+
             background: var(--color-caramel);
+
             color: #fff;
+
             padding: 3px 9px;
+
             border-radius: var(--radius-pill);
+
             font-size: 0.75rem;
+
             font-weight: 600;
+
             display: inline-block;
+
             line-height: 1.3;
+
         }
+
         .pos-cart-header-actions {
+
             display: inline-flex;
+
             align-items: center;
+
             gap: 8px;
+
         }
+
         .pos-cart-reset-btn {
+
             display: inline-flex;
+
             align-items: center;
+
             justify-content: center;
+
             width: 26px;
+
             height: 26px;
+
             padding: 0;
+
             border: 1px solid var(--color-border);
+
             background: var(--color-surface, #ffffff);
+
             color: var(--color-text-muted);
+
             border-radius: 6px;
+
             cursor: pointer;
+
             transition: all 0.18s ease;
+
             flex-shrink: 0;
+
             box-sizing: border-box;
+
         }
+
         .pos-cart-reset-btn:hover {
+
             color: #c0392b;
+
             border-color: rgba(192, 57, 43, 0.4);
+
             background: rgba(192, 57, 43, 0.08);
+
             transform: scale(1.05);
+
         }
+
         .pos-cart-reset-btn:active {
+
             transform: scale(0.95);
+
         }
-    
 
 /* ==========================================
+
    Redesigned Modern Receipt Modal & Actions
+
    ========================================== */
+
 .receipt-modal-card {
+
     max-width: 440px !important;
+
     border-radius: 18px !important;
+
     overflow: hidden;
+
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+
 }
 
 .receipt-modal-body {
+
     padding: 16px 20px !important;
+
     max-height: 84vh;
+
     overflow-y: auto;
+
 }
 
 .receipt-modal-body::-webkit-scrollbar {
+
     width: 6px;
+
 }
+
 .receipt-modal-body::-webkit-scrollbar-track {
+
     background: transparent;
+
 }
+
 .receipt-modal-body::-webkit-scrollbar-thumb {
+
     background: rgba(0, 0, 0, 0.12);
+
     border-radius: 10px;
+
 }
 
 .receipt-paper {
+
     width: 100% !important;
+
     max-width: 100% !important;
+
     background: #ffffff !important;
+
     border: 1px solid #e8decb !important;
+
     border-radius: 12px !important;
+
     padding: 20px !important;
+
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+
     box-sizing: border-box;
+
 }
 
 .receipt-actions-wrapper {
+
     margin-top: 14px;
+
     display: flex;
+
     flex-direction: column;
+
     gap: 10px;
+
 }
 
 .btn-whatsapp-modern {
+
     width: 100%;
+
     height: 48px;
+
     background: linear-gradient(135deg, #25D366 0%, #1ebe5d 100%);
+
     color: #ffffff !important;
+
     border: none;
+
     border-radius: 12px;
+
     font-size: 0.96rem;
+
     font-weight: 700;
+
     display: inline-flex;
+
     align-items: center;
+
     justify-content: center;
+
     gap: 9px;
+
     cursor: pointer;
+
     box-shadow: 0 4px 14px rgba(37, 211, 102, 0.32);
+
     transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+
 }
 
 .btn-whatsapp-modern:hover {
+
     background: linear-gradient(135deg, #22c35e 0%, #16a34a 100%);
+
     transform: translateY(-1px);
+
     box-shadow: 0 6px 20px rgba(37, 211, 102, 0.44);
+
 }
 
 .btn-whatsapp-modern:active {
+
     transform: translateY(0);
+
     box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+
 }
 
 .btn-whatsapp-modern svg {
+
     flex-shrink: 0;
+
 }
 
 .receipt-prompt-card {
+
     background: #f0fdf4;
+
     border: 1.5px dashed #86efac;
+
     border-radius: 10px;
+
     padding: 12px 14px;
+
 }
 
 .receipt-secondary-actions {
+
     display: flex;
+
     align-items: center;
+
     justify-content: space-between;
+
     gap: 12px;
+
     padding-top: 6px;
+
     border-top: 1px solid rgba(0, 0, 0, 0.06);
+
 }
 
 .receipt-online-btn {
+
     display: inline-flex;
+
     align-items: center;
+
     gap: 6px;
+
     font-size: 0.82rem;
+
     font-weight: 600;
+
     color: var(--color-caramel, #c58940);
+
     text-decoration: none;
+
     padding: 6px 10px;
+
     border-radius: 8px;
+
     transition: all 0.18s ease;
+
 }
 
 .receipt-online-btn:hover {
+
     background: rgba(197, 137, 64, 0.1);
+
     color: var(--color-espresso, #22120b);
+
     text-decoration: none;
+
 }
 
 .receipt-done-btn {
+
     height: 38px;
+
     min-width: 88px;
+
     padding: 0 18px;
+
     font-size: 0.88rem;
+
     font-weight: 600;
+
     border-radius: 9px;
+
     border: 1.5px solid var(--color-border, #e5e0d8);
+
     background: #ffffff;
+
     color: var(--color-espresso, #22120b);
+
     cursor: pointer;
+
     transition: all 0.18s ease;
+
     display: inline-flex;
+
     align-items: center;
+
     justify-content: center;
+
     gap: 6px;
+
 }
 
 .receipt-done-btn:hover {
+
     background: var(--color-bg, #fdfaf5);
+
     border-color: var(--color-caramel, #c58940);
+
     color: var(--color-caramel, #c58940);
+
 }
 
     </style>
+
 <body>
 
     <!-- Accessible Skip to Content Link -->
+
     <a href="#adminMainArea" class="skip-to-content">Skip to admin workspace</a>
 
     <!-- Admin Authentication Gate -->
+
     <div id="adminLoginModal" class="login-overlay">
+
         <div class="login-box">
+
             <img src="assets/tira-belle-logo.png" alt="TIRA Belle" class="login-logo" data-brand="logo" id="adminLoginLogo">
+
             <h2 style="font-family: var(--font-heading); color: var(--color-espresso); font-size: 1.6rem; margin-bottom: 6px;">
+
                 <span data-brand="name">TIRA Belle</span> Admin Portal
+
             </h2>
+
             <p style="color: var(--color-text-muted); font-size: 0.88rem; margin-bottom: 24px;" data-brand="slogan">
+
                 Secure sales, products, and loyalty administration
+
             </p>
 
             <form id="loginForm" onsubmit="event.preventDefault(); if (typeof window.handleAdminLogin === 'function') { window.handleAdminLogin(); } else if (typeof handleAdminLogin === 'function') { handleAdminLogin(); }">
+
                 <div class="form-group" style="text-align: left;">
+
                     <label class="form-label" for="loginUsername">Username</label>
+
                     <input type="text" id="loginUsername" class="form-input" placeholder="Enter your username or email" required autocomplete="username">
+
                 </div>
+
                 <div class="form-group" style="text-align: left;">
+
                     <label class="form-label" for="loginPassword">Password</label>
+
                     <div class="password-input-wrapper">
+
                         <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" required autocomplete="current-password">
+
                         <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" title="Show password">
+
                             <i data-lucide="eye" data-size="18"></i>
+
                         </button>
+
                     </div>
+
                 </div>
+
                 <button type="submit" class="btn btn-caramel btn-lg" style="width: 100%; margin-top: 10px;">
+
                     <i data-lucide="log-in" data-size="18"></i>
+
                     <span>Enter Admin Panel</span>
+
                 </button>
+
             </form>
+
             <div style="margin-top: 20px;">
+
                 <a href="index.html" style="font-size: 0.85rem; color: var(--color-text-muted); display: inline-flex; align-items: center; gap: 6px;">
+
                     <i data-lucide="arrow-left" data-size="14"></i>
+
                     <span>Return to Public Website</span>
+
                 </a>
+
             </div>
+
         </div>
+
     </div>
 
     <!-- Main Admin Layout (Revealed upon authentication) -->
+
     <div class="admin-mobile-header" id="adminMobileHeader">
+
         <div style="display: flex; align-items: center; gap: 10px;">
+
             <img src="assets/tira-belle-logo.png" alt="TIRA Belle" style="height: 32px;" data-brand="logo" id="adminMobileLogo">
+
             <span class="brand-title"><span data-brand="name">TIRA Belle</span> Admin</span>
+
         </div>
+
         <button type="button" class="btn btn-outline btn-sm admin-mobile-menu-btn" id="adminSidebarToggle" onclick="toggleAdminMobileNav()" aria-label="Toggle navigation menu" style="color: #fff; border-color: rgba(255,255,255,0.3);">
+
             <i data-lucide="menu" data-size="18"></i>
+
             <span>Menu</span>
+
         </button>
+
     </div>
+
     <div class="admin-sidebar-backdrop" id="adminSidebarBackdrop" onclick="closeAdminMobileNav()"></div>
 
     <div class="admin-layout" id="adminMainLayout" style="display: none;">
 
         <!-- Sidebar Navigation -->
+
         <aside class="admin-sidebar" id="adminSidebar">
+
             <div class="admin-brand">
+
                 <div class="admin-brand-main">
+
                     <img src="assets/tira-belle-logo.png" alt="TIRA Belle Logo" class="admin-brand-logo" data-brand="logo" id="adminSidebarLogo">
+
                     <div class="admin-brand-info">
+
                         <h2 data-brand="name" id="adminSidebarBizName">TIRA Belle</h2>
+
                         <span>Admin Control</span>
+
                     </div>
+
                 </div>
+
                 <div class="admin-sidebar-header-actions">
+
                     <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarCollapse()" title="Collapse Sidebar" aria-label="Toggle compact sidebar">
+
                         <i data-lucide="chevron-left" data-size="16"></i>
+
                     </button>
+
                     <button type="button" class="sidebar-mobile-close-btn" onclick="closeAdminMobileNav()" title="Close Navigation Drawer" aria-label="Close navigation menu">
+
                         <i data-lucide="x" data-size="18"></i>
+
                     </button>
+
                 </div>
+
             </div>
 
             <nav class="admin-nav">
+
                 <div class="admin-nav-group-title">Operations</div>
+
                 <button class="admin-nav-item active" onclick="switchAdminSection('dashboard')" title="Dashboard" data-title="Dashboard">
+
                     <i data-lucide="layout-dashboard" class="nav-icon"></i>
+
                     <span>Dashboard</span>
+
                 </button>
+
                 <button class="admin-nav-item" onclick="switchAdminSection('pos')" title="New Sale (POS)" data-title="New Sale (POS)">
+
                     <i data-lucide="shopping-cart" class="nav-icon"></i>
+
                     <span>New Sale (POS)</span>
+
                 </button>
+
                 <button class="admin-nav-item" onclick="switchAdminSection('orders')" title="Order Details" data-title="Order Details">
+
                     <i data-lucide="receipt" class="nav-icon"></i>
+
                     <span>Order Details</span>
+
                 </button>
 
                 <div class="admin-nav-group-title">Menu & Catalog</div>
+
                 <button class="admin-nav-item" onclick="switchAdminSection('products')" title="Products" data-title="Products">
+
                     <i data-lucide="package" class="nav-icon"></i>
+
                     <span>Products</span>
+
                 </button>
+
                 <button class="admin-nav-item" onclick="switchAdminSection('categories')" title="Categories" data-title="Categories">
+
                     <i data-lucide="layers" class="nav-icon"></i>
+
                     <span>Categories</span>
+
                 </button>
 
                 <div class="admin-nav-group-title">CRM & Loyalty</div>
+
                 <button class="admin-nav-item" onclick="switchAdminSection('customers')" title="Customer Details" data-title="Customer Details">
+
                     <i data-lucide="users" class="nav-icon"></i>
+
                     <span>Customer Details</span>
+
                 </button>
+
                 <button class="admin-nav-item" onclick="switchAdminSection('loyalty')" title="Loyalty Tracker" data-title="Loyalty Tracker">
+
                     <i data-lucide="award" class="nav-icon"></i>
+
                     <span>Loyalty Tracker</span>
+
                 </button>
+
                 <button class="admin-nav-item" onclick="switchAdminSection('qr')" title="Counter Standee" data-title="Counter Standee">
+
                     <i data-lucide="qr-code" class="nav-icon"></i>
+
                     <span>Counter Standee</span>
+
                 </button>
+
                 <button class="admin-nav-item" onclick="switchAdminSection('reviews')" title="Customer Reviews" data-title="Customer Reviews">
+
                     <i data-lucide="star" class="nav-icon"></i>
+
                     <span>Customer Reviews</span>
+
                 </button>
 
                 <div class="admin-nav-group-title">System</div>
+
                 <button class="admin-nav-item" onclick="switchAdminSection('settings')" title="Settings" data-title="Settings">
+
                     <i data-lucide="settings" class="nav-icon"></i>
+
                     <span>Settings</span>
+
                 </button>
+
             </nav>
 
             <div class="admin-sidebar-footer">
+
                 <a href="index.html" target="_blank" class="admin-nav-item" style="font-size: 0.85rem;" title="View Storefront" data-title="View Storefront">
+
                     <i data-lucide="external-link" class="nav-icon"></i>
+
                     <span>View Storefront</span>
+
                 </a>
+
                 <button class="admin-nav-item" onclick="logoutAdmin()" style="color: #e74c3c;" title="Sign Out" data-title="Sign Out">
+
                     <i data-lucide="log-out" class="nav-icon"></i>
+
                     <span>Sign Out</span>
+
                 </button>
+
             </div>
+
         </aside>
 
         <!-- Main Content Area -->
+
         <main class="admin-main" id="adminMainArea">
 
             <!-- SECTION 1: DASHBOARD -->
+
             <section id="sec-dashboard" class="admin-section active">
+
                 <div class="admin-topbar">
+
                     <div>
+
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap;">
+
                             <h1 class="admin-page-title">Daily Sales & Performance</h1>
+
                             <span class="live-status-pill">
+
                                 <span class="live-status-dot"></span>
+
                                 <span>Live Counter</span>
+
                             </span>
+
                         </div>
+
                         <p class="admin-page-subtitle">Real-time revenue, product-wise sales, and loyalty redemptions</p>
+
                     </div>
+
                     <div class="admin-top-actions">
+
                         <div class="admin-top-action-row">
+
                             <!-- Notification Bell Button (with unread alert badge) -->
+
                             <div class="notification-btn-wrapper">
+
                                 <button type="button" class="admin-icon-btn" id="adminNotificationBtn" onclick="toggleAdminNotifications(event)" aria-label="Notifications" title="Counter Notifications">
+
                                     <i data-lucide="bell" data-size="18"></i>
+
                                     <span class="notification-badge-dot" id="adminNotifDot"></span>
+
                                 </button>
-                                
+
                                 <!-- Notifications Dropdown Flyout -->
+
                                 <div class="notification-dropdown-menu" id="adminNotificationDropdown" style="display: none;">
+
                                     <div class="notif-header">
+
                                         <div style="font-weight: 700; color: var(--color-espresso); font-size: 0.88rem;">Live Activity Notifications</div>
+
                                         <span class="badge badge-warning" style="font-size: 0.68rem;" id="notifUnreadBadge">0 New</span>
+
                                     </div>
+
                                     <div class="notif-list" id="adminNotifList">
+
                                         <!-- Populated dynamically via renderAdminNotifications() -->
+
                                     </div>
+
                                     <div class="notif-footer">
+
                                         <button type="button" class="notif-clear-btn" onclick="clearAdminNotifications()">Mark all as read</button>
+
                                     </div>
+
                                 </div>
+
                             </div>
 
                             <!-- Calendar Date Picker Widget -->
+
                             <div class="date-selector-wrapper" id="dateSelectorWrapper" title="Click to choose a date from calendar">
+
                                 <i data-lucide="calendar" class="date-selector-icon" data-size="16"></i>
+
                                 <span id="datePickerDisplay" class="date-picker-display">Today • 28 Oct 2026</span>
+
                                 <input type="date" id="dashboardDatePicker" class="date-picker-native-input" onchange="onDashboardDateSelect(this.value)" aria-label="Choose specific sales date">
+
                                 <i data-lucide="chevron-down" class="date-selector-arrow" data-size="14"></i>
+
                             </div>
 
                             <!-- Quick Return to Today Button (shown when viewing a past date) -->
+
                             <button type="button" id="btnResetToday" class="btn btn-outline btn-sm reset-today-btn" style="display: none;" onclick="resetDashboardToToday()" title="Return to today's sales">
+
                                 <i data-lucide="rotate-ccw" data-size="13"></i>
+
                                 <span>Today</span>
+
                             </button>
+
                         </div>
 
                         <!-- Record New Sale Button -->
+
                         <button id="btnRecordNewSale" class="btn btn-caramel btn-dashboard-sale" onclick="switchAdminSection('pos')">
+
                             <i data-lucide="plus" data-size="16"></i>
+
                             <span>Record New Sale</span>
+
                         </button>
+
                     </div>
+
                 </div>
 
                 <!-- Metrics Grid -->
+
                 <div class="metrics-grid">
+
                     <div class="metric-card revenue">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Total Sales Revenue</span>
+
                             <span class="metric-icon"><i data-lucide="chart-no-axes-combined" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="dashTotalRevenue"><span class="skeleton-shimmer skeleton-metric-val"></span></div>
+
                         <div class="metric-sub" id="dashTxnCount"><span class="skeleton-shimmer skeleton-metric-sub"></span></div>
+
                     </div>
 
                     <div class="metric-card cash">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Cash Collection</span>
+
                             <span class="metric-icon"><i data-lucide="banknote" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="dashCashCollection"><span class="skeleton-shimmer skeleton-metric-val"></span></div>
+
                         <div class="metric-sub">Physical cash in drawer</div>
+
                     </div>
 
                     <div class="metric-card online">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Online Collection</span>
+
                             <span class="metric-icon"><i data-lucide="credit-card" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="dashOnlineCollection"><span class="skeleton-shimmer skeleton-metric-val"></span></div>
+
                         <div class="metric-sub">UPI, QR & Card payments</div>
+
                     </div>
 
                     <div class="metric-card cups">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Total Cups Sold</span>
+
                             <span class="metric-icon"><i data-lucide="coffee" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="dashTotalPaidCups"><span class="skeleton-shimmer skeleton-metric-val"></span></div>
+
                         <div class="metric-sub">Total cups & tubs sold (all sizes)</div>
+
                     </div>
 
                     <div class="metric-card rewards">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Rewards Claimed</span>
+
                             <span class="metric-icon"><i data-lucide="gift" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="dashRewardsClaimed"><span class="skeleton-shimmer skeleton-metric-val"></span></div>
+
                         <div class="metric-sub">Free 150g cups redeemed</div>
+
                     </div>
+
                 </div>
 
                 <!-- Product-wise Sales Summary Card -->
+
                 <div class="card">
+
                     <div class="card-title">
+
                         <span>Product-Wise Sales Quantities & Revenue</span>
+
                         <span class="counter-tag" id="dashProductSummaryTag">Today</span>
+
                     </div>
+
                     <div class="table-responsive">
+
                         <table class="data-table">
+
                             <thead>
+
                                 <tr>
+
                                     <th>Product Name</th>
+
                                     <th>Cup Size</th>
+
                                     <th>Unit Price</th>
+
                                     <th>Cups Sold</th>
+
                                     <th>Total Revenue</th>
+
                                 </tr>
+
                             </thead>
+
                             <tbody id="dashProductSummaryTbody">
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td></tr>
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 45%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 55%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%;"></span></td></tr>
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 80%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td></tr>
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                 </div>
 
                 <!-- Recent Transactions Card -->
+
                 <div class="card">
+
                     <div class="card-title">
+
                         <span>Recent Sales Transactions</span>
+
                         <button class="btn btn-outline btn-sm" onclick="switchAdminSection('orders')" title="View all orders">
+
                             <span>View All Orders</span>
+
                             <i data-lucide="arrow-right" data-size="14"></i>
+
                         </button>
+
                     </div>
+
                     <div class="table-responsive">
+
                         <table class="data-table">
+
                             <thead>
+
                                 <tr>
+
                                     <th>Receipt ID</th>
+
                                     <th>Date & Time</th>
+
                                     <th>Customer</th>
+
                                     <th>Items Purchased</th>
+
                                     <th>Cups / Loyalty</th>
+
                                     <th>Amount</th>
+
                                     <th>Payment</th>
+
                                     <th>Actions</th>
+
                                 </tr>
+
                             </thead>
+
                             <tbody id="dashRecentSalesTbody">
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 80%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 85%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 55%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 55%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 85%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 45%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                 </div>
+
             </section>
 
             <!-- SECTION 2: POS / RECORD SALE -->
+
             <section id="sec-pos" class="admin-section">
+
                 <div class="admin-topbar">
+
                     <div>
+
                         <h1 class="admin-page-title">Point of Sale (POS Register)</h1>
+
                         <p class="admin-page-subtitle">Select products, enter customer details, and save the sale</p>
+
                     </div>
+
                 </div>
 
                 <div class="pos-grid">
+
                     <!-- Products Catalog Grid -->
+
                     <div>
+
                         <h3 style="font-family: var(--font-heading); font-size: 1.25rem; color: var(--color-espresso); margin-bottom: 12px;">
+
                             Select Tiramisu Cups
+
                         </h3>
+
                         <!-- Category Filter Pills for POS -->
+
                         <div class="pos-category-bar" id="posCategoryFilterPills">
+
                             <!-- Populated dynamically via renderPosCatalog() -->
+
                         </div>
+
                         <div class="pos-catalog" id="posProductCatalog">
+
                             <!-- Populated with active products -->
+
                         </div>
+
                     </div>
 
                     <!-- Cart and Checkout Panel -->
+
                     <div class="pos-cart-panel">
+
                         <h3 style="font-family: var(--font-heading); font-size: 1.25rem; color: var(--color-espresso); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+
                             <span>Current Order</span>
+
                             <div class="pos-cart-header-actions">
+
                                 <span class="pos-cart-badge" id="cartBadgeCount">0 items</span>
+
                                 <button type="button" class="pos-cart-reset-btn" id="posBtnCartReset" onclick="resetNewSale()" data-tooltip="Clear cart &amp; reset order" aria-label="Clear cart and reset order" title="Clear current order">
+
                                     <i data-lucide="rotate-ccw" data-size="13"></i>
+
                                 </button>
+
                             </div>
+
                         </h3>
 
                         <!-- Cart Items List -->
+
                         <div class="cart-items-list" id="cartItemsList">
+
                             <div style="text-align: center; padding: 30px 10px; color: var(--color-text-muted); font-size: 0.9rem;">
+
                                 <i data-lucide="shopping-cart" data-size="32" style="margin-bottom: 8px; color: var(--color-caramel);"></i>
+
                                 <div>Cart is empty. Select products on the left to start an order.</div>
+
                             </div>
+
                         </div>
 
                         <!-- Cart Totals -->
+
                         <div class="cart-total-box">
+
                             <div class="cart-total-row">
+
                                 <span>Subtotal</span>
+
                                 <span id="cartSubtotal">₹0</span>
+
                             </div>
+
+                            <div class="cart-total-row discount-row" id="cartDiscountRow" style="display: none; color: #27ae60; font-weight: 600;">
+
+                                <span id="cartDiscountLabel">Discount (Optional)</span>
+
+                                <span id="cartDiscountAmount">-₹0</span>
+
+                            </div>
+
                             <div class="cart-total-row">
-                                <span>Eligible Paid Cups</span>
+
+                                <span>Total Cups</span>
+
                                 <span id="cartEligibleCups">0 cups</span>
+
                             </div>
+
                             <div class="cart-total-row grand">
+
                                 <span>Total Payable</span>
+
                                 <span id="cartGrandTotal">₹0</span>
+
                             </div>
+
                         </div>
 
                         <!-- Customer Details Input -->
+
                         <div class="form-group customer-suggest-wrapper">
+
                             <div class="pos-phone-header">
+
                                 <label class="form-label" for="posCustomerPhone" style="margin-bottom: 0;">Customer Mobile (For Stamps) <span style="color: #e74c3c;">*</span></label>
+
                                 <span id="posMemberStatusBadge" class="pos-member-badge" style="display: none;">
+
                                     <i data-lucide="check-circle-2" data-size="12"></i> Recognized Member
+
                                 </span>
+
                             </div>
+
                             <input type="tel" id="posCustomerPhone" class="form-input" placeholder="Type 10-digit phone number..." maxlength="10" oninput="handlePosPhoneInput(this.value)">
+
                             <div class="form-help">Primary identifier used to track loyalty points automatically</div>
-                            
+
                             <!-- Dynamic Customer Loyalty Card (Rendered when valid 10 digits entered) -->
+
                             <div id="posDynamicLoyaltyCard" class="pos-dynamic-loyalty-container" style="display: none;"></div>
 
                             <!-- Hidden internal checkbox to preserve compatibility with createSale & updateCartUI -->
+
                             <input type="checkbox" id="posRedeemRewardCheckbox" style="display: none;" onchange="toggleRewardInOrder(this.checked)">
 
                             <!-- Returning customer quick dropdown -->
+
                             <div id="posCustomerSuggestions" class="customer-suggest-dropdown"></div>
+
                         </div>
 
                         <div class="form-group">
+
                             <label class="form-label" for="posCustomerName">Customer Name (Optional)</label>
+
                             <input type="text" id="posCustomerName" class="form-input" placeholder="Enter customer name">
+
                         </div>
 
-                        <!-- Payment Mode Selector -->
-                        <div class="form-group">
-                            <label class="form-label">Payment Mode <span style="color: #e74c3c;">*</span></label>
-                            <div class="payment-selector">
-                                <div class="payment-option active" id="payModeCash" onclick="setPosPaymentMode('Cash')">
-                                    <i data-lucide="banknote" data-size="18"></i>
-                                    <span>Cash</span>
-                                </div>
-                                <div class="payment-option" id="payModeOnline" onclick="setPosPaymentMode('Online')">
-                                    <i data-lucide="qr-code" data-size="18"></i>
-                                    <span>Online (UPI / QR)</span>
-                                </div>
+                        <!-- Payment Details & Optional Discount Section -->
+
+                        <div class="pos-payment-card">
+
+                            <div class="pos-payment-card-header">
+
+                                <i data-lucide="credit-card" data-size="18"></i>
+
+                                <span>Payment Details</span>
+
                             </div>
+
+                            <!-- Row 1: Payment Method -->
+
+                            <div class="pos-payment-row">
+
+                                <label class="pos-payment-label">Payment Method</label>
+
+                                <div class="pos-payment-methods">
+
+                                    <button type="button" class="pos-pay-btn active" id="payModeCash" onclick="setPosPaymentMode('Cash')">
+
+                                        <i data-lucide="banknote" data-size="16"></i>
+
+                                        <span>Cash</span>
+
+                                    </button>
+
+                                    <button type="button" class="pos-pay-btn" id="payModeUpi" onclick="setPosPaymentMode('UPI')">
+
+                                        <i data-lucide="qr-code" data-size="16"></i>
+
+                                        <span>UPI</span>
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                            <!-- Row 2: Discount (Optional) -->
+
+                            <div class="pos-payment-row pos-discount-row">
+
+                                <label class="pos-payment-label" for="posDiscountInput">
+
+                                    Discount <span class="pos-label-optional">(Optional)</span>
+
+                                </label>
+
+                                <div class="pos-discount-controls">
+
+                                    <div class="pos-discount-input-wrapper">
+
+                                        <span class="pos-discount-prefix" id="posDiscountPrefix">₹</span>
+
+                                        <input type="number" id="posDiscountInput" class="pos-discount-input" value="0" min="0" step="any" placeholder="0" oninput="handlePosDiscountChange(this.value)">
+
+                                    </div>
+
+                                    <div class="pos-discount-toggle-group">
+
+                                        <button type="button" class="pos-disc-type-btn active" id="posDiscTypeFlat" onclick="setPosDiscountType('flat')" title="Flat amount discount in ₹">
+
+                                            ₹
+
+                                        </button>
+
+                                        <button type="button" class="pos-disc-type-btn" id="posDiscTypePercent" onclick="setPosDiscountType('percent')" title="Percentage discount (%)">
+
+                                            %
+
+                                        </button>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
                         </div>
 
                         <div class="form-group">
+
                             <label class="form-label" for="posSaleNotes">Order Notes (Optional)</label>
+
                             <input type="text" id="posSaleNotes" class="form-input" placeholder="Enter order notes or special requests">
+
                         </div>
 
                         <div class="pos-checkout-actions">
+
                             <div class="pos-slide-wrapper">
+
                                 <div class="pos-slide-btn" id="posSlideToContinue" role="slider" tabindex="0" aria-label="Slide to complete order and print bill" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+
                                     <div class="pos-slide-progress" id="posSlideProgress"></div>
+
                                     <div class="pos-slide-text" id="posSlideText">
+
                                         <span class="pos-slide-text-label">Complete Order & Print Bill</span>
+
                                     </div>
+
                                     <button type="button" class="pos-slide-handle" id="posSlideHandle" aria-hidden="true" tabindex="-1">
+
                                         <i data-lucide="chevrons-right" data-size="22" class="pos-slide-icon"></i>
+
                                         <div class="pos-slide-spinner" id="posSlideSpinner" style="display: none;">
+
                                             <i data-lucide="loader" data-size="20" class="pos-spinner-icon"></i>
+
                                         </div>
+
                                     </button>
+
                                 </div>
+
                                 <button class="btn btn-caramel pos-btn-save" onclick="submitPosSale()" id="btnSaveSale" style="display: none;" aria-hidden="true">
+
                                     <span>Complete Order & Print Bill</span>
+
                                 </button>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
             </section>
 
             <!-- SECTION: ORDER DETAILS & SALES HISTORY -->
+
             <section id="sec-orders" class="admin-section">
+
                 <div class="admin-topbar">
+
                     <div>
+
                         <h1 class="admin-page-title">Order Details & Sales History</h1>
+
                         <p class="admin-page-subtitle">Track individual customer orders, line items, timestamps, receipts, and payment breakdowns</p>
+
                     </div>
+
                     <div class="admin-top-actions" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+
                         <input type="text" id="orderSearchInput" class="form-input" placeholder="Search by receipt ID, name, or phone" style="width: 260px;" oninput="renderOrdersTable()">
-                        
+
                         <!-- Order Calendar Date Picker Widget -->
+
                         <div class="date-selector-wrapper" id="orderDateSelectorWrapper" title="Filter orders by date">
+
                             <i data-lucide="calendar" class="date-selector-icon" data-size="16"></i>
+
                             <span id="orderDatePickerDisplay" class="date-picker-display">All Time Records</span>
+
                             <input type="date" id="orderDatePicker" class="date-picker-native-input" onchange="onOrderDateSelect(this.value)" aria-label="Filter orders by date">
+
                             <i data-lucide="chevron-down" class="date-selector-arrow" data-size="14"></i>
+
                         </div>
 
                         <!-- Reset Date Button to return to All Time -->
+
                         <button type="button" id="btnOrderResetAll" class="btn btn-outline btn-sm reset-today-btn" style="display: none;" onclick="resetOrderDateFilter()" title="View all order records">
+
                             <i data-lucide="rotate-ccw" data-size="13"></i>
+
                             <span>All Time</span>
+
                         </button>
 
                         <button class="btn btn-outline btn-sm" onclick="exportOrdersCSV()" title="Export order records to CSV">
+
                             <i data-lucide="download" data-size="16"></i>
+
                             <span>Export CSV</span>
+
                         </button>
+
                     </div>
+
                 </div>
 
                                 <!-- Order Overview Metrics Grid -->
+
                 <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+
                     <div class="metric-card revenue">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Orders Revenue</span>
+
                             <span class="metric-icon"><i data-lucide="chart-no-axes-combined" data-size="18"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="orderMetricRevenue">₹0</div>
+
                         <div class="metric-sub" id="orderMetricRevenueSub">In selected view</div>
+
                     </div>
 
                     <div class="metric-card cash">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Total Orders</span>
+
                             <span class="metric-icon"><i data-lucide="receipt" data-size="18"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="orderMetricCount">0</div>
+
                         <div class="metric-sub" id="orderMetricCountSub">Transactions placed</div>
+
                     </div>
 
                     <div class="metric-card cups">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Cups Sold</span>
+
                             <span class="metric-icon"><i data-lucide="coffee" data-size="18"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="orderMetricCups">0</div>
+
                         <div class="metric-sub">Paid cups count</div>
+
                     </div>
 
                     <div class="metric-card online">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Average Order Value</span>
+
                             <span class="metric-icon"><i data-lucide="wallet" data-size="18"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="orderMetricAov">₹0</div>
+
                         <div class="metric-sub">Average per order</div>
+
                     </div>
+
                 </div>
 
                 <!-- Order Filter Toolbar -->
+
                 <div class="customer-filter-bar" id="orderFilterBar">
+
                     <span class="customer-filter-label">
-                        <i data-lucide="filter" data-size="14"></i>
+
+                        
+
                         <span>Payment Mode:</span>
+
                     </span>
+
                     <div class="filter-chip-group">
+
                         <button type="button" class="filter-chip active" id="chipOrderFilterAll" onclick="setOrderPaymentFilter('all')">
+
                             <span>All Orders</span>
+
                             <span class="chip-badge" id="countOrderFilterAll">0</span>
+
                         </button>
+
                         <button type="button" class="filter-chip" id="chipOrderFilterCash" onclick="setOrderPaymentFilter('Cash')">
-                            <i data-lucide="banknote" data-size="14"></i>
+
+                            
+
                             <span>Cash</span>
+
                             <span class="chip-badge" id="countOrderFilterCash">0</span>
+
                         </button>
+
                         <button type="button" class="filter-chip" id="chipOrderFilterOnline" onclick="setOrderPaymentFilter('Online')">
-                            <i data-lucide="qr-code" data-size="14"></i>
+
+                            
+
                             <span>Online (UPI)</span>
+
                             <span class="chip-badge" id="countOrderFilterOnline">0</span>
+
                         </button>
+
                     </div>
+
                 </div>
 
                 <div class="card">
+
                     <div class="table-responsive">
+
                         <table class="data-table">
+
                             <thead>
+
                                 <tr>
+
                                     <th>Receipt ID</th>
+
                                     <th>Date & Time</th>
+
                                     <th>Customer</th>
+
                                     <th>Items Breakdown</th>
+
                                     <th>Cups</th>
+
                                     <th>Total Amount</th>
+
                                     <th>Payment</th>
+
                                     <th>Actions</th>
+
                                 </tr>
+
                             </thead>
+
                             <tbody id="adminOrdersTableTbody">
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 80%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 90%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                     <!-- Orders Table Pagination Bar -->
+
                     <div class="admin-table-pagination" id="orderTablePagination">
+
                         <div class="pagination-info" id="orderPaginationInfo">Showing 0 of 0 orders</div>
+
                         <div class="pagination-controls" id="orderPaginationControls">
+
                             <button type="button" class="btn btn-outline btn-xs" id="btnOrderPagePrev" onclick="changeOrdersPage(-1)" data-tooltip="Previous page" aria-label="Previous order page">
+
                                 <i data-lucide="chevron-left" data-size="14"></i>
+
                                 <span>Previous</span>
+
                             </button>
+
                             <span class="pagination-page-label" id="orderCurrentPageLabel">Page 1</span>
+
                             <button type="button" class="btn btn-outline btn-xs" id="btnOrderPageNext" onclick="changeOrdersPage(1)" data-tooltip="Next page" aria-label="Next order page">
+
                                 <span>Next</span>
+
                                 <i data-lucide="chevron-right" data-size="14"></i>
+
                             </button>
+
                         </div>
+
                     </div>
+
                 </div>
+
             </section>
 
             <!-- SECTION: CATEGORY MANAGEMENT -->
+
             <section id="sec-categories" class="admin-section">
+
                 <div class="admin-topbar">
+
                     <div>
+
                         <h1 class="admin-page-title">Category Management</h1>
+
                         <p class="admin-page-subtitle">Create, organize, and manage dessert categories, associated images, and product groups</p>
+
                     </div>
+
                     <div class="admin-top-actions">
+
                         <button class="btn btn-caramel btn-sm" onclick="openCategoryModal()">
+
                             <i data-lucide="plus" data-size="16"></i>
+
                             <span>Add New Category</span>
+
                         </button>
+
                     </div>
+
                 </div>
 
                 <!-- Category Overview Metrics -->
+
                 <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 24px;">
+
                     <div class="metric-card">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Total Categories</span>
+
                             <span class="metric-icon"><i data-lucide="layers" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="catTotalCount">0</div>
+
                         <div class="metric-sub">Organized menu categories</div>
+
                     </div>
 
                     <div class="metric-card online">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Live on Storefront</span>
+
                             <span class="metric-icon"><i data-lucide="check-circle-2" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="catActiveCount">0</div>
+
                         <div class="metric-sub">Active for public display</div>
+
                     </div>
 
                     <div class="metric-card cash">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Categorized Products</span>
+
                             <span class="metric-icon"><i data-lucide="package" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="catProductCount">0</div>
+
                         <div class="metric-sub">Products linked to categories</div>
+
                     </div>
+
                 </div>
 
                 <!-- Category Cards & Associated Images Container -->
+
                 <div id="adminCategoriesContainer" class="admin-categories-container">
+
                     <!-- Populated dynamically via renderCategoriesSection() -->
+
                 </div>
+
             </section>
 
             <!-- SECTION 3: PRODUCT MANAGEMENT -->
+
             <section id="sec-products" class="admin-section">
+
                 <div class="admin-topbar">
+
                     <div>
+
                         <h1 class="admin-page-title">Product Catalog Management</h1>
+
                         <p class="admin-page-subtitle">Add, edit, adjust prices, upload images, and toggle products on the public website</p>
+
                     </div>
+
                     <div class="admin-top-actions">
+
                         <select id="adminProductCategoryFilter" class="form-select" onchange="renderProductsTable()" style="width: auto; min-width: 170px;">
+
                             <option value="all">All Categories</option>
+
                         </select>
+
                         <button class="btn btn-caramel btn-sm" onclick="openProductModal()">
+
                             <i data-lucide="plus" data-size="16"></i>
+
                             <span>Add New Product</span>
+
                         </button>
+
                     </div>
+
                 </div>
 
                 <div class="card">
+
                     <div class="table-responsive">
+
                         <table class="data-table">
+
                             <thead>
+
                                 <tr>
+
                                     <th>Image</th>
+
                                     <th>Product Name</th>
+
                                     <th>Category</th>
+
                                     <th>Weight</th>
+
                                     <th>Price (₹)</th>
+
                                     <th>Loyalty</th>
+
                                     <th>Status</th>
+
                                     <th style="text-align: right;">Actions</th>
+
                                 </tr>
+
                             </thead>
+
                             <tbody id="adminProductsTableTbody">
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-thumb"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%; display: block; margin-bottom: 4px;"></span><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td style="text-align: right;"><span class="skeleton-shimmer skeleton-btn"></span> <span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-thumb"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%; display: block; margin-bottom: 4px;"></span><span class="skeleton-shimmer skeleton-cell" style="width: 45%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td style="text-align: right;"><span class="skeleton-shimmer skeleton-btn"></span> <span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-thumb"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%; display: block; margin-bottom: 4px;"></span><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td style="text-align: right;"><span class="skeleton-shimmer skeleton-btn"></span> <span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                 </div>
+
             </section>
 
             <!-- SECTION 4: CUSTOMER DETAILS -->
+
             <section id="sec-customers" class="admin-section">
+
                 <div class="admin-topbar">
+
                     <div>
+
                         <h1 class="admin-page-title">Customer Records & Purchase Histories</h1>
+
                         <p class="admin-page-subtitle">View all registered customers, lifetime spend, visits, and transaction logs</p>
+
                     </div>
+
                     <div class="admin-top-actions" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+
                         <input type="text" id="customerSearchInput" class="form-input" placeholder="Search by name or mobile number" style="width: 250px;" oninput="renderCustomersTable()">
-                        
+
                         <!-- Customer Calendar Date Picker Widget -->
+
                         <div class="date-selector-wrapper" id="custDateSelectorWrapper" title="Filter customers by purchase date">
+
                             <i data-lucide="calendar" class="date-selector-icon" data-size="16"></i>
+
                             <span id="custDatePickerDisplay" class="date-picker-display">All Time Records</span>
+
                             <input type="date" id="customerDatePicker" class="date-picker-native-input" onchange="onCustomerDateSelect(this.value)" aria-label="Filter customers by purchase date">
+
                             <i data-lucide="chevron-down" class="date-selector-arrow" data-size="14"></i>
+
                         </div>
 
                         <!-- Reset Date Button to return to All Time -->
+
                         <button type="button" id="btnCustResetAll" class="btn btn-outline btn-sm reset-today-btn" style="display: none;" onclick="resetCustomerDateFilter()" title="View all registered customers">
+
                             <i data-lucide="rotate-ccw" data-size="13"></i>
+
                             <span>All Time</span>
+
                         </button>
 
                         <button class="btn btn-outline btn-sm" onclick="exportCustomersCSV()" title="Export current customer table to CSV">
+
                             <i data-lucide="download" data-size="16"></i>
+
                             <span>Export CSV</span>
+
                         </button>
+
                     </div>
+
                 </div>
 
                 <!-- Customer Filter Toolbar -->
+
                 <div class="customer-filter-bar" id="customerFilterBar">
+
                     <span class="customer-filter-label">
-                        <i data-lucide="filter" data-size="14"></i>
+
+                        
+
                         <span>Filter By:</span>
+
                     </span>
+
                     <div class="filter-chip-group">
+
                         <button type="button" class="filter-chip active" id="chipFilterAll" onclick="setCustomerFilter('all')">
+
                             <span>All Customers</span>
+
                             <span class="chip-badge" id="countFilterAll">0</span>
+
                         </button>
+
                         <button type="button" class="filter-chip" id="chipFilterCash" onclick="setCustomerFilter('cash')">
-                            <i data-lucide="banknote" data-size="14"></i>
+
+                            
+
                             <span>Cash</span>
+
                             <span class="chip-badge" id="countFilterCash">0</span>
+
                         </button>
+
                         <button type="button" class="filter-chip" id="chipFilterOnline" onclick="setCustomerFilter('online')">
-                            <i data-lucide="qr-code" data-size="14"></i>
+
+                            
+
                             <span>Online</span>
+
                             <span class="chip-badge" id="countFilterOnline">0</span>
+
                         </button>
+
                         <button type="button" class="filter-chip" id="chipFilter150g" onclick="setCustomerFilter('150g')">
-                            <i data-lucide="cake-slice" data-size="14"></i>
+
+                            
+
                             <span>150 g</span>
+
                             <span class="chip-badge" id="countFilter150g">0</span>
+
                         </button>
+
                         <button type="button" class="filter-chip" id="chipFilter350g" onclick="setCustomerFilter('350g')">
-                            <i data-lucide="cake" data-size="14"></i>
+
+                            
+
                             <span>350 g</span>
+
                             <span class="chip-badge" id="countFilter350g">0</span>
+
                         </button>
+
                         <button type="button" class="filter-chip" id="chipFilterClaimed" onclick="setCustomerFilter('claimed')">
-                            <i data-lucide="gift" data-size="14"></i>
+
+                            
+
                             <span>Offer Claimed</span>
+
                             <span class="chip-badge" id="countFilterClaimed">0</span>
+
                         </button>
+
                     </div>
+
                     <button type="button" class="filter-chip-reset" id="resetCustomerFilterBtn" onclick="setCustomerFilter('all')" style="display: none;">
-                        <i data-lucide="rotate-ccw" data-size="12"></i>
+
                         <span>Reset Filters</span>
+
                     </button>
+
                 </div>
 
                 <div class="card">
+
                     <div class="table-responsive">
-                        <table class="data-table">
+
+                        <table class="data-table customer-data-table">
+
                             <thead>
+
                                 <tr>
-                                    <th>Customer Name</th>
-                                    <th>Phone Number</th>
-                                    <th>Total Cups</th>
-                                    <th>Purchases</th>
-                                    <th>Total Spent</th>
-                                    <th>Loyalty Progress</th>
-                                    <th>Rewards Claimed</th>
-                                    <th>Actions</th>
+
+                                    <th class="col-cust-name">Customer Name</th>
+
+                                    <th class="col-cust-phone">Phone Number</th>
+
+                                    <th class="col-cust-cups">Total Cups</th>
+
+                                    <th class="col-cust-orders">Purchases</th>
+
+                                    <th class="col-cust-spend">Total Spent</th>
+
+                                    <th class="col-cust-loyalty">Loyalty Progress</th>
+
+                                    <th class="col-cust-claimed">Rewards Claimed</th>
+
+                                    <th class="col-cust-actions">Actions</th>
+
                                 </tr>
+
                             </thead>
+
                             <tbody id="adminCustomersTableTbody">
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 80%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 55%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 45%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+
                                 <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 85%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 55%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                     <!-- Customers Table Pagination Bar -->
+
                     <div class="admin-table-pagination" id="customerTablePagination">
+
                         <div class="pagination-info" id="customerPaginationInfo">Showing 0 of 0 customers</div>
+
                         <div class="pagination-controls" id="customerPaginationControls">
+
                             <button type="button" class="btn btn-outline btn-xs" id="btnCustPagePrev" onclick="changeCustomerPage(-1)" data-tooltip="Previous page" aria-label="Previous customer page">
+
                                 <i data-lucide="chevron-left" data-size="14"></i>
+
                                 <span>Previous</span>
+
                             </button>
+
                             <span class="pagination-page-label" id="custCurrentPageLabel">Page 1</span>
+
                             <button type="button" class="btn btn-outline btn-xs" id="btnCustPageNext" onclick="changeCustomerPage(1)" data-tooltip="Next page" aria-label="Next customer page">
+
                                 <span>Next</span>
+
                                 <i data-lucide="chevron-right" data-size="14"></i>
+
                             </button>
+
                         </div>
+
                     </div>
+
                 </div>
+
             </section>
 
             <!-- SECTION 5: CUSTOMER LOYALTY TRACKER (ADMIN) -->
+
             <section id="sec-loyalty" class="admin-section">
+
                 <div class="admin-topbar">
+
                     <div>
+
                         <h1 class="admin-page-title">Customer Loyalty & Reward Redemption</h1>
+
                         <p class="admin-page-subtitle">Check customer stamps and record free 150g tiramisu redemptions</p>
+
                     </div>
+
                 </div>
 
                 <!-- Top Loyalty Grid: Search (Left) & Customers Near Reward (Right) -->
+
                 <div class="loyalty-header-grid">
+
                     <!-- Column 1: Search Customer Loyalty -->
+
                     <div class="card loyalty-card-col">
+
                         <div class="card-title" style="margin-bottom: 8px;">
+
                             <span>Search Customer Loyalty</span>
+
                         </div>
+
                         <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 16px;">
+
                             Search customer by mobile number or name to track stamp cards and record free reward claims.
+
                         </p>
+
                         <div class="admin-search-row">
+
                             <input type="text" id="adminLoyaltySearchInput" class="form-input" placeholder="Search by name or mobile number" onkeydown="if(event.key==='Enter') adminTrackLoyalty()">
+
                             <button class="btn btn-caramel" onclick="adminTrackLoyalty()">
+
                                 <i data-lucide="search" data-size="16"></i>
+
                                 <span>Track</span>
+
                             </button>
+
                             <button type="button" class="btn btn-outline" id="adminLoyaltyClearBtn" onclick="adminClearLoyaltyTracker()" title="Clear search and results">
+
                                 <i data-lucide="rotate-ccw" data-size="16"></i>
+
                                 <span>Clear</span>
+
                             </button>
+
                         </div>
+
                     </div>
 
                     <!-- Column 2: Customers Near Reward (Right Side) -->
+
                     <div class="card loyalty-card-col">
+
                         <div class="card-title" style="margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+
                             <div style="display: flex; align-items: center; gap: 8px;">
+
                                 <i data-lucide="sparkles" data-size="18" style="color: var(--color-caramel);"></i>
+
                                 <span>Customers Near Reward</span>
+
                             </div>
+
                             <span class="counter-tag" id="nearRewardCountBadge" style="background: rgba(183, 121, 61, 0.12); color: var(--color-caramel); font-weight: 700;">
+
                                 0 Customers
+
                             </span>
+
                         </div>
+
                         <p style="font-size: 0.82rem; color: var(--color-text-muted); margin-bottom: 10px;">
+
                             Customers close to completing their 5-cup stamp card or eligible for a free 150g reward. Click to inspect.
+
                         </p>
-                        
+
                         <!-- Scrollable list of customers near reward -->
+
                         <div id="nearRewardList" class="near-reward-scroll-container">
+
                             <!-- Populated dynamically via renderNearRewardCustomers() -->
+
                         </div>
+
                     </div>
+
                 </div>
 
                 <!-- Admin Loyalty Result Card (Revealed when a customer is searched or clicked) -->
+
                 <div id="adminLoyaltyResult" class="card" style="display: none; background: var(--color-bg); border-radius: var(--radius-md); padding: 24px; border: 1.5px solid var(--color-border); margin-bottom: 28px;">
 
-                        
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+
                             <div>
+
                                 <h2 style="font-family: var(--font-heading); color: var(--color-espresso); font-size: 1.6rem;" id="admResCustName">Jay</h2>
+
                                 <div style="color: var(--color-text-muted); font-size: 0.95rem;" id="admResCustPhone">Phone: 9876543210</div>
+
                             </div>
+
                             <div id="admResRedeemAction">
+
                                 <!-- Dynamic Redeem Button -->
+
                             </div>
+
                         </div>
 
                         <!-- Status Alert Box -->
+
                         <div id="admResStatusBox" class="loyalty-status-banner" style="margin-bottom: 20px;">
+
                             <div class="status-icon-box" id="admResIcon"><i data-lucide="coffee"></i></div>
+
                             <div class="status-details">
+
                                 <h3 id="admResTitle">Status</h3>
+
                                 <p id="admResDesc">Description</p>
+
                             </div>
+
                         </div>
 
                         <!-- 5 Stamps Visual -->
+
                         <div class="stamp-grid-large" id="admResStampsGrid"></div>
 
                         <!-- Stats Row -->
+
                         <div class="stats-tiles" style="margin-bottom: 24px;">
+
                             <div class="stat-tile">
+
                                 <div class="stat-tile-val" id="admResTotalCups">0</div>
+
                                 <div class="stat-tile-label">Total Cups Bought</div>
+
                             </div>
+
                             <div class="stat-tile">
+
                                 <div class="stat-tile-val" id="admResCompletedPurchases">0</div>
+
                                 <div class="stat-tile-label">Completed Purchases</div>
+
                             </div>
+
                             <div class="stat-tile">
+
                                 <div class="stat-tile-val" id="admResNeededCups">0</div>
+
                                 <div class="stat-tile-label">Cups Needed</div>
+
                             </div>
+
                             <div class="stat-tile">
+
                                 <div class="stat-tile-val" id="admResClaimedCount">0</div>
+
                                 <div class="stat-tile-label">Total Rewards Claimed</div>
+
                             </div>
+
                         </div>
 
                         <!-- Redemption History Table -->
+
                         <div style="margin-top: 24px;">
+
                             <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 10px;">Reward Redemption History</h4>
+
                             <div id="admResRedemptionsList"></div>
+
                         </div>
+
                     </div>
 
                 <!-- Global Redemptions Audit Log -->
+
                 <div class="card">
+
                     <div class="card-title">All Completed Loyalty Redemptions</div>
+
                     <div class="table-responsive">
+
                         <table class="data-table">
+
                             <thead>
+
                                 <tr>
+
                                     <th>Redemption ID</th>
+
                                     <th>Date & Time</th>
+
                                     <th>Customer Name</th>
+
                                     <th>Customer Phone</th>
+
                                     <th>Reward Item</th>
+
                                     <th>Authorized Staff</th>
+
                                     <th>Notes</th>
+
                                 </tr>
+
                             </thead>
+
                             <tbody id="adminAllRedemptionsTbody">
+
                                 <!-- Populated dynamically -->
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                 </div>
+
             </section>
 
             <!-- SECTION 6: COUNTER QR STANDEE -->
+
             <section id="sec-qr" class="admin-section">
+
                 <div class="admin-topbar">
+
                     <div>
+
                         <h1 class="admin-page-title">Counter Display & QR Code Standee</h1>
+
                         <p class="admin-page-subtitle">Print and place this standee at your billing counter for customers to track their rewards</p>
+
                     </div>
+
                     <button class="btn btn-caramel btn-sm" onclick="printStandee()">
+
                         <i data-lucide="printer" data-size="16"></i>
+
                         <span>Print Counter Standee</span>
+
                     </button>
+
                 </div>
 
                 <div class="standee-preview printable-area" id="standeePrintArea">
+
                     <img src="assets/tira-belle-logo.png" alt="TIRA Belle" class="standee-logo" data-brand="logo" id="standeeLogoImg">
+
                     <div class="standee-tagline" data-brand="tagline" id="standeeTaglineText">Little Layers • Big Love</div>
-                    
+
                     <h2 class="standee-offer-title" id="standeeOfferTitle">
+
                         Buy 5 Tiramisu Cups,<br>Get 1 Free 150g Cup!
+
                     </h2>
+
                     <p class="standee-offer-sub" data-brand="slogan" id="standeeSloganText">
+
                         Handcrafted with Italian Mascarpone &amp; Belgian Cocoa
+
                     </p>
 
                     <!-- QR Code Target Canvas -->
+
                     <div class="standee-qr-box">
+
                         <div id="standeeQrContainer"></div>
+
                     </div>
 
                     <div class="standee-instructions">
+
                         <i data-lucide="smartphone" data-size="18"></i>
+
                         <span>Scan with phone camera to track your loyalty progress instantly!</span>
+
                     </div>
+
                     <div style="font-size: 0.8rem; color: var(--color-text-light);" id="standeeFooterContact" data-brand="contact-summary">
+
                         Counter Service: Yash Chauhan &amp; Tejas Chauhan • WhatsApp: 9373484198 / 8484870543
+
                     </div>
+
                 </div>
+
             </section>
 
             <!-- SECTION 7: SETTINGS -->
+
             <section id="sec-settings" class="admin-section">
+
                 <div class="admin-topbar">
+
                     <div>
+
                         <h1 class="admin-page-title">Store & Program Settings</h1>
+
                         <p class="admin-page-subtitle">Configure business details, loyalty threshold, credentials, and app install</p>
+
                     </div>
+
                 </div>
 
                 <!-- Settings Mobile Navigation Pills (Fast jumping between cards) -->
+
                 <div class="settings-mobile-tabs" id="settingsMobileTabs">
+
                     <button type="button" class="settings-tab-pill active" onclick="switchSettingsTab('all')">
+
                         <i data-lucide="sliders-horizontal" data-size="14"></i>
+
                         <span>All</span>
+
                     </button>
+
                     <button type="button" class="settings-tab-pill" onclick="switchSettingsTab('branding')">
+
                         <i data-lucide="store" data-size="14"></i>
+
                         <span>Brand &amp; Info</span>
+
                     </button>
+
                     <button type="button" class="settings-tab-pill" onclick="switchSettingsTab('loyalty')">
+
                         <i data-lucide="award" data-size="14"></i>
+
                         <span>Loyalty Rules</span>
+
                     </button>
+
                     <button type="button" class="settings-tab-pill" onclick="switchSettingsTab('security')">
+
                         <i data-lucide="shield-check" data-size="14"></i>
+
                         <span>Admin Security</span>
+
                     </button>
+
                     <button type="button" class="settings-tab-pill" onclick="switchSettingsTab('install')">
+
                         <i data-lucide="download" data-size="14"></i>
+
                         <span>Install App</span>
+
                     </button>
+
                 </div>
 
                 <div class="settings-grid">
+
                     <!-- Business Info -->
+
                     <div class="card settings-card-pane" id="paneSettingsBranding">
+
                         <div class="card-title">Business Information &amp; Branding</div>
+
                         <form id="settingsBusinessForm" onsubmit="event.preventDefault(); saveBusinessSettings();">
-                            
+
                             <!-- Business Logo Uploader & Preview (Redesigned: Left Square Preview, Right 3 Vertical Rectangles) -->
+
                             <div class="logo-setting-section">
+
                                 <label class="form-label logo-section-label">
+
                                     <i data-lucide="image" data-size="16" style="color: var(--color-caramel);"></i>
+
                                     <span>Business Logo</span>
+
                                 </label>
-                                
+
                                 <div class="logo-setting-layout">
+
                                     <!-- Left: Square Container with Logo Preview -->
+
                                     <div class="logo-preview-box">
+
                                         <img id="setLogoPreview" src="assets/tira-belle-logo.png" alt="Business Logo Preview">
+
                                     </div>
 
                                     <!-- Right: Three Rectangular Elements Arranged Vertically -->
+
                                     <div class="logo-controls-column">
+
                                         <!-- (1) Upload Logo Button -->
+
                                         <label class="btn btn-primary logo-control-btn" for="setLogoFileInput" id="lblUploadLogo">
+
                                             <i data-lucide="upload" data-size="14"></i>
+
                                             <span>Upload Logo Image</span>
+
                                             <input type="file" id="setLogoFileInput" accept="image/*" style="display: none;" onchange="handleLogoFileSelect(this)">
+
                                         </label>
 
                                         <!-- (2) Reset to Default Button -->
+
                                         <button type="button" class="btn btn-outline logo-control-btn" onclick="resetLogoToDefault()" id="btnResetLogo">
+
                                             <i data-lucide="rotate-ccw" data-size="14"></i>
+
                                             <span>Reset to Default</span>
+
                                         </button>
 
                                         <!-- (3) Text field displaying the logo file path -->
+
                                         <div class="logo-path-wrapper">
+
                                             <input type="text" id="setLogoUrl" class="form-input logo-path-input" placeholder="assets/tira-belle-logo.png" oninput="handleLogoUrlInput(this.value)" autocomplete="off">
+
                                         </div>
+
                                     </div>
+
                                 </div>
 
                                 <div class="logo-help-text">
+
                                     <i data-lucide="info" data-size="13"></i>
+
                                     <span>Supports PNG, JPG, WebP, SVG. Updates reflect across storefront, admin sidebar, standee, and receipts.</span>
+
                                 </div>
+
                             </div>
 
                             <!-- Business Identity Details Group -->
+
                             <div class="settings-subgroup">
+
                                 <div class="settings-subgroup-title">
+
                                     <i data-lucide="building" data-size="15"></i>
+
                                     <span>Brand & Contact Information</span>
+
                                 </div>
+
                                 <div class="form-row-2col">
+
                                     <div class="form-group">
+
                                         <label class="form-label">Business Name <span style="color: #e74c3c;">*</span></label>
+
                                         <input type="text" id="setBusinessName" class="form-input" placeholder="Enter business name" required>
+
                                     </div>
+
                                     <div class="form-group">
+
                                         <label class="form-label">Tagline</label>
+
                                         <input type="text" id="setTagline" class="form-input" placeholder="Enter business tagline">
+
                                     </div>
+
                                 </div>
 
                                 <div class="form-row-2col">
+
                                     <div class="form-group">
+
                                         <label class="form-label">Slogan / Flavor Descriptor</label>
+
                                         <input type="text" id="setSlogan" class="form-input" placeholder="Enter brand slogan">
+
                                     </div>
+
                                     <div class="form-group">
+
                                         <label class="form-label">Owner / Chef Name(s)</label>
+
                                         <input type="text" id="setOwnerName" class="form-input" placeholder="Enter owner or chef name">
+
                                     </div>
+
                                 </div>
 
                                 <div class="form-row-2col">
+
                                     <div class="form-group">
+
                                         <label class="form-label">Primary WhatsApp / Phone <span style="color: #e74c3c;">*</span></label>
+
                                         <input type="text" id="setPhone" class="form-input" placeholder="Enter mobile number" required>
+
                                     </div>
+
                                     <div class="form-group">
+
                                         <label class="form-label">Secondary Contact Phone</label>
+
                                         <input type="text" id="setPhoneSecondary" class="form-input" placeholder="Enter secondary mobile number">
+
                                     </div>
+
                                 </div>
 
                                 <div class="form-group">
+
                                     <label class="form-label">Email Address</label>
+
                                     <input type="email" id="setEmail" class="form-input" placeholder="Enter your email address">
+
                                 </div>
 
                                 <div class="form-group">
+
                                     <label class="form-label">Physical Store / Counter Address</label>
+
                                     <input type="text" id="setAddress" class="form-input" placeholder="Enter store or counter address">
+
                                 </div>
+
                             </div>
 
                             <!-- Social Media & Links Group -->
+
                             <div class="settings-subgroup">
+
                                 <div class="settings-subgroup-title">
+
                                     <i data-lucide="instagram" data-size="15"></i>
+
                                     <span>Social Media & Web Presence</span>
+
                                 </div>
+
                                 <div class="form-row-2col">
+
                                     <div class="form-group">
+
                                         <label class="form-label">Instagram Handle</label>
+
                                         <input type="text" id="setInstagram" class="form-input" placeholder="e.g. tirabelle.desserts">
+
                                     </div>
+
                                     <div class="form-group">
+
                                         <label class="form-label">Instagram Profile URL</label>
+
                                         <input type="url" id="setInstagramUrl" class="form-input" placeholder="https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj">
+
                                     </div>
+
                                 </div>
+
                                 <span style="font-size: 0.78rem; color: var(--color-text-light); margin-top: -8px; margin-bottom: 12px; display: block;">
+
                                     Full Instagram link opened when visitors click the Instagram icon or handle in the website footer.
+
                                 </span>
+
                             </div>
 
                             <!-- Financial & Regional Configuration Group -->
+
                             <div class="settings-subgroup">
+
                                 <div class="settings-subgroup-title">
+
                                     <i data-lucide="credit-card" data-size="15"></i>
+
                                     <span>Payment & Currency</span>
+
                                 </div>
+
                                 <div class="form-row-2col">
+
                                     <div class="form-group">
+
                                         <label class="form-label">UPI ID (for Payments &amp; Receipts)</label>
+
                                         <input type="text" id="setUpiId" class="form-input" placeholder="Enter UPI ID for payments">
+
                                     </div>
+
                                     <div class="form-group">
+
                                         <label class="form-label">Currency Symbol</label>
+
                                         <input type="text" id="setCurrency" class="form-input" placeholder="Enter currency symbol (e.g. ₹)" maxlength="5">
+
                                     </div>
+
                                 </div>
+
                             </div>
 
                             <button type="submit" class="btn btn-caramel" style="width: 100%; margin-top: 10px;">
+
                                 <i data-lucide="save" data-size="16"></i>
+
                                 <span>Save Business Information &amp; Logo</span>
+
                             </button>
+
                         </form>
+
                     </div>
 
                     <!-- Loyalty Program Rules & Security -->
+
                     <div>
+
                         <div class="card settings-card-pane" id="paneSettingsLoyalty">
+
                             <div class="card-title">Loyalty Program Configuration</div>
+
                             <form id="settingsLoyaltyForm" onsubmit="event.preventDefault(); saveLoyaltySettings();">
+
                                 <div class="form-group">
+
                                     <label class="form-label">Cups Needed for Free Reward (Threshold)</label>
+
                                     <input type="number" id="setLoyaltyThreshold" class="form-input" placeholder="Enter number of cups required (e.g. 5)" min="1" max="50" required>
+
                                     <div class="form-help" id="setLoyaltyRuleHelp">Current rule: 5 cups earns 1 free 150g tiramisu</div>
+
                                 </div>
+
                                 <div class="form-group">
+
                                     <label class="form-label">Free Reward Item Name</label>
+
                                     <input type="text" id="setRewardItemName" class="form-input" placeholder="Enter free reward item name" required>
+
                                 </div>
+
                                 <button type="submit" class="btn btn-caramel">
+
                                     <i data-lucide="save" data-size="16"></i>
+
                                     <span>Update Loyalty Rules</span>
+
                                 </button>
+
                             </form>
+
                         </div>
 
                         <div class="card settings-card-pane" id="paneSettingsSecurity">
+
                             <div class="card-title">Admin Credentials</div>
+
                             <form id="settingsCredentialsForm" onsubmit="event.preventDefault(); saveCredentialsSettings();">
+
                                 <div class="form-group">
+
                                     <label class="form-label" for="setAdminUser">Admin Username</label>
+
                                     <input type="text" id="setAdminUser" class="form-input" placeholder="Enter admin username" required autocomplete="username">
+
                                 </div>
+
                                 <div class="form-group">
+
                                     <label class="form-label" for="setAdminOldPass">Old Password</label>
+
                                     <div class="password-input-wrapper">
+
                                         <input type="password" id="setAdminOldPass" class="form-input" placeholder="Enter old password" required autocomplete="current-password">
+
                                         <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('setAdminOldPass', this)" aria-label="Show password" title="Show password">
+
                                             <i data-lucide="eye" data-size="18"></i>
+
                                         </button>
+
                                     </div>
+
                                 </div>
+
                                 <div class="form-group">
+
                                     <label class="form-label" for="setAdminNewPass">New Password</label>
+
                                     <div class="password-input-wrapper">
+
                                         <input type="password" id="setAdminNewPass" class="form-input" placeholder="Enter new password" required autocomplete="new-password">
+
                                         <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('setAdminNewPass', this)" aria-label="Show password" title="Show password">
+
                                             <i data-lucide="eye" data-size="18"></i>
+
                                         </button>
+
                                     </div>
+
                                 </div>
+
                                 <div class="form-group">
+
                                     <label class="form-label" for="setAdminConfirmPass">Confirm New Password</label>
+
                                     <div class="password-input-wrapper">
+
                                         <input type="password" id="setAdminConfirmPass" class="form-input" placeholder="Confirm new password" required autocomplete="new-password">
+
                                         <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('setAdminConfirmPass', this)" aria-label="Show password" title="Show password">
+
                                             <i data-lucide="eye" data-size="18"></i>
+
                                         </button>
+
                                     </div>
+
                                 </div>
+
                                 <button type="submit" class="btn btn-primary" id="btnUpdateCredentials">
+
                                     <i data-lucide="shield-check" data-size="16"></i>
+
                                     <span>Update Credentials</span>
+
                                 </button>
+
                             </form>
+
                         </div>
 
                         <!-- Install App (PWA) Option -->
+
                         <div class="card pwa-install-card settings-card-pane" id="paneSettingsInstall">
+
                             <div class="card-title" style="display: flex; align-items: center; justify-content: space-between;">
+
                                 <div style="display: flex; align-items: center; gap: 8px;">
+
                                     <i data-lucide="download" data-size="18" style="color: var(--color-caramel);"></i>
+
                                     <span>Install App</span>
+
                                 </div>
+
                                 <span class="badge" id="pwaInstallStatusBadge" style="background: var(--color-bg); color: var(--color-text-muted);">
+
                                     Desktop &amp; Mobile
+
                                 </span>
+
                             </div>
 
                             <p style="font-size: 0.88rem; color: var(--color-text-muted); line-height: 1.55; margin-bottom: 16px;">
+
                                 Install <strong>TIRA Belle</strong> on your device for fast one-tap desktop &amp; mobile access, offline counter support, and standalone window mode.
+
                             </p>
 
                             <div class="install-app-action-box">
+
                                 <button type="button" class="btn btn-caramel pwa-install-btn" id="btnSettingsInstallApp" onclick="triggerPwaInstall()">
+
                                     <i data-lucide="arrow-down-to-line" data-size="16"></i>
+
                                     <span id="btnSettingsInstallAppText">Install TIRA Belle App</span>
+
                                 </button>
+
                                 <div id="pwaInstalledNotice" style="display: none; align-items: center; gap: 8px; color: var(--color-success); font-weight: 600; font-size: 0.9rem;">
+
                                     <i data-lucide="circle-check" data-size="18"></i>
+
                                     <span>App is already installed and running standalone!</span>
+
                                 </div>
+
                             </div>
 
                             <div class="install-help-notes" style="margin-top: 14px; padding: 12px; background: var(--color-bg); border-radius: var(--radius-sm); border: 1px dashed var(--color-border); font-size: 0.8rem; color: var(--color-text-muted);">
+
                                 <div style="font-weight: 600; color: var(--color-espresso); margin-bottom: 4px;">Installation Tips:</div>
+
                                 <ul style="margin-left: 18px; line-height: 1.5;">
+
                                     <li><strong>Chrome &amp; Edge (PC/Mac):</strong> Click the install icon in the browser address bar or use the button above.</li>
+
                                     <li><strong>Safari (iOS/iPad):</strong> Tap the <em>Share</em> button <i data-lucide="share" data-size="12"></i> and select <em>"Add to Home Screen"</em>.</li>
+
                                     <li><strong>Android (Chrome):</strong> Tap <em>Add to Home Screen</em> or install prompt when prompted.</li>
+
                                 </ul>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
             </section>
 
             <!-- SECTION 8: CUSTOMER REVIEWS MANAGEMENT -->
+
             <section id="sec-reviews" class="admin-section">
+
                 <div class="admin-topbar">
+
                     <div>
+
                         <h1 class="admin-page-title">Customer Reviews &amp; Testimonials</h1>
+
                         <p class="admin-page-subtitle">Moderate and manage reviews displayed on the public storefront homepage</p>
+
                     </div>
+
                     <div class="admin-top-actions">
+
                         <input type="text" id="adminReviewSearch" class="form-input" placeholder="Search by customer name or review text" style="width: 260px;" oninput="renderAdminReviews()">
+
                         <select id="adminReviewFilterRating" class="form-select" style="width: 150px;" onchange="renderAdminReviews()">
+
                             <option value="all">All Ratings</option>
+
                             <option value="5">5 Stars Only</option>
+
                             <option value="4">4 Stars Only</option>
+
                             <option value="3">3 Stars Only</option>
+
                             <option value="2">2 Stars Only</option>
+
                             <option value="1">1 Star Only</option>
+
                         </select>
+
                     </div>
+
                 </div>
 
                 <!-- Review Metric Summary Cards -->
+
                 <div class="metrics-grid" style="margin-bottom: 24px;">
+
                     <div class="metric-card">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Total Reviews</span>
+
                             <span class="metric-icon"><i data-lucide="message-square" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="adminReviewTotalCount">0</div>
+
                         <div class="metric-sub">Published customer stories</div>
+
                     </div>
 
                     <div class="metric-card">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Average Rating</span>
+
                             <span class="metric-icon"><i data-lucide="star" data-size="20" style="color: #f39c12;"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="adminReviewAvgRating">5.0 ★</div>
+
                         <div class="metric-sub">Out of 5.0 maximum</div>
+
                     </div>
 
                     <div class="metric-card rewards">
+
                         <div class="metric-header">
+
                             <span class="metric-title">5-Star Feedback</span>
+
                             <span class="metric-icon"><i data-lucide="award" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="adminReview5StarCount">0</div>
+
                         <div class="metric-sub" id="adminReview5StarPercent">100% of all ratings</div>
+
                     </div>
 
                     <div class="metric-card online">
+
                         <div class="metric-header">
+
                             <span class="metric-title">Verified Guests</span>
+
                             <span class="metric-icon"><i data-lucide="badge-check" data-size="20"></i></span>
+
                         </div>
+
                         <div class="metric-value" id="adminReviewVerifiedCount">0</div>
+
                         <div class="metric-sub">With verified phone number</div>
+
                     </div>
+
                 </div>
 
                 <!-- Reviews Table Card -->
+
                 <div class="card">
+
                     <div class="table-responsive">
+
                         <table class="data-table">
+
                             <thead>
+
                                 <tr>
+
                                     <th style="min-width: 170px;">Customer</th>
+
                                     <th style="min-width: 120px;">Rating</th>
+
                                     <th style="min-width: 140px;">Favorite Item</th>
+
                                     <th style="min-width: 280px;">Review Message</th>
+
                                     <th style="min-width: 110px;">Date</th>
+
                                     <th style="text-align: right; min-width: 110px;">Actions</th>
+
                                 </tr>
+
                             </thead>
+
                             <tbody id="adminReviewsTableTbody">
+
                                 <!-- Populated dynamically by renderAdminReviews() -->
+
                             </tbody>
+
                         </table>
+
                     </div>
+
                 </div>
+
             </section>
 
         </main>
+
     </div>
 
     <!-- Product Modal (Add/Edit) -->
+
     <div id="productModal" class="modal-overlay">
+
         <div class="modal-card">
+
             <div class="modal-header">
+
                 <h3 class="modal-title" id="productModalTitle">Add New Product</h3>
+
                 <button class="modal-close-btn" onclick="closeProductModal()" aria-label="Close modal" data-tooltip="Close (Esc)">
+
                     <i data-lucide="x" data-size="20"></i>
+
                 </button>
+
             </div>
+
             <form id="productForm" onsubmit="event.preventDefault(); saveProductSubmit();">
+
                 <div class="modal-body">
+
                     <input type="hidden" id="prodEditId">
+
                     <div class="form-group">
+
                         <label class="form-label">Product Name <span style="color: #e74c3c;">*</span></label>
+
                         <input type="text" id="prodName" class="form-input" placeholder="Enter product name" required>
+
                     </div>
+
                     <div class="form-row-2col">
+
                         <div class="form-group">
+
                             <label class="form-label">Category <span style="color: #e74c3c;">*</span></label>
+
                             <select id="prodCategory" class="form-select" required>
+
                                 <!-- Populated dynamically -->
+
                             </select>
+
                         </div>
+
                         <div class="form-group">
+
                             <label class="form-label">Cup Size / Weight <span style="color: #e74c3c;">*</span></label>
+
                             <input type="text" id="prodWeight" class="form-input" placeholder="e.g. 150 g or 350 g" required>
+
                         </div>
+
                     </div>
+
                     <div class="form-group">
+
                         <label class="form-label">Price (₹) <span style="color: #e74c3c;">*</span></label>
+
                         <input type="number" id="prodPrice" class="form-input" placeholder="Enter product price" min="0" required>
+
                     </div>
 
                     <!-- Direct Image Upload Option -->
+
                     <div class="form-group">
+
                         <label class="form-label">Product Image <span style="color: #e74c3c;">*</span></label>
+
                         <input type="hidden" id="prodImage" value="">
-                        
+
                         <div class="image-upload-wrapper">
+
                             <input type="file" id="prodImageFileInput" accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" style="display: none;" onchange="handleProductImageFile(this.files[0])">
-                            
+
                             <!-- Dropzone Empty State -->
+
                             <div class="image-upload-dropzone" id="prodImageDropArea" onclick="document.getElementById('prodImageFileInput').click()">
+
                                 <div class="upload-icon-circle">
+
                                     <i data-lucide="cloud-upload" data-size="26"></i>
+
                                 </div>
+
                                 <div class="upload-drop-text">
+
                                     <span class="upload-primary-text">Click to upload image</span> or drag and drop
+
                                 </div>
+
                                 <div class="upload-hint-text">Supported: PNG, JPG, JPEG, WEBP or GIF (Max 5 MB)</div>
+
                             </div>
 
                             <!-- Upload Preview State -->
+
                             <div class="image-upload-preview" id="prodImagePreviewArea" style="display: none;">
+
                                 <div class="preview-img-box">
+
                                     <img id="prodImagePreviewImg" src="" alt="Product Preview" onerror="this.src='assets/poster/tiramisu-classic-poster.png'">
+
                                     <div class="upload-progress-overlay" id="prodImageUploadProgress" style="display: none;">
+
                                         <div class="spinner-sm"></div>
+
                                         <span>Uploading...</span>
+
                                     </div>
+
                                 </div>
+
                                 <div class="preview-meta">
+
                                     <div class="preview-filename" id="prodImageFilename">Image selected</div>
+
                                     <div class="preview-filesize" id="prodImageFilesize">Ready for saving</div>
+
                                     <div class="preview-actions">
+
                                         <button type="button" class="btn btn-outline btn-xs" onclick="document.getElementById('prodImageFileInput').click()">
+
                                             <i data-lucide="refresh-cw" data-size="12"></i>
+
                                             <span>Change Image</span>
+
                                         </button>
+
                                         <button type="button" class="btn btn-outline btn-xs btn-danger-subtle" onclick="removeProductImage()">
+
                                             <i data-lucide="trash-2" data-size="12"></i>
+
                                             <span>Remove</span>
+
                                         </button>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
 
                     <div class="form-group">
+
                         <label class="form-label">Description</label>
+
                         <textarea id="prodDesc" class="form-textarea" rows="2" placeholder="Enter product description and key ingredients"></textarea>
+
                     </div>
+
                     <div class="form-group" style="display: flex; gap: 24px;">
+
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+
                             <input type="checkbox" id="prodActive" checked>
+
                             <span>Active (Visible on Website)</span>
+
                         </label>
+
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+
                             <input type="checkbox" id="prodCountsLoyalty" checked>
+
                             <span>Counts toward Loyalty</span>
+
                         </label>
+
                     </div>
+
                 </div>
+
                 <div class="modal-footer">
+
                     <button type="button" class="btn btn-outline" onclick="closeProductModal()">Cancel</button>
+
                     <button type="submit" class="btn btn-caramel">
+
                         <i data-lucide="save" data-size="16"></i>
+
                         <span>Save Product</span>
+
                     </button>
+
                 </div>
+
             </form>
+
         </div>
+
     </div>
 
     <!-- Category Modal (Add/Edit) -->
+
     <div id="categoryModal" class="modal-overlay">
+
         <div class="modal-card">
+
             <div class="modal-header">
+
                 <h3 class="modal-title" id="categoryModalTitle">Add New Category</h3>
+
                 <button class="modal-close-btn" onclick="closeCategoryModal()" aria-label="Close modal" data-tooltip="Close (Esc)">
+
                     <i data-lucide="x" data-size="20"></i>
+
                 </button>
+
             </div>
+
             <form id="categoryForm" onsubmit="event.preventDefault(); saveCategorySubmit();">
+
                 <div class="modal-body">
+
                     <input type="hidden" id="catEditId">
+
                     <div class="form-group">
+
                         <label class="form-label">Category Name <span style="color: #e74c3c;">*</span></label>
+
                         <input type="text" id="catName" class="form-input" placeholder="e.g. Classic Tiramisu, Seasonal Specials" required>
+
                     </div>
+
                     <div class="form-row-2col">
+
                         <div class="form-group">
+
                             <label class="form-label">Display Order</label>
+
                             <input type="number" id="catDisplayOrder" class="form-input" placeholder="1, 2, 3..." min="1" value="1">
+
                         </div>
+
                         <div class="form-group" style="display: flex; align-items: center; padding-top: 26px;">
+
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+
                                 <input type="checkbox" id="catActive" checked>
+
                                 <span>Active (Visible on Website)</span>
+
                             </label>
+
                         </div>
+
                     </div>
+
                     <div class="form-group">
+
                         <label class="form-label">Description</label>
+
                         <textarea id="catDesc" class="form-textarea" rows="2" placeholder="Brief description of this dessert category"></textarea>
+
                     </div>
 
                     <!-- Category Cover Image Upload -->
+
                     <div class="form-group">
+
                         <label class="form-label">Category Cover / Banner Image (Optional)</label>
+
                         <input type="hidden" id="catImage" value="">
-                        
+
                         <div class="image-upload-wrapper">
+
                             <input type="file" id="catImageFileInput" accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" style="display: none;" onchange="handleCatImageFile(this.files[0])">
-                            
+
                             <!-- Dropzone Empty State -->
+
                             <div class="image-upload-dropzone" id="catImageDropArea" onclick="document.getElementById('catImageFileInput').click()">
+
                                 <div class="upload-icon-circle">
+
                                     <i data-lucide="image-plus" data-size="24"></i>
+
                                 </div>
+
                                 <div class="upload-drop-text">
+
                                     <span class="upload-primary-text">Upload category banner</span> or drag and drop
+
                                 </div>
+
                                 <div class="upload-hint-text">PNG, JPG, WEBP (Max 5 MB)</div>
+
                             </div>
 
                             <!-- Upload Preview State -->
+
                             <div class="image-upload-preview" id="catImagePreviewArea" style="display: none;">
+
                                 <div class="preview-img-box">
+
                                     <img id="catImagePreviewImg" src="" alt="Category Preview" onerror="this.src='assets/poster/tiramisu-classic-poster.png'">
+
                                     <div class="upload-progress-overlay" id="catImageUploadProgress" style="display: none;">
+
                                         <div class="spinner-sm"></div>
+
                                         <span>Uploading...</span>
+
                                     </div>
+
                                 </div>
+
                                 <div class="preview-meta">
+
                                     <div class="preview-filename" id="catImageFilename">Category image</div>
+
                                     <div class="preview-filesize" id="catImageFilesize">Ready</div>
+
                                     <div class="preview-actions">
+
                                         <button type="button" class="btn btn-outline btn-xs" onclick="document.getElementById('catImageFileInput').click()">
+
                                             <i data-lucide="refresh-cw" data-size="12"></i>
+
                                             <span>Change</span>
+
                                         </button>
+
                                         <button type="button" class="btn btn-outline btn-xs btn-danger-subtle" onclick="removeCatImage()">
+
                                             <i data-lucide="trash-2" data-size="12"></i>
+
                                             <span>Remove</span>
+
                                         </button>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
 
                 </div>
+
                 <div class="modal-footer">
+
                     <button type="button" class="btn btn-outline" onclick="closeCategoryModal()">Cancel</button>
+
                     <button type="submit" class="btn btn-caramel">
+
                         <i data-lucide="save" data-size="16"></i>
+
                         <span>Save Category</span>
+
                     </button>
+
                 </div>
+
             </form>
+
         </div>
+
     </div>
 
     <!-- Customer History Modal / Drawer -->
+
     <div id="customerHistoryModal" class="modal-overlay">
+
         <div class="modal-card" style="max-width: 680px;">
+
             <div class="modal-header">
+
                 <div>
+
                     <h3 class="modal-title" id="custModalName">Customer History</h3>
+
                     <div style="font-size: 0.85rem; color: var(--color-text-muted);" id="custModalPhone">Phone: 9876543210</div>
+
                 </div>
+
                 <button class="modal-close-btn" onclick="closeCustomerModal()" aria-label="Close modal" data-tooltip="Close (Esc)">
+
                     <i data-lucide="x" data-size="20"></i>
+
                 </button>
+
             </div>
+
             <div class="modal-body">
+
                 <div class="stats-tiles" style="margin-bottom: 24px;">
+
                     <div class="stat-tile">
+
                         <div class="stat-tile-val" id="custModalTotalSpend">₹0</div>
+
                         <div class="stat-tile-label">Total Spend</div>
+
                     </div>
+
                     <div class="stat-tile">
+
                         <div class="stat-tile-val" id="custModalPaidCups">0</div>
+
                         <div class="stat-tile-label">Total Cups</div>
+
                     </div>
+
                     <div class="stat-tile">
+
                         <div class="stat-tile-val" id="custModalPurchases">0</div>
+
                         <div class="stat-tile-label">Purchases Made</div>
+
                     </div>
+
                     <div class="stat-tile">
+
                         <div class="stat-tile-val" id="custModalStatus">0/5</div>
+
                         <div class="stat-tile-label">Loyalty Progress</div>
+
                     </div>
+
                 </div>
 
                 <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 12px; color: var(--color-espresso);">
+
                     All Transactions
+
                 </h4>
+
                 <div id="custModalTxnList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+
             </div>
+
             <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+
                 <button type="button" class="btn btn-outline btn-sm" id="btnCustModalViewInOrders" onclick="filterOrdersFromCustModal()" style="display: inline-flex; align-items: center; gap: 6px;" title="View all orders for this customer in Order Details">
+
                     <i data-lucide="receipt" data-size="14"></i>
+
                     <span>Filter in Order Details</span>
+
                 </button>
+
                 <button type="button" class="btn btn-caramel" onclick="closeCustomerModal()">Close</button>
+
             </div>
+
         </div>
+
     </div>
 
     <!-- Printable Receipt Modal -->
+
     <div id="receiptModal" class="modal-overlay">
+
         <div class="modal-card receipt-modal-card" style="max-width: 440px; border-radius: 18px;">
+
             <div class="modal-header" style="border-bottom: 1px solid rgba(0, 0, 0, 0.06); padding: 16px 20px;">
+
                 <div style="display: flex; align-items: center; gap: 8px;">
+
                     <i data-lucide="receipt" data-size="18" style="color: var(--color-caramel, #c58940);"></i>
+
                     <h3 class="modal-title" style="margin: 0; font-size: 1.1rem; font-weight: 700;">Customer Receipt</h3>
+
                 </div>
+
                 <button class="modal-close-btn" onclick="closeReceiptModal()" aria-label="Close modal" data-tooltip="Close (Esc)">
+
                     <i data-lucide="x" data-size="18"></i>
+
                 </button>
+
             </div>
+
             <div class="modal-body receipt-modal-body" style="padding: 16px 20px;">
+
                 <div class="receipt-paper printable-area" id="receiptPrintableArea">
+
                     <div class="receipt-header">
+
                         <img id="recLogo" src="assets/tira-belle-logo.png" alt="Logo" style="height: 44px; max-width: 130px; margin: 0 auto 6px; display: block; object-fit: contain;">
+
                         <h3 id="recBizName" data-brand="name">TIRA Belle</h3>
+
                         <p style="font-size: 0.75rem;" id="recTagline" data-brand="tagline">LITTLE LAYERS • BIG LOVE</p>
+
                         <p style="font-size: 0.72rem; color: #555;" id="recSlogan" data-brand="slogan">Handcrafted Italian Tiramisu</p>
+
                         <p style="font-size: 0.68rem; color: #777; margin-top: 2px;" id="recAddress" data-brand="address">Physical Dessert Studio &amp; Artisan Counter, Pune</p>
+
                         <p style="font-size: 0.72rem; margin-top: 6px;" id="recDate">14 Oct 2026, 02:00 PM</p>
+
                         <p style="font-size: 0.72rem;">Receipt: <strong id="recId">TXN-1001</strong></p>
+
                     </div>
 
                     <div style="font-size: 0.75rem; margin-bottom: 10px;">
+
                         <div>Customer: <strong id="recCustName">Jay</strong></div>
+
                         <div>Phone: <span id="recCustPhone">9876543210</span></div>
+
                         <div>Payment: <span id="recPayMode">Online (UPI)</span></div>
+
                     </div>
 
                     <div id="recItemsList" style="border-top: 1px dashed #aaa; padding-top: 8px;"></div>
 
+                    <div id="recSummaryRows" style="border-top: 1px dashed #aaa; padding-top: 6px; margin-top: 8px;">
+
+                        <div id="recSubtotalRow" style="display: none; justify-content: space-between; font-size: 0.8rem; margin-bottom: 3px;">
+
+                            <span>Subtotal</span>
+
+                            <span id="recSubtotal">₹0</span>
+
+                        </div>
+
+                        <div id="recDiscountRow" style="display: none; justify-content: space-between; font-size: 0.8rem; color: #166534; font-weight: 600; margin-bottom: 3px;">
+
+                            <span id="recDiscountLabel">Discount</span>
+
+                            <span id="recDiscount">-₹0</span>
+
+                        </div>
+
+                    </div>
+
                     <div class="receipt-total-row">
+
                         <span>TOTAL PAID</span>
+
                         <span id="recGrandTotal">₹300</span>
+
                     </div>
 
                     <div style="margin-top: 10px; background: #fdfaf5; border: 1px dashed #c59b6d; padding: 8px; border-radius: 4px; text-align: center;">
+
                         <div style="font-weight: bold; font-size: 0.78rem; color: #22120b;" id="recLoyaltyStatus">
+
                             Loyalty: 5 / 5 Cups
+
                         </div>
+
                         <div style="font-size: 0.7rem; color: #666;" id="recLoyaltyNote">
+
                             Eligible for 1 Free 150g Cup!
+
                         </div>
+
                     </div>
 
                     <div class="receipt-footer">
+
                         <p id="recFooterSlogan">Thank you for tasting the love in every spoon!</p>
+
                         <p id="recFooterContact">Owners: Yash Chauhan &amp; Tejas Chauhan • 9373484198 / 8484870543</p>
+
                     </div>
+
                 </div>
 
                 <!-- Modern Redesigned Actions Section -->
+
                 <div class="receipt-actions-wrapper no-print" id="receiptWhatsAppSection">
+
                     <!-- Ready state (customer phone present & valid) -->
+
                     <div id="receiptWhatsAppReady" style="display: none;">
+
                         <button type="button" class="btn-whatsapp-modern" id="btnShareWhatsAppBill" onclick="shareCurrentReceiptViaWhatsApp()" title="Share digital receipt link to customer's WhatsApp">
+
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+
                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+
                             </svg>
+
                             <span>Share on WhatsApp</span>
+
                         </button>
+
                     </div>
 
                     <!-- Prompt state (customer phone missing / unattached) -->
+
                     <div id="receiptWhatsAppPrompt" class="receipt-prompt-card" style="display: none;">
+
                         <label for="receiptPhoneInput" style="display: block; font-size: 0.8rem; font-weight: 700; color: #166534; margin-bottom: 6px;">
+
                             Enter customer phone to share receipt:
+
                         </label>
+
                         <div style="display: flex; gap: 8px;">
+
                             <input type="tel" id="receiptPhoneInput" class="form-input" placeholder="10-digit mobile number" maxlength="15" style="flex: 1; height: 44px; font-size: 0.9rem;">
+
                             <button type="button" class="btn-whatsapp-modern" onclick="attachPhoneAndShareWhatsApp()" style="width: auto; height: 44px; padding: 0 16px; font-size: 0.88rem; white-space: nowrap;">
+
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+
                                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+
                                 </svg>
+
                                 <span>Share</span>
+
                             </button>
+
                         </div>
+
                         <div id="receiptPhoneError" style="display: none; color: #dc2626; font-size: 0.76rem; margin-top: 4px; font-weight: 600;"></div>
+
                     </div>
 
                     <!-- Secondary Actions Row: Online link on left, Done button on right -->
+
                     <div class="receipt-secondary-actions">
+
                         <a id="recOnlineLink" href="#" target="_blank" rel="noopener noreferrer" class="receipt-online-btn" title="Open customer web receipt in new tab">
+
                             <i data-lucide="external-link" data-size="14"></i>
+
                             <span>Open Online Receipt</span>
+
                         </a>
+
                         <button type="button" class="btn btn-outline receipt-done-btn" onclick="closeReceiptModal()" title="Close receipt">
+
                             <i data-lucide="check" data-size="15"></i>
+
                             <span>Done</span>
+
                         </button>
+
                     </div>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
 
     <!-- Toast Notifications -->
+
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- Scripts -->
+
     <script src="js/icons.js?v=48"></script>
+
     <script src="js/qrcode.min.js?v=48"></script>
+
     <script src="js/pwa.js?v=48"></script>
+
     <script src="js/alerts.js?v=48"></script>
-    <script src="js/db.js?v=63"></script>
-    <script src="js/admin.js?v=68"></script>
+
+    <script src="js/db.js?v=77"></script>
+
+    <script src="js/admin.js?v=77"></script>
+
 </body>
+
 </html>
+

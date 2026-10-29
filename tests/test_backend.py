@@ -677,6 +677,111 @@ class TestFastAPIBackendSuite(unittest.TestCase):
         now_ist = ist_now()
         self.assertEqual(today_date_str(), now_ist.strftime('%Y-%m-%d'))
 
+    def test_sale_with_flat_and_percentage_discounts(self):
+        from backend.schemas import SaleCreate, SaleItemSchema
+        from backend.routers.sales import create_sale, get_sales, get_sale_by_id
+
+        phone = "9876543210"
+
+        # 1. Flat discount (e.g. 50 off on 300 subtotal)
+        sale_flat = create_sale(SaleCreate(
+            customerPhone=phone,
+            customerName="Discount Guest",
+            items=[SaleItemSchema(productId="prod-150", productName="Tiramisu 150g", price=150.0, quantity=2)],
+            paymentMode="UPI",
+            discount=50.0,
+            discountType="flat",
+            discountValue=50.0
+        ), db=self.db)
+        self.assertTrue(sale_flat["success"])
+
+        record1 = get_sale_by_id(sale_flat["saleId"], db=self.db)
+        self.assertEqual(record1["subtotal"], 200.0)
+        self.assertEqual(record1["discount"], 50.0)
+        self.assertEqual(record1["totalAmount"], 150.0)
+        self.assertEqual(record1["paymentMode"], "UPI")
+        self.assertEqual(record1["discountType"], "flat")
+        self.assertEqual(record1["discountValue"], 50.0)
+
+        # 2. Percentage discount (e.g. 10% off on 200 subtotal)
+        sale_pct = create_sale(SaleCreate(
+            customerPhone=phone,
+            customerName="Discount Guest",
+            items=[SaleItemSchema(productId="prod-150", productName="Tiramisu 150g", price=150.0, quantity=2)],
+            paymentMode="Card",
+            discountType="percent",
+            discountValue=10.0
+        ), db=self.db)
+        self.assertTrue(sale_pct["success"])
+
+        record2 = get_sale_by_id(sale_pct["saleId"], db=self.db)
+        self.assertEqual(record2["subtotal"], 200.0)
+        self.assertEqual(record2["discount"], 20.0)
+        self.assertEqual(record2["totalAmount"], 180.0)
+        self.assertEqual(record2["paymentMode"], "Card")
+        self.assertEqual(record2["discountType"], "percent")
+        self.assertEqual(record2["discountValue"], 10.0)
+
+        # 3. Discount capped at subtotal
+        sale_capped = create_sale(SaleCreate(
+            customerPhone=phone,
+            customerName="Discount Guest",
+            items=[SaleItemSchema(productId="prod-150", productName="Tiramisu 150g", price=150.0, quantity=2)],
+            paymentMode="Cash",
+            discount=500.0,
+            discountType="flat",
+            discountValue=500.0
+        ), db=self.db)
+        self.assertTrue(sale_capped["success"])
+
+        record3 = get_sale_by_id(sale_capped["saleId"], db=self.db)
+        self.assertEqual(record3["subtotal"], 200.0)
+        self.assertEqual(record3["discount"], 200.0)
+        self.assertEqual(record3["totalAmount"], 0.0)
+
+    def test_excluded_product_in_total_cups_not_in_loyalty_points(self):
+        from backend.models import Product
+        from backend.schemas import CustomerCreate, SaleCreate, SaleItemSchema
+        from backend.routers.customers import calculate_customer_loyalty, upsert_customer
+        from backend.routers.sales import create_sale, get_sale_by_id
+
+        # Ensure prod-150 is eligible and prod-350 is excluded
+        p150 = self.db.query(Product).filter(Product.id == "prod-150").first()
+        if p150:
+            p150.counts_towards_loyalty = True
+        p350 = self.db.query(Product).filter(Product.id == "prod-350").first()
+        if p350:
+            p350.counts_towards_loyalty = False
+        self.db.commit()
+
+        phone = "9876549999"
+        upsert_customer(CustomerCreate(phone=phone, name="Excluded Test Customer"), db=self.db)
+
+        # Buy 1x prod-150 (eligible) + 2x prod-350 (excluded)
+        res = create_sale(SaleCreate(
+            customerPhone=phone,
+            customerName="Excluded Test Customer",
+            items=[
+                SaleItemSchema(productId="prod-150", productName="Tiramisu 150g", price=100.0, quantity=1),
+                SaleItemSchema(productId="prod-350", productName="Tiramisu 350g", price=200.0, quantity=2)
+            ],
+            paymentMode="Cash"
+        ), db=self.db)
+        self.assertTrue(res["success"])
+
+        # Check Sale record
+        sale = get_sale_by_id(res["saleId"], db=self.db)
+        self.assertEqual(sale["paidCupsCount"], 3)      # Total cup count includes excluded cups!
+        self.assertEqual(sale["eligibleCupsCount"], 1)  # Only 1 cup eligible for loyalty points
+
+        # Check Customer Loyalty calculation
+        loyalty = calculate_customer_loyalty(phone, self.db)
+        self.assertEqual(loyalty["totalCupsPurchased"], 3)  # Quantity included in total cup count
+        self.assertEqual(loyalty["totalEligibleCups"], 1)   # Only eligible product counts toward points
+        self.assertEqual(loyalty["currentCycleProgress"], 1) # 1 stamp out of 5
+        self.assertEqual(loyalty["cupsRemaining"], 4)        # 4 more cups to reach reward
+        self.assertFalse(loyalty["isEligible"])
+
 class TestDatabaseArchitectureAndIntegrity(unittest.TestCase):
 
     def setUp(self):
@@ -844,6 +949,8 @@ class TestSecurityAuditSuite(unittest.TestCase):
         self.assertEqual(res["status"], "ok")
         self.assertNotIn("db_host", res)
         self.assertNotIn("db_user", res)
+
+
 
 
 if __name__ == '__main__':

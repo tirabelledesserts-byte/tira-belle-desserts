@@ -1629,15 +1629,39 @@ class TiraBelleDB {
         const customerSales = this.data.sales.filter(s => (s.customerPhone || '').replace(/\D/g, '') === cleanPhone);
 
         // Separate Metrics:
-        // 1. Total Paid Cups Purchased (quantity across all orders)
+        // 1. Total Cups Purchased (quantity across all orders, including excluded cups)
         let totalCupsPurchased = 0;
-        // 2. Completed Eligible Purchase Transactions (each transaction with at least 1 paid item counts as 1 purchase)
+        // 2. Total Eligible Cups (only products that count towards loyalty points)
+        let totalEligibleCups = 0;
+        // 3. Completed Purchase Transactions
         let completedPurchasesCount = 0;
 
         customerSales.forEach(sale => {
-            const cupsInSale = (sale.paidCupsCount || 0);
-            totalCupsPurchased += cupsInSale;
-            if (cupsInSale > 0 || (sale.items && sale.items.some(it => !it.isReward))) {
+            let saleTotalCups = 0;
+            let saleEligibleCups = 0;
+
+            if (sale.items && sale.items.length > 0) {
+                sale.items.forEach(it => {
+                    if (!it.isReward) {
+                        const qty = it.quantity || 1;
+                        saleTotalCups += qty;
+                        const prod = this.getProductById(it.productId);
+                        const counts = it.countsTowardsLoyalty !== undefined 
+                            ? it.countsTowardsLoyalty 
+                            : (prod ? prod.countsTowardsLoyalty : true);
+                        if (counts) {
+                            saleEligibleCups += qty;
+                        }
+                    }
+                });
+            } else {
+                saleTotalCups = sale.paidCupsCount || 0;
+                saleEligibleCups = sale.eligibleCupsCount !== undefined ? sale.eligibleCupsCount : saleTotalCups;
+            }
+
+            totalCupsPurchased += saleTotalCups;
+            totalEligibleCups += saleEligibleCups;
+            if (saleTotalCups > 0) {
                 completedPurchasesCount += 1;
             }
         });
@@ -1646,16 +1670,16 @@ class TiraBelleDB {
         const customerRedemptions = this.data.redemptions.filter(r => (r.customerPhone || '').replace(/\D/g, '') === cleanPhone);
         const claimedCount = customerRedemptions.length;
 
-        // Total lifetime rewards earned based on eligible cups purchased
-        const totalEarnedRewards = Math.floor(totalCupsPurchased / threshold);
+        // Total lifetime rewards earned based on eligible cups purchased (excluded products do not count)
+        const totalEarnedRewards = Math.floor(totalEligibleCups / threshold);
 
         // Available rewards that can be redeemed right now
         const availableRewards = Math.max(0, totalEarnedRewards - claimedCount);
         const isEligible = availableRewards > 0;
 
-        // Effective cups active in the current cycle after accounting for claimed rewards
-        const cupsSinceClaimed = Math.max(0, totalCupsPurchased - (claimedCount * threshold));
-        // Current cycle progress (if eligible, customer reached the threshold; otherwise remainder of active cups)
+        // Effective cups active in current cycle
+        const cupsSinceClaimed = Math.max(0, totalEligibleCups - (claimedCount * threshold));
+        // Current cycle progress (if eligible, reached threshold; otherwise remainder of eligible cups)
         const currentCycleProgress = isEligible ? threshold : (cupsSinceClaimed % threshold);
         const cupsRemaining = isEligible ? 0 : (threshold - currentCycleProgress);
 
@@ -1663,8 +1687,8 @@ class TiraBelleDB {
             exists: !!(customer || customerSales.length > 0),
             customer: customer || { phone: cleanPhone, name: 'Guest' },
             threshold,
-            totalCupsPurchased,       // Total cups bought across all transactions
-            totalEligibleCups: totalCupsPurchased, // Backward compatibility for any legacy callers
+            totalCupsPurchased,       // Total cups bought across all transactions (including excluded)
+            totalEligibleCups,        // Loyalty points eligible cups
             completedPurchasesCount,  // Total separate completed purchase transactions
             totalEarnedRewards,
             claimedCount,
@@ -1744,7 +1768,7 @@ class TiraBelleDB {
     }
 
     // ----------------- SALES & TRANSACTIONS -----------------
-    async createSale({ customerPhone, customerName, items, paymentMode, notes = '', redeemFreeReward = false }) {
+    async createSale({ customerPhone, customerName, items, paymentMode, discount = 0, discountType = 'flat', discountValue = 0, notes = '', redeemFreeReward = false }) {
         const cleanPhone = (customerPhone || '').trim().replace(/\D/g, '');
         if (!cleanPhone) {
             return { success: false, message: 'Valid customer phone number is required.' };
@@ -1777,7 +1801,8 @@ class TiraBelleDB {
 
         // Calculate paid items and total amount
         let subtotal = 0;
-        let paidCupsCount = 0;
+        let totalCupsCount = 0;
+        let eligibleCupsCount = 0;
         const processedItems = items.map(item => {
             const product = this.getProductById(item.productId);
             const price = product ? product.price : (item.price || 0);
@@ -1785,9 +1810,15 @@ class TiraBelleDB {
             const itemTotal = price * qty;
             subtotal += itemTotal;
 
-            // Rule: Each eligible product cup counts as one purchase
-            if (!item.isReward && (product ? product.countsTowardsLoyalty : true)) {
-                paidCupsCount += qty;
+            const countsLoyalty = product ? product.countsTowardsLoyalty : (item.countsTowardsLoyalty !== false);
+
+            if (!item.isReward) {
+                // Total cup count includes ALL products (both eligible and excluded)
+                totalCupsCount += qty;
+                // Loyalty points ONLY count eligible products
+                if (countsLoyalty) {
+                    eligibleCupsCount += qty;
+                }
             }
 
             return {
@@ -1797,7 +1828,8 @@ class TiraBelleDB {
                 price: price,
                 quantity: qty,
                 total: itemTotal,
-                isReward: !!item.isReward
+                isReward: !!item.isReward,
+                countsTowardsLoyalty: countsLoyalty
             };
         });
 
@@ -1814,6 +1846,20 @@ class TiraBelleDB {
             });
         }
 
+        let discAmt = Math.max(0, parseFloat(discount) || 0);
+        const discVal = Math.max(0, parseFloat(discountValue) || 0);
+        const discType = (discountType || 'flat').toLowerCase();
+
+        if (discType === 'percent' && discVal > 0) {
+            const pct = Math.min(100, discVal);
+            discAmt = Math.round(((subtotal * pct) / 100) * 100) / 100;
+        } else if (discAmt === 0 && discVal > 0 && discType === 'flat') {
+            discAmt = Math.min(subtotal, discVal);
+        }
+
+        discAmt = Math.min(subtotal, discAmt);
+        const finalTotal = Math.max(0, Math.round((subtotal - discAmt) * 100) / 100);
+
         const localTxnId = 'TXN-' + Date.now().toString().slice(-6) + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
         const saleRecord = {
             id: localTxnId,
@@ -1821,10 +1867,13 @@ class TiraBelleDB {
             customerName: customer.name,
             items: processedItems,
             subtotal: subtotal,
-            discount: 0,
-            totalAmount: subtotal, // Paid sales total excludes free rewards
-            paymentMode: paymentMode || 'Cash', // Cash / Online
-            paidCupsCount: paidCupsCount,
+            discount: discAmt,
+            discountType: discType,
+            discountValue: discVal,
+            totalAmount: finalTotal,
+            paymentMode: paymentMode || 'Cash', // Cash / UPI / Card / Online
+            paidCupsCount: totalCupsCount,
+            eligibleCupsCount: eligibleCupsCount,
             timestamp: new Date().toISOString(),
             date: getTodayDateString(0),
             notes: notes || '',
@@ -1832,7 +1881,7 @@ class TiraBelleDB {
             synced: false
         };
 
-        // Persist directly to Supabase via backend REST API
+        // Persist directly to cloud via backend REST API
         let isSynced = false;
         try {
             const apiRes = await this.apiRequest('/sales', {
@@ -1843,6 +1892,9 @@ class TiraBelleDB {
                     customerName: customer.name,
                     items: processedItems,
                     paymentMode: paymentMode || 'Cash',
+                    discount: discAmt,
+                    discountType: discType,
+                    discountValue: discVal,
                     notes: notes || '',
                     redeemFreeReward: !!redeemFreeReward
                 })

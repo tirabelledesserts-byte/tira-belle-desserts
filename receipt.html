@@ -436,6 +436,17 @@
                 </tbody>
             </table>
 
+            <div id="recSummaryRows" style="display: none; margin: 12px 0 6px; padding: 10px 14px; background: rgba(197, 137, 64, 0.05); border: 1px dashed rgba(197, 137, 64, 0.25); border-radius: var(--radius-sm, 8px);">
+                <div style="display: flex; justify-content: space-between; font-size: 0.88rem; color: #666; margin-bottom: 4px;">
+                    <span>Subtotal</span>
+                    <span id="recSubtotal" style="font-weight: 600; color: var(--color-espresso, #22120b);">₹0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.88rem; color: #166534; font-weight: 700;">
+                    <span id="recDiscountLabel">Discount</span>
+                    <span id="recDiscount">-₹0</span>
+                </div>
+            </div>
+
             <div class="total-box">
                 <span class="total-label">TOTAL PAID</span>
                 <span class="total-amount" id="recTotal">₹0</span>
@@ -608,7 +619,23 @@
             });
 
             const totalNum = Number(saleData.totalAmount || 0);
+            const discNum = Number(saleData.discount || 0);
+            const subtotalNum = Number(saleData.subtotal || (totalNum + discNum));
             document.getElementById('recTotal').textContent = `${curr}${totalNum.toLocaleString('en-IN')}`;
+
+            const summaryBox = document.getElementById('recSummaryRows');
+            if (summaryBox) {
+                if (discNum > 0) {
+                    summaryBox.style.display = 'block';
+                    document.getElementById('recSubtotal').textContent = `${curr}${subtotalNum.toLocaleString('en-IN')}`;
+                    const discType = saleData.discountType || (saleData.discountValue ? 'percent' : 'flat');
+                    const discLabel = discType === 'percent' && saleData.discountValue ? `Discount (${saleData.discountValue}%)` : 'Discount';
+                    document.getElementById('recDiscountLabel').textContent = discLabel;
+                    document.getElementById('recDiscount').textContent = `-${curr}${discNum.toLocaleString('en-IN')}`;
+                } else {
+                    summaryBox.style.display = 'none';
+                }
+            }
 
             // Loyalty
             const loyalty = saleData.loyalty;

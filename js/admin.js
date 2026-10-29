@@ -504,7 +504,8 @@ window.switchAdminSection = function(sectionId) {
 
     // Section specific loaders
     if (sectionId === 'dashboard') loadDashboardMetrics();
-    else if (sectionId === 'pos') renderPosCatalog();
+    else if (sectionId === 'pos') { renderPosCatalog(); if (typeof window.initPosSlider === 'function') window.initPosSlider(); }
+    else if (sectionId === 'orders') renderOrdersTable();
     else if (sectionId === 'categories') renderCategoriesSection();
     else if (sectionId === 'products') renderProductsTable();
     else if (sectionId === 'customers') renderCustomersTable();
@@ -523,6 +524,7 @@ function initAdminApp(refreshSettings = true) {
     applySavedSidebarState();
     loadDashboardMetrics();
     renderPosCatalog();
+    if (typeof renderOrdersTable === 'function') renderOrdersTable();
     renderCategoriesSection();
     renderProductsTable();
     renderCustomersTable();
@@ -944,6 +946,7 @@ window.addEventListener('tira-live-event', (e) => {
 window.addEventListener('tira-sales-changed', () => {
     loadDashboardMetrics();
     renderCustomersTable();
+    if (typeof renderOrdersTable === 'function') renderOrdersTable();
     if (typeof window.renderNearRewardCustomers === 'function') {
         window.renderNearRewardCustomers();
     }
@@ -1481,6 +1484,9 @@ window.resetNewSale = async function(skipConfirm = false) {
         saveBtn.disabled = false;
         saveBtn.innerHTML = '<i data-lucide="circle-check" data-size="16"></i> <span>Complete Order & Print Bill</span>';
     }
+    if (typeof window.resetPosSlider === 'function') {
+        window.resetPosSlider();
+    }
 
     if (typeof setPosPaymentMode === 'function') {
         setPosPaymentMode('Cash');
@@ -1787,15 +1793,20 @@ window.submitPosSale = async function() {
     if (!phone) {
         showToast('Please enter the customer\'s phone number to record the sale.', 'warning');
         document.getElementById('posCustomerPhone').focus();
+        if (typeof window.resetPosSlider === 'function') window.resetPosSlider();
         return;
     }
 
     if (currentCart.length === 0 && !redeemReward) {
         showToast('Cart is empty. Please add at least one product.', 'warning');
+        if (typeof window.resetPosSlider === 'function') window.resetPosSlider();
         return;
     }
 
     isSubmittingSale = true;
+    if (typeof window.setPosSliderSubmitting === 'function') {
+        window.setPosSliderSubmitting(true);
+    }
     if (saveBtn) {
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i data-lucide="loader" data-size="16"></i> <span>Saving Sale...</span>';
@@ -1815,18 +1826,8 @@ window.submitPosSale = async function() {
         if (result.success) {
             showToast(`Sale recorded successfully! Total: ₹${result.sale.totalAmount}`, 'success');
             
-            // Open receipt modal
+            // Open receipt modal for cashier review (WhatsApp can be shared on demand)
             viewReceipt(result.sale.id);
-
-            // Automatically open customer's WhatsApp chat with digital receipt
-            const targetPhone = formatWhatsAppPhone(phone);
-            if (targetPhone) {
-                try {
-                    window.shareSaleOnWhatsApp(result.sale.id);
-                } catch (waErr) {
-                    console.warn('[WhatsApp] Auto-redirect notice:', waErr);
-                }
-            }
 
             // Reset cart and inputs
             resetNewSale(true);
@@ -1845,6 +1846,9 @@ window.submitPosSale = async function() {
         showToast('Error saving sale: ' + (err.message || 'Please try again'), 'error');
     } finally {
         isSubmittingSale = false;
+        if (typeof window.setPosSliderSubmitting === 'function') {
+            window.setPosSliderSubmitting(false);
+        }
         if (saveBtn) {
             saveBtn.disabled = false;
             saveBtn.innerHTML = '<i data-lucide="circle-check" data-size="16"></i> <span>Complete Order & Print Bill</span>';
@@ -2022,6 +2026,7 @@ window.attachPhoneAndShareWhatsApp = async function() {
     // Refresh dashboard tables so patched customer is reflected
     if (typeof loadDashboardMetrics === 'function') loadDashboardMetrics();
     if (typeof renderCustomersTable === 'function') renderCustomersTable();
+    if (typeof renderOrdersTable === 'function') renderOrdersTable();
 
     showToast('Customer phone attached to receipt!', 'success');
 
@@ -2062,6 +2067,10 @@ window.viewReceipt = function(saleId) {
     const onlineLink = document.getElementById('recOnlineLink');
     if (onlineLink) {
         onlineLink.href = `receipt.html?id=${encodeURIComponent(sale.id)}`;
+    }
+    const onlineLinkPrompt = document.getElementById('recOnlineLinkPrompt');
+    if (onlineLinkPrompt) {
+        onlineLinkPrompt.href = `receipt.html?id=${encodeURIComponent(sale.id)}`;
     }
 
     const formattedPhone = formatWhatsAppPhone(custPhone);
@@ -4261,6 +4270,16 @@ window.addEventListener('tira-reviews-changed', () => {
 // ----------------- STARTUP -----------------
 document.addEventListener('DOMContentLoaded', () => {
     checkAdminAuth();
+    const orderDateWrapper = document.getElementById('orderDateSelectorWrapper');
+    const orderDateInput = document.getElementById('orderDatePicker');
+    if (orderDateWrapper && orderDateInput) {
+        orderDateWrapper.addEventListener('click', (e) => {
+            if (e.target !== orderDateInput && typeof orderDateInput.showPicker === 'function') {
+                try { orderDateInput.showPicker(); } catch(err) {}
+            }
+        });
+    }
+
     const dateWrapper = document.getElementById('dateSelectorWrapper');
     const dateInput = document.getElementById('dashboardDatePicker');
     if (dateWrapper && dateInput) {
@@ -4281,3 +4300,562 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+
+// ==========================================
+// ORDER DETAILS & SALES HISTORY SECTION
+// ==========================================
+window.adminOrdersCurrentPage = 1;
+window.ordersPageSize = 15;
+window.orderPaymentFilter = 'all';
+window.orderSelectedDate = null;
+
+window.filterOrdersFromCustModal = function() {
+    const phoneElem = document.getElementById('custModalPhone');
+    const raw = phoneElem ? phoneElem.textContent : '';
+    const clean = raw.replace(/\D/g, '');
+    window.closeCustomerModal();
+    window.filterOrdersByCustomer(clean);
+};
+
+window.filterOrdersByCustomer = function(phone) {
+    if (!phone) return;
+    window.switchAdminSection('orders');
+    const searchInput = document.getElementById('orderSearchInput');
+    if (searchInput) {
+        searchInput.value = phone;
+    }
+    window.adminOrdersCurrentPage = 1;
+    renderOrdersTable();
+    showToast(`Filtered orders for customer ${phone}`, 'info');
+};
+
+window.setOrderPaymentFilter = function(mode) {
+    window.orderPaymentFilter = mode;
+    ['All', 'Cash', 'Online'].forEach(f => {
+        const btn = document.getElementById(`chipOrderFilter${f}`);
+        if (btn) btn.classList.toggle('active', (f === 'All' && mode === 'all') || (f.toLowerCase() === mode.toLowerCase()));
+    });
+    window.adminOrdersCurrentPage = 1;
+    renderOrdersTable();
+};
+
+window.onOrderDateSelect = function(selectedDate) {
+    const display = document.getElementById('orderDatePickerDisplay');
+    const resetBtn = document.getElementById('btnOrderResetAll');
+
+    if (!selectedDate) {
+        window.resetOrderDateFilter();
+        return;
+    }
+
+    window.orderSelectedDate = selectedDate;
+
+    if (display) {
+        const [year, month, day] = selectedDate.split('-');
+        const d = new Date(year, month - 1, day);
+        const formatted = d.toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+        display.textContent = formatted;
+    }
+
+    if (resetBtn) resetBtn.style.display = 'inline-flex';
+
+    window.adminOrdersCurrentPage = 1;
+    renderOrdersTable();
+};
+
+window.resetOrderDateFilter = function() {
+    const picker = document.getElementById('orderDatePicker');
+    const display = document.getElementById('orderDatePickerDisplay');
+    const resetBtn = document.getElementById('btnOrderResetAll');
+
+    if (picker) picker.value = '';
+    if (display) display.textContent = 'All Time Records';
+    if (resetBtn) resetBtn.style.display = 'none';
+
+    window.orderSelectedDate = null;
+    window.adminOrdersCurrentPage = 1;
+    renderOrdersTable();
+    showToast('Showing all order records', 'info');
+};
+
+window.changeOrdersPage = function(delta) {
+    window.adminOrdersCurrentPage = (window.adminOrdersCurrentPage || 1) + delta;
+    renderOrdersTable();
+};
+
+window.renderOrdersTable = function() {
+    const tbody = document.getElementById('adminOrdersTableTbody');
+    if (!tbody) return;
+
+    const query = (document.getElementById('orderSearchInput')?.value || '').trim().toLowerCase();
+    const settings = window.TiraDB.getSettings();
+    const curr = settings.currency || '₹';
+    const allSales = window.TiraDB.getSales() || [];
+
+    // Contextual Filter Counts (based on currently selected date)
+    let baseForCounts = allSales;
+    if (window.orderSelectedDate) {
+        baseForCounts = baseForCounts.filter(s => {
+            if (s.date && s.date === window.orderSelectedDate) return true;
+            if (s.timestamp) return s.timestamp.slice(0, 10) === window.orderSelectedDate;
+            return false;
+        });
+    }
+
+    let countAll = baseForCounts.length;
+    let countCash = 0;
+    let countOnline = 0;
+    baseForCounts.forEach(s => {
+        const p = (s.paymentMode || 'Cash').toLowerCase();
+        if (p === 'cash') countCash++;
+        else if (p === 'online') countOnline++;
+    });
+
+    const elCountAll = document.getElementById('countOrderFilterAll');
+    const elCountCash = document.getElementById('countOrderFilterCash');
+    const elCountOnline = document.getElementById('countOrderFilterOnline');
+    if (elCountAll) elCountAll.textContent = countAll;
+    if (elCountCash) elCountCash.textContent = countCash;
+    if (elCountOnline) elCountOnline.textContent = countOnline;
+
+    // Filter by Payment Mode
+    let filtered = allSales;
+    if (window.orderPaymentFilter && window.orderPaymentFilter !== 'all') {
+        filtered = filtered.filter(s => (s.paymentMode || 'Cash').toLowerCase() === window.orderPaymentFilter.toLowerCase());
+    }
+
+    // Filter by Date
+    if (window.orderSelectedDate) {
+        filtered = filtered.filter(s => {
+            if (s.date && s.date === window.orderSelectedDate) return true;
+            if (s.timestamp) {
+                const sDate = s.timestamp.slice(0, 10);
+                return sDate === window.orderSelectedDate;
+            }
+            return false;
+        });
+    }
+
+    // Filter by Search Query (ID, Customer Name, Customer Phone, Product Names)
+    if (query) {
+        filtered = filtered.filter(s => {
+            const idMatch = (s.id || '').toLowerCase().includes(query);
+            const nameMatch = (s.customerName || '').toLowerCase().includes(query);
+            const phoneMatch = (s.customerPhone || '').includes(query);
+            const itemsMatch = (s.items || []).some(it => (it.productName || it.product_name || '').toLowerCase().includes(query));
+            return idMatch || nameMatch || phoneMatch || itemsMatch;
+        });
+    }
+
+    // Update Overview KPI Metric Cards dynamically
+    const filteredRevenue = filtered.reduce((acc, s) => acc + Number(s.totalAmount || 0), 0);
+    const filteredCount = filtered.length;
+    const filteredCups = filtered.reduce((acc, s) => acc + Number(s.paidCupsCount || 0), 0);
+    const filteredAov = filteredCount > 0 ? Math.round(filteredRevenue / filteredCount) : 0;
+
+    const elMetRev = document.getElementById('orderMetricRevenue');
+    const elMetCount = document.getElementById('orderMetricCount');
+    const elMetCups = document.getElementById('orderMetricCups');
+    const elMetAov = document.getElementById('orderMetricAov');
+    if (elMetRev) elMetRev.textContent = `${curr}${filteredRevenue.toLocaleString('en-IN')}`;
+    if (elMetCount) elMetCount.textContent = filteredCount.toLocaleString('en-IN');
+    if (elMetCups) elMetCups.textContent = filteredCups.toLocaleString('en-IN');
+    if (elMetAov) elMetAov.textContent = `${curr}${filteredAov.toLocaleString('en-IN')}`;
+
+    // Empty state
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px 20px; color: var(--color-text-muted);">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                        <i data-lucide="receipt" data-size="32" style="color: var(--color-text-light); opacity: 0.6;"></i>
+                        <span style="font-size: 0.95rem; font-weight: 600;">No orders found</span>
+                        <span style="font-size: 0.82rem;">${query || window.orderSelectedDate || window.orderPaymentFilter !== 'all' ? 'Try adjusting your search query, date, or payment filter' : 'Recorded orders will appear here automatically'}</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+        const paginationInfo = document.getElementById('orderPaginationInfo');
+        if (paginationInfo) paginationInfo.textContent = 'Showing 0 of 0 orders';
+        const prevBtn = document.getElementById('btnOrderPagePrev');
+        const nextBtn = document.getElementById('btnOrderPageNext');
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+    }
+
+    // Pagination
+    const pageSize = window.ordersPageSize || 15;
+    const totalPages = Math.ceil(filtered.length / pageSize);
+    window.adminOrdersCurrentPage = Math.max(1, Math.min(window.adminOrdersCurrentPage || 1, totalPages));
+    const startIndex = (window.adminOrdersCurrentPage - 1) * pageSize;
+    const pageItems = filtered.slice(startIndex, startIndex + pageSize);
+
+    const paginationInfo = document.getElementById('orderPaginationInfo');
+    if (paginationInfo) {
+        paginationInfo.textContent = `Showing ${startIndex + 1}–${Math.min(startIndex + pageSize, filtered.length)} of ${filtered.length} orders`;
+    }
+    const pageLabel = document.getElementById('orderCurrentPageLabel');
+    if (pageLabel) pageLabel.textContent = `Page ${window.adminOrdersCurrentPage} of ${totalPages}`;
+    const prevBtn = document.getElementById('btnOrderPagePrev');
+    const nextBtn = document.getElementById('btnOrderPageNext');
+    if (prevBtn) prevBtn.disabled = window.adminOrdersCurrentPage <= 1;
+    if (nextBtn) nextBtn.disabled = window.adminOrdersCurrentPage >= totalPages;
+
+    tbody.innerHTML = '';
+    pageItems.forEach(s => {
+        const tr = document.createElement('tr');
+        const safeId = escapeHtml(s.id || '');
+        const safeName = escapeHtml(s.customerName || 'Guest');
+        const safePhone = escapeHtml(s.customerPhone || '—');
+        const safeNotes = escapeHtml(s.notes || '').trim();
+        const isCash = (s.paymentMode || 'Cash').toLowerCase() === 'cash';
+        
+        let dateFormatted = '—';
+        if (s.timestamp) {
+            try {
+                dateFormatted = new Date(s.timestamp).toLocaleString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            } catch (e) {
+                dateFormatted = s.timestamp;
+            }
+        }
+
+        const itemsSummary = (s.items || []).map(it => {
+            const name = escapeHtml(it.productName || it.product_name || 'Tiramisu');
+            const qty = it.quantity || 1;
+            const rewardTag = it.isReward ? ' <span style="color:#6b21a8; font-weight:700;">(Reward)</span>' : '';
+            return `${name} × ${qty}${rewardTag}`;
+        }).join(', ') || '—';
+
+        tr.innerHTML = `
+            <td>
+                <span style="font-family: monospace; font-weight: 700; color: var(--color-espresso);">${safeId}</span>
+            </td>
+            <td style="font-size: 0.82rem; color: var(--color-text-muted); white-space: nowrap;">
+                ${dateFormatted}
+            </td>
+            <td>
+                <div style="font-weight: 600; color: var(--color-espresso); cursor: pointer; text-decoration: underline; text-decoration-color: rgba(142,68,173,0.3); text-underline-offset: 2px;" onclick="viewCustomerHistory('${safePhone}')" title="Click to view customer loyalty profile">${safeName}</div>
+                <div style="font-size: 0.78rem; color: var(--color-text-muted); font-family: monospace; cursor: pointer;" onclick="viewCustomerHistory('${safePhone}')" title="Click to view customer loyalty profile">${safePhone}</div>
+            </td>
+            <td style="max-width: 260px; font-size: 0.85rem; line-height: 1.35;">
+                <div>${itemsSummary}</div>
+                ${safeNotes ? `<div style="font-size: 0.75rem; color: #b45309; background: #fef3c7; padding: 2px 6px; border-radius: 4px; margin-top: 5px; display: inline-flex; align-items: center; gap: 4px; max-width: 100%;"><i data-lucide="message-square" data-size="11"></i><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${safeNotes}</span></div>` : ''}
+            </td>
+            <td style="font-weight: 600;">
+                ${s.paidCupsCount || 0}
+            </td>
+            <td style="font-weight: 800; color: var(--color-espresso);">
+                ${curr}${Number(s.totalAmount || 0).toLocaleString('en-IN')}
+            </td>
+            <td>
+                <span class="badge ${isCash ? 'badge-cash' : 'badge-online'}">
+                    ${isCash ? 'Cash' : 'Online'}
+                </span>
+            </td>
+            <td>
+                <button type="button" class="btn btn-outline btn-xs" onclick="viewReceipt('${safeId}')" data-tooltip="View order receipt" aria-label="View receipt for ${safeId}" style="display: inline-flex; align-items: center; gap: 4px;">
+                    <i data-lucide="receipt" data-size="13"></i>
+                    <span>Receipt</span>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+};
+
+window.exportOrdersCSV = function() {
+    const allSales = window.TiraDB.getSales() || [];
+    if (!allSales.length) {
+        showToast('No orders available to export.', 'info');
+        return;
+    }
+
+    const headers = ['Order ID', 'Date & Time', 'Customer Name', 'Phone Number', 'Items Purchased', 'Cups', 'Total Amount (INR)', 'Payment Mode', 'Notes'];
+    const rows = allSales.map(s => {
+        const items = (s.items || []).map(it => `${it.productName || 'Tiramisu'} (x${it.quantity || 1})`).join('; ');
+        const dateStr = s.timestamp ? new Date(s.timestamp).toLocaleString('en-IN') : (s.date || '');
+        return [
+            `"${(s.id || '').replace(/"/g, '""')}"`,
+            `"${dateStr.replace(/"/g, '""')}"`,
+            `"${(s.customerName || '').replace(/"/g, '""')}"`,
+            `"${(s.customerPhone || '').replace(/"/g, '""')}"`,
+            `"${items.replace(/"/g, '""')}"`,
+            s.paidCupsCount || 0,
+            s.totalAmount || 0,
+            `"${(s.paymentMode || 'Cash').replace(/"/g, '""')}"`,
+            `"${(s.notes || '').replace(/"/g, '""')}"`
+        ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    downloadCSV(csvContent, `tira_belle_orders_${new Date().toISOString().slice(0, 10)}.csv`);
+    showToast('Orders exported to CSV successfully!', 'success');
+};
+
+
+// ==========================================
+// POS "SLIDE TO CONTINUE" INTERACTIVE CONTROLLER
+// ==========================================
+(function() {
+    let slider = null;
+    let handle = null;
+    let progress = null;
+    let text = null;
+    let isDragging = false;
+    let startX = 0;
+    let currentX = 0;
+    let maxSlide = 0;
+    let isCompleted = false;
+
+    function getMetrics() {
+        if (!slider || !handle) return { maxSlide: 0 };
+        const trackWidth = slider.clientWidth || 360;
+        const handleWidth = handle.offsetWidth || 48;
+        const padding = 4;
+        return {
+            trackWidth,
+            handleWidth,
+            padding,
+            maxSlide: Math.max(0, trackWidth - handleWidth - (padding * 2))
+        };
+    }
+
+    function initPosSlider() {
+        slider = document.getElementById('posSlideToContinue');
+        handle = document.getElementById('posSlideHandle');
+        progress = document.getElementById('posSlideProgress');
+        text = document.getElementById('posSlideText');
+
+        if (!slider || !handle) return;
+
+        handle.onpointerdown = null;
+        slider.onkeydown = null;
+
+        handle.addEventListener('pointerdown', onPointerDown);
+        slider.addEventListener('keydown', onKeyDown);
+        
+        handle.addEventListener('touchstart', onTouchStart, { passive: false });
+    }
+
+    function onPointerDown(e) {
+        if (window.isSubmittingSale || isCompleted) return;
+        isDragging = true;
+
+        const metrics = getMetrics();
+        maxSlide = metrics.maxSlide;
+        if (maxSlide <= 0) return;
+
+        if (e.pointerId && typeof handle.setPointerCapture === 'function') {
+            try { handle.setPointerCapture(e.pointerId); } catch(err) {}
+        }
+
+        startX = e.clientX;
+        slider.classList.add('dragging');
+        slider.classList.remove('animating');
+
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerCancel);
+        e.preventDefault();
+    }
+
+    function onPointerMove(e) {
+        if (!isDragging) return;
+
+        const deltaX = e.clientX - startX;
+        currentX = Math.max(0, Math.min(deltaX, maxSlide));
+
+        handle.style.transform = `translateX(${currentX}px)`;
+        if (progress) {
+            progress.style.width = `${currentX + 24}px`;
+        }
+        if (text) {
+            const ratio = maxSlide > 0 ? (currentX / maxSlide) : 0;
+            text.style.opacity = Math.max(0.08, 1 - (ratio * 1.3));
+        }
+
+        const percentage = maxSlide > 0 ? Math.round((currentX / maxSlide) * 100) : 0;
+        slider.setAttribute('aria-valuenow', percentage);
+    }
+
+    function onPointerUp(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        slider.classList.remove('dragging');
+
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerCancel);
+
+        const threshold = maxSlide * 0.85;
+        if (currentX >= threshold) {
+            completeSlide();
+        } else {
+            resetSliderAnimation();
+        }
+    }
+
+    function onPointerCancel() {
+        if (!isDragging) return;
+        isDragging = false;
+        slider.classList.remove('dragging');
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerCancel);
+        resetSliderAnimation();
+    }
+
+    // Touch event fallback
+    function onTouchStart(e) {
+        if (window.isSubmittingSale || isCompleted) return;
+        if (!e.touches || !e.touches[0]) return;
+        isDragging = true;
+
+        const metrics = getMetrics();
+        maxSlide = metrics.maxSlide;
+        startX = e.touches[0].clientX;
+
+        slider.classList.add('dragging');
+        slider.classList.remove('animating');
+
+        const moveHandler = function(te) {
+            if (!isDragging || !te.touches || !te.touches[0]) return;
+            const deltaX = te.touches[0].clientX - startX;
+            currentX = Math.max(0, Math.min(deltaX, maxSlide));
+            handle.style.transform = `translateX(${currentX}px)`;
+            if (progress) progress.style.width = `${currentX + 24}px`;
+            if (text) {
+                const ratio = maxSlide > 0 ? (currentX / maxSlide) : 0;
+                text.style.opacity = Math.max(0.08, 1 - (ratio * 1.3));
+            }
+            te.preventDefault();
+        };
+
+        const endHandler = function() {
+            isDragging = false;
+            slider.classList.remove('dragging');
+            window.removeEventListener('touchmove', moveHandler);
+            window.removeEventListener('touchend', endHandler);
+            window.removeEventListener('touchcancel', endHandler);
+
+            const threshold = maxSlide * 0.85;
+            if (currentX >= threshold) {
+                completeSlide();
+            } else {
+                resetSliderAnimation();
+            }
+        };
+
+        window.addEventListener('touchmove', moveHandler, { passive: false });
+        window.addEventListener('touchend', endHandler);
+        window.addEventListener('touchcancel', endHandler);
+    }
+
+    function onKeyDown(e) {
+        if (window.isSubmittingSale || isCompleted) return;
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            completeSlide();
+        }
+    }
+
+    function completeSlide() {
+        const metrics = getMetrics();
+        maxSlide = metrics.maxSlide;
+        isCompleted = true;
+
+        slider.classList.add('animating');
+        handle.style.transform = `translateX(${maxSlide}px)`;
+        if (progress) progress.style.width = '100%';
+        if (text) {
+            const label = text.querySelector('.pos-slide-text-label');
+            if (label) label.textContent = 'Completing Order...';
+            text.style.opacity = '1';
+        }
+        slider.setAttribute('aria-valuenow', '100');
+        slider.classList.add('submitting');
+
+        const spinner = document.getElementById('posSlideSpinner');
+        const icon = handle ? handle.querySelector('.pos-slide-icon') : null;
+        if (spinner) spinner.style.display = 'flex';
+        if (icon) icon.style.display = 'none';
+
+        if (typeof window.submitPosSale === 'function') {
+            window.submitPosSale();
+        }
+    }
+
+    function resetSliderAnimation() {
+        if (!slider || !handle) return;
+        slider.classList.add('animating');
+        handle.style.transform = 'translateX(0px)';
+        if (progress) progress.style.width = '0px';
+        if (text) {
+            const label = text.querySelector('.pos-slide-text-label');
+            if (label) label.textContent = 'Complete Order & Print Bill';
+            text.style.opacity = '1';
+        }
+        slider.setAttribute('aria-valuenow', '0');
+        slider.classList.remove('submitting');
+
+        const spinner = document.getElementById('posSlideSpinner');
+        const icon = handle.querySelector('.pos-slide-icon');
+        if (spinner) spinner.style.display = 'none';
+        if (icon) icon.style.display = 'inline-flex';
+
+        currentX = 0;
+        isCompleted = false;
+
+        setTimeout(() => {
+            if (slider) slider.classList.remove('animating');
+        }, 330);
+    }
+
+    window.resetPosSlider = function() {
+        isCompleted = false;
+        isDragging = false;
+        resetSliderAnimation();
+    };
+
+    window.setPosSliderSubmitting = function(submitting) {
+        if (!slider) return;
+        if (submitting) {
+            slider.classList.add('submitting');
+            const spinner = document.getElementById('posSlideSpinner');
+            const icon = handle ? handle.querySelector('.pos-slide-icon') : null;
+            if (spinner) spinner.style.display = 'flex';
+            if (icon) icon.style.display = 'none';
+            if (text) {
+                const label = text.querySelector('.pos-slide-text-label');
+                if (label) label.textContent = 'Saving Sale...';
+            }
+        } else {
+            slider.classList.remove('submitting');
+            window.resetPosSlider();
+        }
+    };
+
+    window.initPosSlider = initPosSlider;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPosSlider);
+    } else {
+        initPosSlider();
+    }
+})();

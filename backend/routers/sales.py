@@ -13,8 +13,23 @@ from backend.security import require_admin
 router = APIRouter(prefix="/api/sales", tags=["Sales & POS"])
 
 @router.get("", response_model=List[SaleResponse])
-def get_sales(limit: int = 200, db: Session = Depends(get_db)):
-    sales = db.query(Sale).order_by(Sale.timestamp.desc()).limit(limit).all()
+def get_sales(
+    limit: int = Query(500, ge=1, le=2000),
+    date: Optional[str] = Query(None, description="Filter sales by YYYY-MM-DD"),
+    phone: Optional[str] = Query(None, description="Filter sales by customer phone"),
+    payment_mode: Optional[str] = Query(None, description="Filter sales by Cash or Online"),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Sale)
+    if date:
+        query = query.filter(Sale.date == date)
+    if phone:
+        clean = clean_phone_number(phone)
+        if clean:
+            query = query.filter(Sale.customer_phone == clean)
+    if payment_mode and payment_mode.lower() != "all":
+        query = query.filter(Sale.payment_mode.ilike(payment_mode))
+    sales = query.order_by(Sale.timestamp.desc()).limit(limit).all()
     results = []
     for s in sales:
         results.append({

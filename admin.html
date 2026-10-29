@@ -18,8 +18,127 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TIRA Belle Admin">
-    <link rel="stylesheet" href="css/style.css?v=62?v=60">
+    <link rel="stylesheet" href="css/style.css?v=68?v=60">
     <style>
+        /* POS Slide to Continue Slider */
+        .pos-slide-wrapper {
+            width: 100%;
+        }
+        .pos-slide-btn {
+            position: relative;
+            width: 100%;
+            height: 56px;
+            background: linear-gradient(135deg, var(--color-caramel, #c58940) 0%, #a86c2e 100%);
+            border-radius: var(--radius-pill, 9999px);
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: pan-y;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(197, 137, 64, 0.35);
+            cursor: pointer;
+            outline: none;
+            transition: box-shadow 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+        }
+        .pos-slide-btn:hover {
+            box-shadow: 0 6px 22px rgba(197, 137, 64, 0.45);
+        }
+        .pos-slide-btn:focus-visible {
+            box-shadow: 0 0 0 3px rgba(197, 137, 64, 0.3), 0 6px 20px rgba(197, 137, 64, 0.45);
+        }
+        .pos-slide-btn.submitting {
+            pointer-events: none;
+            opacity: 0.92;
+            filter: brightness(0.96);
+        }
+        .pos-slide-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 0;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.32) 100%);
+            border-radius: var(--radius-pill, 9999px);
+            pointer-events: none;
+            transition: width 0s linear;
+        }
+        .pos-slide-btn.animating .pos-slide-progress {
+            transition: width 0.32s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .pos-slide-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-family: var(--font-body, inherit);
+            font-size: clamp(0.86rem, 2.4vw, 0.98rem);
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            pointer-events: none;
+            padding-left: 36px;
+            padding-right: 12px;
+            transition: opacity 0.2s ease;
+            z-index: 1;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+            white-space: nowrap;
+        }
+        .pos-slide-handle {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-caramel, #c58940);
+            cursor: grab;
+            z-index: 2;
+            touch-action: none;
+            transform: translateX(0px);
+            transition: transform 0s linear, box-shadow 0.2s ease;
+            border: none;
+            padding: 0;
+        }
+        .pos-slide-handle:active,
+        .pos-slide-btn.dragging .pos-slide-handle {
+            cursor: grabbing;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.32);
+        }
+        .pos-slide-btn.animating .pos-slide-handle {
+            transition: transform 0.32s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .pos-slide-icon {
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pos-slide-btn.submitting .pos-slide-icon {
+            display: none !important;
+        }
+        .pos-slide-spinner {
+            display: none;
+            animation: pos-spin 0.8s linear infinite;
+            color: var(--color-caramel, #c58940);
+        }
+        .pos-slide-btn.submitting .pos-slide-spinner {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+        @keyframes pos-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         /* Admin specific custom helpers */
         .login-overlay {
             position: fixed;
@@ -47,11 +166,182 @@
         .pos-cart-badge {
             background: var(--color-caramel);
             color: #fff;
-            padding: 2px 8px;
+            padding: 3px 9px;
             border-radius: var(--radius-pill);
             font-size: 0.75rem;
-            margin-left: 6px;
+            font-weight: 600;
+            display: inline-block;
+            line-height: 1.3;
         }
+        .pos-cart-header-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pos-cart-reset-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface, #ffffff);
+            color: var(--color-text-muted);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+        .pos-cart-reset-btn:hover {
+            color: #c0392b;
+            border-color: rgba(192, 57, 43, 0.4);
+            background: rgba(192, 57, 43, 0.08);
+            transform: scale(1.05);
+        }
+        .pos-cart-reset-btn:active {
+            transform: scale(0.95);
+        }
+    
+
+/* ==========================================
+   Redesigned Modern Receipt Modal & Actions
+   ========================================== */
+.receipt-modal-card {
+    max-width: 440px !important;
+    border-radius: 18px !important;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+}
+
+.receipt-modal-body {
+    padding: 16px 20px !important;
+    max-height: 84vh;
+    overflow-y: auto;
+}
+
+.receipt-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+.receipt-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.receipt-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+}
+
+.receipt-paper {
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    border: 1px solid #e8decb !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    box-sizing: border-box;
+}
+
+.receipt-actions-wrapper {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-whatsapp-modern {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(135deg, #25D366 0%, #1ebe5d 100%);
+    color: #ffffff !important;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.96rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(37, 211, 102, 0.32);
+    transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.btn-whatsapp-modern:hover {
+    background: linear-gradient(135deg, #22c35e 0%, #16a34a 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.44);
+}
+
+.btn-whatsapp-modern:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+}
+
+.btn-whatsapp-modern svg {
+    flex-shrink: 0;
+}
+
+.receipt-prompt-card {
+    background: #f0fdf4;
+    border: 1.5px dashed #86efac;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.receipt-secondary-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.receipt-online-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-caramel, #c58940);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: all 0.18s ease;
+}
+
+.receipt-online-btn:hover {
+    background: rgba(197, 137, 64, 0.1);
+    color: var(--color-espresso, #22120b);
+    text-decoration: none;
+}
+
+.receipt-done-btn {
+    height: 38px;
+    min-width: 88px;
+    padding: 0 18px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    border-radius: 9px;
+    border: 1.5px solid var(--color-border, #e5e0d8);
+    background: #ffffff;
+    color: var(--color-espresso, #22120b);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.receipt-done-btn:hover {
+    background: var(--color-bg, #fdfaf5);
+    border-color: var(--color-caramel, #c58940);
+    color: var(--color-caramel, #c58940);
+}
+
     </style>
 <body>
 
@@ -141,6 +431,10 @@
                 <button class="admin-nav-item" onclick="switchAdminSection('pos')" title="New Sale (POS)" data-title="New Sale (POS)">
                     <i data-lucide="shopping-cart" class="nav-icon"></i>
                     <span>New Sale (POS)</span>
+                </button>
+                <button class="admin-nav-item" onclick="switchAdminSection('orders')" title="Order Details" data-title="Order Details">
+                    <i data-lucide="receipt" class="nav-icon"></i>
+                    <span>Order Details</span>
                 </button>
 
                 <div class="admin-nav-group-title">Menu & Catalog</div>
@@ -331,8 +625,8 @@
                 <div class="card">
                     <div class="card-title">
                         <span>Recent Sales Transactions</span>
-                        <button class="btn btn-outline btn-sm" onclick="switchAdminSection('customers')">
-                            <span>View All Transactions</span>
+                        <button class="btn btn-outline btn-sm" onclick="switchAdminSection('orders')" title="View all orders">
+                            <span>View All Orders</span>
                             <i data-lucide="arrow-right" data-size="14"></i>
                         </button>
                     </div>
@@ -388,7 +682,12 @@
                     <div class="pos-cart-panel">
                         <h3 style="font-family: var(--font-heading); font-size: 1.25rem; color: var(--color-espresso); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
                             <span>Current Order</span>
-                            <span class="pos-cart-badge" id="cartBadgeCount">0 items</span>
+                            <div class="pos-cart-header-actions">
+                                <span class="pos-cart-badge" id="cartBadgeCount">0 items</span>
+                                <button type="button" class="pos-cart-reset-btn" id="posBtnCartReset" onclick="resetNewSale()" data-tooltip="Clear cart &amp; reset order" aria-label="Clear cart and reset order" title="Clear current order">
+                                    <i data-lucide="rotate-ccw" data-size="13"></i>
+                                </button>
+                            </div>
                         </h3>
 
                         <!-- Cart Items List -->
@@ -462,13 +761,154 @@
                         </div>
 
                         <div class="pos-checkout-actions">
-                            <button type="button" class="btn btn-outline pos-btn-clear" onclick="resetNewSale()" title="Clear cart and customer details">
-                                <i data-lucide="rotate-ccw" data-size="15"></i>
-                                <span>Clear</span>
+                            <div class="pos-slide-wrapper">
+                                <div class="pos-slide-btn" id="posSlideToContinue" role="slider" tabindex="0" aria-label="Slide to complete order and print bill" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                                    <div class="pos-slide-progress" id="posSlideProgress"></div>
+                                    <div class="pos-slide-text" id="posSlideText">
+                                        <span class="pos-slide-text-label">Complete Order & Print Bill</span>
+                                    </div>
+                                    <button type="button" class="pos-slide-handle" id="posSlideHandle" aria-hidden="true" tabindex="-1">
+                                        <i data-lucide="chevrons-right" data-size="22" class="pos-slide-icon"></i>
+                                        <div class="pos-slide-spinner" id="posSlideSpinner" style="display: none;">
+                                            <i data-lucide="loader" data-size="20" class="pos-spinner-icon"></i>
+                                        </div>
+                                    </button>
+                                </div>
+                                <button class="btn btn-caramel pos-btn-save" onclick="submitPosSale()" id="btnSaveSale" style="display: none;" aria-hidden="true">
+                                    <span>Complete Order & Print Bill</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: ORDER DETAILS & SALES HISTORY -->
+            <section id="sec-orders" class="admin-section">
+                <div class="admin-topbar">
+                    <div>
+                        <h1 class="admin-page-title">Order Details & Sales History</h1>
+                        <p class="admin-page-subtitle">Track individual customer orders, line items, timestamps, receipts, and payment breakdowns</p>
+                    </div>
+                    <div class="admin-top-actions" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <input type="text" id="orderSearchInput" class="form-input" placeholder="Search by receipt ID, name, or phone" style="width: 260px;" oninput="renderOrdersTable()">
+                        
+                        <!-- Order Calendar Date Picker Widget -->
+                        <div class="date-selector-wrapper" id="orderDateSelectorWrapper" title="Filter orders by date">
+                            <i data-lucide="calendar" class="date-selector-icon" data-size="16"></i>
+                            <span id="orderDatePickerDisplay" class="date-picker-display">All Time Records</span>
+                            <input type="date" id="orderDatePicker" class="date-picker-native-input" onchange="onOrderDateSelect(this.value)" aria-label="Filter orders by date">
+                            <i data-lucide="chevron-down" class="date-selector-arrow" data-size="14"></i>
+                        </div>
+
+                        <!-- Reset Date Button to return to All Time -->
+                        <button type="button" id="btnOrderResetAll" class="btn btn-outline btn-sm reset-today-btn" style="display: none;" onclick="resetOrderDateFilter()" title="View all order records">
+                            <i data-lucide="rotate-ccw" data-size="13"></i>
+                            <span>All Time</span>
+                        </button>
+
+                        <button class="btn btn-outline btn-sm" onclick="exportOrdersCSV()" title="Export order records to CSV">
+                            <i data-lucide="download" data-size="16"></i>
+                            <span>Export CSV</span>
+                        </button>
+                    </div>
+                </div>
+
+                                <!-- Order Overview Metrics Grid -->
+                <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+                    <div class="metric-card revenue">
+                        <div class="metric-header">
+                            <span class="metric-title">Orders Revenue</span>
+                            <span class="metric-icon"><i data-lucide="chart-no-axes-combined" data-size="18"></i></span>
+                        </div>
+                        <div class="metric-value" id="orderMetricRevenue">₹0</div>
+                        <div class="metric-sub" id="orderMetricRevenueSub">In selected view</div>
+                    </div>
+
+                    <div class="metric-card cash">
+                        <div class="metric-header">
+                            <span class="metric-title">Total Orders</span>
+                            <span class="metric-icon"><i data-lucide="receipt" data-size="18"></i></span>
+                        </div>
+                        <div class="metric-value" id="orderMetricCount">0</div>
+                        <div class="metric-sub" id="orderMetricCountSub">Transactions placed</div>
+                    </div>
+
+                    <div class="metric-card cups">
+                        <div class="metric-header">
+                            <span class="metric-title">Cups Sold</span>
+                            <span class="metric-icon"><i data-lucide="coffee" data-size="18"></i></span>
+                        </div>
+                        <div class="metric-value" id="orderMetricCups">0</div>
+                        <div class="metric-sub">Paid cups count</div>
+                    </div>
+
+                    <div class="metric-card online">
+                        <div class="metric-header">
+                            <span class="metric-title">Average Order Value</span>
+                            <span class="metric-icon"><i data-lucide="wallet" data-size="18"></i></span>
+                        </div>
+                        <div class="metric-value" id="orderMetricAov">₹0</div>
+                        <div class="metric-sub">Average per order</div>
+                    </div>
+                </div>
+
+                <!-- Order Filter Toolbar -->
+                <div class="customer-filter-bar" id="orderFilterBar">
+                    <span class="customer-filter-label">
+                        <i data-lucide="filter" data-size="14"></i>
+                        <span>Payment Mode:</span>
+                    </span>
+                    <div class="filter-chip-group">
+                        <button type="button" class="filter-chip active" id="chipOrderFilterAll" onclick="setOrderPaymentFilter('all')">
+                            <span>All Orders</span>
+                            <span class="chip-badge" id="countOrderFilterAll">0</span>
+                        </button>
+                        <button type="button" class="filter-chip" id="chipOrderFilterCash" onclick="setOrderPaymentFilter('Cash')">
+                            <i data-lucide="banknote" data-size="14"></i>
+                            <span>Cash</span>
+                            <span class="chip-badge" id="countOrderFilterCash">0</span>
+                        </button>
+                        <button type="button" class="filter-chip" id="chipOrderFilterOnline" onclick="setOrderPaymentFilter('Online')">
+                            <i data-lucide="qr-code" data-size="14"></i>
+                            <span>Online (UPI)</span>
+                            <span class="chip-badge" id="countOrderFilterOnline">0</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Receipt ID</th>
+                                    <th>Date & Time</th>
+                                    <th>Customer</th>
+                                    <th>Items Breakdown</th>
+                                    <th>Cups</th>
+                                    <th>Total Amount</th>
+                                    <th>Payment</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminOrdersTableTbody">
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 80%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 90%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Orders Table Pagination Bar -->
+                    <div class="admin-table-pagination" id="orderTablePagination">
+                        <div class="pagination-info" id="orderPaginationInfo">Showing 0 of 0 orders</div>
+                        <div class="pagination-controls" id="orderPaginationControls">
+                            <button type="button" class="btn btn-outline btn-xs" id="btnOrderPagePrev" onclick="changeOrdersPage(-1)" data-tooltip="Previous page" aria-label="Previous order page">
+                                <i data-lucide="chevron-left" data-size="14"></i>
+                                <span>Previous</span>
                             </button>
-                            <button class="btn btn-caramel pos-btn-save" onclick="submitPosSale()" id="btnSaveSale">
-                                <i data-lucide="circle-check" data-size="16"></i>
-                                <span>Complete Order & Print Bill</span>
+                            <span class="pagination-page-label" id="orderCurrentPageLabel">Page 1</span>
+                            <button type="button" class="btn btn-outline btn-xs" id="btnOrderPageNext" onclick="changeOrdersPage(1)" data-tooltip="Next page" aria-label="Next order page">
+                                <span>Next</span>
+                                <i data-lucide="chevron-right" data-size="14"></i>
                             </button>
                         </div>
                     </div>
@@ -1448,7 +1888,11 @@
                 </h4>
                 <div id="custModalTxnList" style="display: flex; flex-direction: column; gap: 10px;"></div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" class="btn btn-outline btn-sm" id="btnCustModalViewInOrders" onclick="filterOrdersFromCustModal()" style="display: inline-flex; align-items: center; gap: 6px;" title="View all orders for this customer in Order Details">
+                    <i data-lucide="receipt" data-size="14"></i>
+                    <span>Filter in Order Details</span>
+                </button>
                 <button type="button" class="btn btn-caramel" onclick="closeCustomerModal()">Close</button>
             </div>
         </div>
@@ -1456,14 +1900,17 @@
 
     <!-- Printable Receipt Modal -->
     <div id="receiptModal" class="modal-overlay">
-        <div class="modal-card" style="max-width: 380px;">
-            <div class="modal-header">
-                <h3 class="modal-title">Customer Receipt</h3>
+        <div class="modal-card receipt-modal-card" style="max-width: 440px; border-radius: 18px;">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(0, 0, 0, 0.06); padding: 16px 20px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="receipt" data-size="18" style="color: var(--color-caramel, #c58940);"></i>
+                    <h3 class="modal-title" style="margin: 0; font-size: 1.1rem; font-weight: 700;">Customer Receipt</h3>
+                </div>
                 <button class="modal-close-btn" onclick="closeReceiptModal()" aria-label="Close modal" data-tooltip="Close (Esc)">
-                    <i data-lucide="x" data-size="20"></i>
+                    <i data-lucide="x" data-size="18"></i>
                 </button>
             </div>
-            <div class="modal-body" style="padding: 16px;">
+            <div class="modal-body receipt-modal-body" style="padding: 16px 20px;">
                 <div class="receipt-paper printable-area" id="receiptPrintableArea">
                     <div class="receipt-header">
                         <img id="recLogo" src="assets/tira-belle-logo.png" alt="Logo" style="height: 44px; max-width: 130px; margin: 0 auto 6px; display: block; object-fit: contain;">
@@ -1503,44 +1950,47 @@
                     </div>
                 </div>
 
-                <!-- Share via WhatsApp Section (Directly below Order Summary / Receipt) -->
-                <div class="receipt-whatsapp-section no-print" id="receiptWhatsAppSection">
+                <!-- Modern Redesigned Actions Section -->
+                <div class="receipt-actions-wrapper no-print" id="receiptWhatsAppSection">
                     <!-- Ready state (customer phone present & valid) -->
                     <div id="receiptWhatsAppReady" style="display: none;">
-                        <button type="button" class="btn-whatsapp-primary" id="btnShareWhatsAppBill" onclick="shareCurrentReceiptViaWhatsApp()" title="Share digital receipt link to customer's WhatsApp">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <button type="button" class="btn-whatsapp-modern" id="btnShareWhatsAppBill" onclick="shareCurrentReceiptViaWhatsApp()" title="Share digital receipt link to customer's WhatsApp">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                             </svg>
-                            <span>Share Bill via WhatsApp</span>
+                            <span>Share on WhatsApp</span>
                         </button>
-                        <div style="margin-top: 8px; text-align: center;">
-                            <a id="recOnlineLink" href="#" target="_blank" rel="noopener noreferrer" style="font-size: 0.78rem; color: #b7793d; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                                <span>Open Online Customer Receipt</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                            </a>
-                        </div>
                     </div>
 
                     <!-- Prompt state (customer phone missing / unattached) -->
-                    <div id="receiptWhatsAppPrompt" style="display: none; background: #f0fdf4; border: 1.5px dashed #86efac; border-radius: 8px; padding: 12px;">
+                    <div id="receiptWhatsAppPrompt" class="receipt-prompt-card" style="display: none;">
                         <label for="receiptPhoneInput" style="display: block; font-size: 0.8rem; font-weight: 700; color: #166534; margin-bottom: 6px;">
-                            Enter customer phone to share receipt
+                            Enter customer phone to share receipt:
                         </label>
                         <div style="display: flex; gap: 8px;">
-                            <input type="tel" id="receiptPhoneInput" class="form-control" placeholder="10-digit mobile number" maxlength="15" style="flex: 1; min-height: 44px; font-size: 0.9rem;">
-                            <button type="button" class="btn btn-whatsapp" onclick="attachPhoneAndShareWhatsApp()" style="min-height: 44px; padding: 0 14px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
+                            <input type="tel" id="receiptPhoneInput" class="form-input" placeholder="10-digit mobile number" maxlength="15" style="flex: 1; height: 44px; font-size: 0.9rem;">
+                            <button type="button" class="btn-whatsapp-modern" onclick="attachPhoneAndShareWhatsApp()" style="width: auto; height: 44px; padding: 0 16px; font-size: 0.88rem; white-space: nowrap;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                                 </svg>
-                                <span>Send WhatsApp Bill</span>
+                                <span>Share</span>
                             </button>
                         </div>
                         <div id="receiptPhoneError" style="display: none; color: #dc2626; font-size: 0.76rem; margin-top: 4px; font-weight: 600;"></div>
                     </div>
+
+                    <!-- Secondary Actions Row: Online link on left, Done button on right -->
+                    <div class="receipt-secondary-actions">
+                        <a id="recOnlineLink" href="#" target="_blank" rel="noopener noreferrer" class="receipt-online-btn" title="Open customer web receipt in new tab">
+                            <i data-lucide="external-link" data-size="14"></i>
+                            <span>Open Online Receipt</span>
+                        </a>
+                        <button type="button" class="btn btn-outline receipt-done-btn" onclick="closeReceiptModal()" title="Close receipt">
+                            <i data-lucide="check" data-size="15"></i>
+                            <span>Done</span>
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeReceiptModal()">Done</button>
             </div>
         </div>
     </div>
@@ -1553,7 +2003,7 @@
     <script src="js/qrcode.min.js?v=48"></script>
     <script src="js/pwa.js?v=48"></script>
     <script src="js/alerts.js?v=48"></script>
-    <script src="js/db.js?v=62"></script>
-    <script src="js/admin.js?v=62"></script>
+    <script src="js/db.js?v=63"></script>
+    <script src="js/admin.js?v=68"></script>
 </body>
 </html>

@@ -1121,23 +1121,31 @@ a {
 }
 
 .studio-action-buttons .btn-icon-circle {
-    width: 52px;
-    height: 52px;
-    min-width: 52px;
-    max-width: 52px;
-    min-height: 52px;
-    max-height: 52px;
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    max-width: 52px !important;
+    min-height: 52px !important;
+    max-height: 52px !important;
     padding: 0 !important;
+    margin: 0 !important;
     border-radius: 50% !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    flex: 0 0 52px;
-    flex-shrink: 0;
+    text-align: center !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+    vertical-align: middle !important;
+    flex: 0 0 52px !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    position: relative !important;
     box-shadow: 0 4px 14px rgba(183, 121, 61, 0.3);
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
                 box-shadow 0.2s ease,
-                background 0.2s ease;
+                background 0.2s ease,
+                color 0.2s ease;
 }
 
 .studio-action-buttons .btn-icon-circle:hover {
@@ -1151,9 +1159,17 @@ a {
 
 .studio-action-buttons .btn-icon-circle svg,
 .studio-action-buttons .btn-icon-circle i {
-    width: 22px;
-    height: 22px;
-    display: block;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    max-width: 24px !important;
+    max-height: 24px !important;
+    display: block !important;
+    margin: auto !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    stroke-width: 2.2 !important;
 }
 
 
@@ -1164,6 +1180,311 @@ a {
     padding: 32px;
     box-shadow: var(--shadow-md);
     margin-top: 30px;
+}
+
+/* ==========================================================================
+   TIRA Belle - Redesigned Contact & Dessert Studio Section
+   ========================================================================== */
+.contact-section {
+    padding: 84px 0;
+    background: linear-gradient(180deg, #ffffff 0%, var(--color-cream-subtle, #faf6f0) 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.contact-section::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -80px;
+    width: 380px;
+    height: 380px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(197, 137, 64, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.contact-grid {
+    position: relative;
+    z-index: 1;
+}
+
+/* Left Column: Artisan Showcase Poster */
+.contact-visual-col {
+    position: relative;
+}
+
+.contact-poster-card {
+    position: relative;
+    border-radius: 24px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 16px 40px rgba(44, 24, 16, 0.12), 0 2px 8px rgba(44, 24, 16, 0.04);
+    border: 1.5px solid rgba(197, 137, 64, 0.18);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.contact-poster-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 50px rgba(44, 24, 16, 0.16), 0 4px 12px rgba(197, 137, 64, 0.12);
+}
+
+.contact-poster-img-wrap {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+}
+
+.contact-poster-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.contact-poster-card:hover .contact-poster-img {
+    transform: scale(1.03);
+}
+
+.contact-poster-badge {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    background: rgba(30, 16, 10, 0.82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #ffffff;
+    padding: 10px 18px;
+    border-radius: var(--radius-pill, 9999px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.contact-poster-badge i,
+.contact-poster-badge svg {
+    color: var(--color-caramel-light, #e4a869);
+}
+
+/* Right Column: Information */
+.contact-content-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.contact-header {
+    margin-bottom: 22px;
+}
+
+.contact-description {
+    color: var(--color-text-muted, #7c685b);
+    font-size: 1.02rem;
+    line-height: 1.68;
+    margin-top: 12px;
+}
+
+/* 3 Clearly Separated Contact Cards */
+.contact-cards-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 26px;
+}
+
+.contact-info-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    background: #ffffff;
+    border: 1.5px solid rgba(197, 137, 64, 0.16);
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 2px 10px rgba(44, 24, 16, 0.03);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.contact-info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(197, 137, 64, 0.14);
+    border-color: rgba(197, 137, 64, 0.36);
+}
+
+.contact-card-icon {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(197, 137, 64, 0.12) 0%, rgba(197, 137, 64, 0.22) 100%);
+    color: var(--color-caramel, #c58940);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.contact-card-icon svg,
+.contact-card-icon i {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+}
+
+.contact-card-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.contact-card-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--color-caramel, #c58940);
+    margin-bottom: 4px;
+}
+
+.contact-card-highlight {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--color-espresso, #2c1810);
+    line-height: 1.4;
+}
+
+.contact-card-subtext {
+    font-size: 0.84rem;
+    color: var(--color-text-muted, #7c685b);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+/* WhatsApp & Direct Orders Chips */
+.contact-phones-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+    margin-bottom: 4px;
+}
+
+.contact-phone-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--color-cream-subtle, #fdfbf8);
+    border: 1px solid rgba(197, 137, 64, 0.22);
+    border-radius: var(--radius-pill, 9999px);
+    font-size: 0.88rem;
+    color: var(--color-espresso, #2c1810);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.contact-phone-chip:hover {
+    background: var(--color-caramel-subtle, #fcf4eb);
+    border-color: var(--color-caramel, #c58940);
+    color: var(--color-caramel, #c58940);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(197, 137, 64, 0.18);
+}
+
+.contact-phone-chip .chip-owner {
+    font-weight: 700;
+}
+
+.contact-phone-chip .chip-number {
+    font-weight: 600;
+    color: var(--color-caramel, #c58940);
+}
+
+/* Instagram Circular Button */
+.studio-action-buttons .btn-icon-circle.btn-icon-instagram {
+    color: #ffffff;
+    background: var(--color-caramel, #c58940);
+}
+
+.studio-action-buttons .btn-icon-circle.btn-icon-instagram:hover {
+    background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+    box-shadow: 0 8px 24px rgba(214, 36, 159, 0.38);
+    color: #ffffff;
+    transform: translateY(-3px) scale(1.06);
+}
+
+/* Check Loyalty Status Button (Icon-Only Circular Button) */
+.btn-loyalty-cta {
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    max-width: 52px !important;
+    min-height: 52px !important;
+    max-height: 52px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+    vertical-align: middle !important;
+    flex: 0 0 52px !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+    border: 2px solid var(--color-caramel, #c58940) !important;
+    background: #ffffff !important;
+    color: var(--color-caramel, #c58940) !important;
+    box-shadow: 0 4px 14px rgba(183, 121, 61, 0.25) !important;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.2s ease,
+                background 0.2s ease,
+                color 0.2s ease !important;
+    text-decoration: none !important;
+}
+
+.btn-loyalty-cta i,
+.btn-loyalty-cta svg {
+    color: var(--color-caramel, #c58940) !important;
+    transition: transform 0.22s ease, color 0.22s ease !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    max-width: 24px !important;
+    max-height: 24px !important;
+    display: block !important;
+    margin: auto !important;
+    stroke-width: 2.2 !important;
+    flex-shrink: 0 !important;
+}
+
+.btn-loyalty-cta:hover {
+    background: var(--color-caramel, #c58940) !important;
+    color: #ffffff !important;
+    transform: translateY(-3px) scale(1.06) !important;
+    box-shadow: 0 8px 24px rgba(183, 121, 61, 0.45) !important;
+}
+
+.btn-loyalty-cta:hover i,
+.btn-loyalty-cta:hover svg {
+    color: #ffffff !important;
+    transform: rotate(10deg) scale(1.12);
+}
+
+.btn-loyalty-cta:active {
+    transform: translateY(0) scale(0.96) !important;
 }
 
 /* Tracker Page Base Helpers */
@@ -2989,13 +3310,181 @@ a.footer-contact-item:hover svg,
     box-sizing: border-box;
 }
 
+.pos-cart-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pos-cart-reset-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+.pos-cart-reset-btn:hover {
+    color: #c0392b;
+    border-color: rgba(192, 57, 43, 0.4);
+    background: rgba(192, 57, 43, 0.08);
+    transform: scale(1.05);
+}
+
+.pos-cart-reset-btn:active {
+    transform: scale(0.95);
+}
+
 .pos-btn-clear {
-    flex: 0 0 auto;
-    min-width: 88px;
+    display: none;
 }
 
 .pos-btn-save {
     flex: 1;
+    width: 100%;
+}
+
+/* POS Slide to Continue Slider */
+.pos-slide-wrapper {
+    width: 100%;
+}
+
+.pos-slide-btn {
+    position: relative;
+    width: 100%;
+    height: 56px;
+    background: linear-gradient(135deg, var(--color-caramel, #c58940) 0%, #a86c2e 100%);
+    border-radius: var(--radius-pill, 9999px);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: pan-y;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(197, 137, 64, 0.35);
+    cursor: pointer;
+    outline: none;
+    transition: box-shadow 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+}
+
+.pos-slide-btn:hover {
+    box-shadow: 0 6px 22px rgba(197, 137, 64, 0.45);
+}
+
+.pos-slide-btn:focus-visible {
+    box-shadow: 0 0 0 3px rgba(197, 137, 64, 0.3), 0 6px 20px rgba(197, 137, 64, 0.45);
+}
+
+.pos-slide-btn.submitting {
+    pointer-events: none;
+    opacity: 0.92;
+    filter: brightness(0.96);
+}
+
+.pos-slide-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 0;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.32) 100%);
+    border-radius: var(--radius-pill, 9999px);
+    pointer-events: none;
+    transition: width 0s linear;
+}
+
+.pos-slide-btn.animating .pos-slide-progress {
+    transition: width 0.32s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.pos-slide-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-family: var(--font-body, inherit);
+    font-size: clamp(0.86rem, 2.4vw, 0.98rem);
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    pointer-events: none;
+    padding-left: 36px;
+    padding-right: 12px;
+    transition: opacity 0.2s ease;
+    z-index: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    white-space: nowrap;
+}
+
+.pos-slide-handle {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-caramel, #c58940);
+    cursor: grab;
+    z-index: 2;
+    touch-action: none;
+    transform: translateX(0px);
+    transition: transform 0s linear, box-shadow 0.2s ease;
+    border: none;
+    padding: 0;
+}
+
+.pos-slide-handle:active,
+.pos-slide-btn.dragging .pos-slide-handle {
+    cursor: grabbing;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.32);
+}
+
+.pos-slide-btn.animating .pos-slide-handle {
+    transition: transform 0.32s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.pos-slide-icon {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pos-slide-btn.submitting .pos-slide-icon {
+    display: none !important;
+}
+
+.pos-slide-spinner {
+    display: none;
+    animation: pos-spin 0.8s linear infinite;
+    color: var(--color-caramel, #c58940);
+}
+
+.pos-slide-btn.submitting .pos-slide-spinner {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes pos-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 @media (max-width: 480px) {
@@ -4087,23 +4576,43 @@ a.footer-contact-item:hover svg,
         height: 11px !important;
     }
 
+    /* Studio Contact Section (Mobile) */
+    .contact-section {
+        padding: 52px 0 !important;
+    }
+    .contact-poster-card {
+        max-width: 420px;
+        margin: 0 auto;
+    }
+    .contact-info-card {
+        padding: 14px 16px !important;
+        gap: 12px !important;
+    }
+    .contact-card-icon {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+    }
+    .contact-card-highlight {
+        font-size: 0.96rem !important;
+    }
+    .contact-phone-chip {
+        width: 100% !important;
+        justify-content: space-between !important;
+    }
     /* Studio Contact Action Buttons (Mobile) */
     .studio-action-buttons {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
-        justify-content: flex-start !important;
+        justify-content: center !important;
         flex-wrap: wrap !important;
         width: 100% !important;
-        gap: 10px !important;
+        gap: 14px !important;
+        margin: 20px auto 0 auto !important;
     }
-    .studio-action-buttons .btn:not(.btn-icon-circle) {
-        flex: 1 1 auto !important;
-        min-width: 180px !important;
-        min-height: 48px !important;
-        width: auto !important;
-    }
-    .studio-action-buttons .btn-icon-circle {
+    .studio-action-buttons .btn-icon-circle,
+    .studio-action-buttons .btn-loyalty-cta {
         width: 48px !important;
         height: 48px !important;
         min-width: 48px !important;
@@ -4112,7 +4621,26 @@ a.footer-contact-item:hover svg,
         max-height: 48px !important;
         border-radius: 50% !important;
         padding: 0 !important;
+        margin: 0 !important;
         flex: 0 0 48px !important;
+        line-height: 0 !important;
+        font-size: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .studio-action-buttons .btn-icon-circle svg,
+    .studio-action-buttons .btn-icon-circle i,
+    .studio-action-buttons .btn-loyalty-cta svg,
+    .studio-action-buttons .btn-loyalty-cta i {
+        width: 22px !important;
+        height: 22px !important;
+        min-width: 22px !important;
+        min-height: 22px !important;
+        max-width: 22px !important;
+        max-height: 22px !important;
+        margin: auto !important;
+        display: block !important;
     }
 
     /* Storefront Loyalty Banner */
@@ -8271,3 +8799,141 @@ button:disabled {
 }
 
 
+
+
+/* ==========================================
+   Redesigned Modern Receipt Modal & Actions
+   ========================================== */
+.receipt-modal-card {
+    max-width: 440px !important;
+    border-radius: 18px !important;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+}
+
+.receipt-modal-body {
+    padding: 16px 20px !important;
+    max-height: 84vh;
+    overflow-y: auto;
+}
+
+.receipt-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+.receipt-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.receipt-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+}
+
+.receipt-paper {
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    border: 1px solid #e8decb !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    box-sizing: border-box;
+}
+
+.receipt-actions-wrapper {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-whatsapp-modern {
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(135deg, #25D366 0%, #1ebe5d 100%);
+    color: #ffffff !important;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.96rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(37, 211, 102, 0.32);
+    transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.btn-whatsapp-modern:hover {
+    background: linear-gradient(135deg, #22c35e 0%, #16a34a 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.44);
+}
+
+.btn-whatsapp-modern:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+}
+
+.btn-whatsapp-modern svg {
+    flex-shrink: 0;
+}
+
+.receipt-prompt-card {
+    background: #f0fdf4;
+    border: 1.5px dashed #86efac;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.receipt-secondary-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.receipt-online-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-caramel, #c58940);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: all 0.18s ease;
+}
+
+.receipt-online-btn:hover {
+    background: rgba(197, 137, 64, 0.1);
+    color: var(--color-espresso, #22120b);
+    text-decoration: none;
+}
+
+.receipt-done-btn {
+    height: 38px;
+    min-width: 88px;
+    padding: 0 18px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    border-radius: 9px;
+    border: 1.5px solid var(--color-border, #e5e0d8);
+    background: #ffffff;
+    color: var(--color-espresso, #22120b);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.receipt-done-btn:hover {
+    background: var(--color-bg, #fdfaf5);
+    border-color: var(--color-caramel, #c58940);
+    color: var(--color-caramel, #c58940);
+}

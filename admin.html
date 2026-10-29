@@ -18,7 +18,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TIRA Belle Admin">
-    <link rel="stylesheet" href="css/style.css?v=60">
+    <link rel="stylesheet" href="css/style.css?v=62?v=60">
     <style>
         /* Admin specific custom helpers */
         .login-overlay {
@@ -260,8 +260,8 @@
                             <span class="metric-title">Total Sales Revenue</span>
                             <span class="metric-icon"><i data-lucide="chart-no-axes-combined" data-size="20"></i></span>
                         </div>
-                        <div class="metric-value" id="dashTotalRevenue">₹0</div>
-                        <div class="metric-sub" id="dashTxnCount">0 completed transactions</div>
+                        <div class="metric-value" id="dashTotalRevenue"><span class="skeleton-shimmer skeleton-metric-val"></span></div>
+                        <div class="metric-sub" id="dashTxnCount"><span class="skeleton-shimmer skeleton-metric-sub"></span></div>
                     </div>
 
                     <div class="metric-card cash">
@@ -269,7 +269,7 @@
                             <span class="metric-title">Cash Collection</span>
                             <span class="metric-icon"><i data-lucide="banknote" data-size="20"></i></span>
                         </div>
-                        <div class="metric-value" id="dashCashCollection">₹0</div>
+                        <div class="metric-value" id="dashCashCollection"><span class="skeleton-shimmer skeleton-metric-val"></span></div>
                         <div class="metric-sub">Physical cash in drawer</div>
                     </div>
 
@@ -278,7 +278,7 @@
                             <span class="metric-title">Online Collection</span>
                             <span class="metric-icon"><i data-lucide="credit-card" data-size="20"></i></span>
                         </div>
-                        <div class="metric-value" id="dashOnlineCollection">₹0</div>
+                        <div class="metric-value" id="dashOnlineCollection"><span class="skeleton-shimmer skeleton-metric-val"></span></div>
                         <div class="metric-sub">UPI, QR & Card payments</div>
                     </div>
 
@@ -287,7 +287,7 @@
                             <span class="metric-title">Total Cups Sold</span>
                             <span class="metric-icon"><i data-lucide="coffee" data-size="20"></i></span>
                         </div>
-                        <div class="metric-value" id="dashTotalPaidCups">0</div>
+                        <div class="metric-value" id="dashTotalPaidCups"><span class="skeleton-shimmer skeleton-metric-val"></span></div>
                         <div class="metric-sub">Total cups & tubs sold (all sizes)</div>
                     </div>
 
@@ -296,7 +296,7 @@
                             <span class="metric-title">Rewards Claimed</span>
                             <span class="metric-icon"><i data-lucide="gift" data-size="20"></i></span>
                         </div>
-                        <div class="metric-value" id="dashRewardsClaimed">0</div>
+                        <div class="metric-value" id="dashRewardsClaimed"><span class="skeleton-shimmer skeleton-metric-val"></span></div>
                         <div class="metric-sub">Free 150g cups redeemed</div>
                     </div>
                 </div>
@@ -319,7 +319,9 @@
                                 </tr>
                             </thead>
                             <tbody id="dashProductSummaryTbody">
-                                <!-- Populated dynamically -->
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td></tr>
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 45%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 55%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%;"></span></td></tr>
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 80%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -349,7 +351,9 @@
                                 </tr>
                             </thead>
                             <tbody id="dashRecentSalesTbody">
-                                <!-- Populated dynamically -->
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 80%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 85%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 55%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 55%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 85%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 45%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -556,7 +560,9 @@
                                 </tr>
                             </thead>
                             <tbody id="adminProductsTableTbody">
-                                <!-- Populated dynamically -->
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-thumb"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%; display: block; margin-bottom: 4px;"></span><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td style="text-align: right;"><span class="skeleton-shimmer skeleton-btn"></span> <span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-thumb"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%; display: block; margin-bottom: 4px;"></span><span class="skeleton-shimmer skeleton-cell" style="width: 45%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td style="text-align: right;"><span class="skeleton-shimmer skeleton-btn"></span> <span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-thumb"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%; display: block; margin-bottom: 4px;"></span><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td style="text-align: right;"><span class="skeleton-shimmer skeleton-btn"></span> <span class="skeleton-shimmer skeleton-btn"></span></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -653,7 +659,9 @@
                                 </tr>
                             </thead>
                             <tbody id="adminCustomersTableTbody">
-                                <!-- Populated dynamically -->
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 80%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 55%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 45%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 50%;"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
+                                <tr class="skeleton-table-row"><td><span class="skeleton-shimmer skeleton-cell" style="width: 75%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 85%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 65%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 55%;"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 60%;"></span></td><td><span class="skeleton-shimmer skeleton-badge"></span></td><td><span class="skeleton-shimmer skeleton-cell" style="width: 70%;"></span></td><td><span class="skeleton-shimmer skeleton-btn"></span></td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -661,12 +669,12 @@
                     <div class="admin-table-pagination" id="customerTablePagination">
                         <div class="pagination-info" id="customerPaginationInfo">Showing 0 of 0 customers</div>
                         <div class="pagination-controls" id="customerPaginationControls">
-                            <button type="button" class="btn btn-outline btn-xs" id="btnCustPagePrev" onclick="changeCustomerPage(-1)">
+                            <button type="button" class="btn btn-outline btn-xs" id="btnCustPagePrev" onclick="changeCustomerPage(-1)" data-tooltip="Previous page" aria-label="Previous customer page">
                                 <i data-lucide="chevron-left" data-size="14"></i>
                                 <span>Previous</span>
                             </button>
                             <span class="pagination-page-label" id="custCurrentPageLabel">Page 1</span>
-                            <button type="button" class="btn btn-outline btn-xs" id="btnCustPageNext" onclick="changeCustomerPage(1)">
+                            <button type="button" class="btn btn-outline btn-xs" id="btnCustPageNext" onclick="changeCustomerPage(1)" data-tooltip="Next page" aria-label="Next customer page">
                                 <span>Next</span>
                                 <i data-lucide="chevron-right" data-size="14"></i>
                             </button>
@@ -1212,7 +1220,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h3 class="modal-title" id="productModalTitle">Add New Product</h3>
-                <button class="modal-close-btn" onclick="closeProductModal()" aria-label="Close modal">
+                <button class="modal-close-btn" onclick="closeProductModal()" aria-label="Close modal" data-tooltip="Close (Esc)">
                     <i data-lucide="x" data-size="20"></i>
                 </button>
             </div>
@@ -1317,7 +1325,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <h3 class="modal-title" id="categoryModalTitle">Add New Category</h3>
-                <button class="modal-close-btn" onclick="closeCategoryModal()" aria-label="Close modal">
+                <button class="modal-close-btn" onclick="closeCategoryModal()" aria-label="Close modal" data-tooltip="Close (Esc)">
                     <i data-lucide="x" data-size="20"></i>
                 </button>
             </div>
@@ -1411,7 +1419,7 @@
                     <h3 class="modal-title" id="custModalName">Customer History</h3>
                     <div style="font-size: 0.85rem; color: var(--color-text-muted);" id="custModalPhone">Phone: 9876543210</div>
                 </div>
-                <button class="modal-close-btn" onclick="closeCustomerModal()" aria-label="Close modal">
+                <button class="modal-close-btn" onclick="closeCustomerModal()" aria-label="Close modal" data-tooltip="Close (Esc)">
                     <i data-lucide="x" data-size="20"></i>
                 </button>
             </div>
@@ -1451,7 +1459,7 @@
         <div class="modal-card" style="max-width: 380px;">
             <div class="modal-header">
                 <h3 class="modal-title">Customer Receipt</h3>
-                <button class="modal-close-btn" onclick="closeReceiptModal()" aria-label="Close modal">
+                <button class="modal-close-btn" onclick="closeReceiptModal()" aria-label="Close modal" data-tooltip="Close (Esc)">
                     <i data-lucide="x" data-size="20"></i>
                 </button>
             </div>
@@ -1545,7 +1553,7 @@
     <script src="js/qrcode.min.js?v=48"></script>
     <script src="js/pwa.js?v=48"></script>
     <script src="js/alerts.js?v=48"></script>
-    <script src="js/db.js?v=60"></script>
-    <script src="js/admin.js?v=61"></script>
+    <script src="js/db.js?v=62"></script>
+    <script src="js/admin.js?v=62"></script>
 </body>
 </html>

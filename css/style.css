@@ -7978,3 +7978,296 @@ main {
     background: rgba(183, 121, 61, 0.1);
 }
 
+/* ==========================================================================
+   PRODUCTION UI/UX & SKELETON LOADERS / TOOLTIP SYSTEM / EMPTY STATES
+   ========================================================================== */
+
+/* 1. Contextual Skeleton Loaders */
+.skeleton-shimmer {
+    background: linear-gradient(90deg, #f6eee6 25%, #eeddcd 50%, #f6eee6 75%);
+    background-size: 200% 100%;
+    animation: tiraSkeletonShimmer 1.4s ease-in-out infinite;
+    border-radius: var(--radius-sm, 6px);
+    display: inline-block;
+    color: transparent !important;
+    user-select: none;
+    pointer-events: none;
+    vertical-align: middle;
+}
+
+@keyframes tiraSkeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Metric Cards Skeleton */
+.skeleton-metric-val {
+    height: 38px;
+    width: 130px;
+    border-radius: 8px;
+    margin: 4px 0 6px 0;
+}
+
+.skeleton-metric-sub {
+    height: 14px;
+    width: 110px;
+    border-radius: 4px;
+}
+
+/* Table Skeletons */
+.skeleton-cell {
+    height: 16px;
+    border-radius: 4px;
+}
+
+.skeleton-badge {
+    height: 22px;
+    width: 75px;
+    border-radius: 20px;
+}
+
+.skeleton-thumb {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+}
+
+.skeleton-btn {
+    height: 30px;
+    width: 65px;
+    border-radius: 6px;
+}
+
+.skeleton-table-row td {
+    padding: 14px 16px;
+    vertical-align: middle;
+}
+
+/* Catalog Card Skeletons */
+.skeleton-catalog-card {
+    background: var(--color-surface, #ffffff);
+    border: 1px solid var(--color-border-light, #f0e6d9);
+    border-radius: var(--radius-lg, 16px);
+    overflow: hidden;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.skeleton-catalog-img {
+    width: 100%;
+    height: 140px;
+    border-radius: var(--radius-md, 10px);
+}
+
+/* 2. Contextual Empty States */
+.tira-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 44px 20px;
+    color: var(--color-text-muted);
+}
+
+.tira-empty-state-icon {
+    width: 44px;
+    height: 44px;
+    color: var(--color-caramel);
+    margin-bottom: 12px;
+    opacity: 0.9;
+}
+
+.tira-empty-state-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-espresso);
+    margin-bottom: 6px;
+}
+
+.tira-empty-state-desc {
+    font-size: 0.86rem;
+    max-width: 380px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+.tira-empty-state-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 3. Contextual Error States with Retry */
+.tira-error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px 20px;
+    background: rgba(231, 76, 60, 0.04);
+    border: 1px dashed rgba(231, 76, 60, 0.35);
+    border-radius: var(--radius-md, 10px);
+    margin: 16px 0;
+}
+
+.tira-error-state-icon {
+    width: 36px;
+    height: 36px;
+    color: #e74c3c;
+    margin-bottom: 8px;
+}
+
+.tira-error-state-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #c0392b;
+    margin-bottom: 4px;
+}
+
+.tira-error-state-desc {
+    font-size: 0.84rem;
+    color: var(--color-text-main);
+    margin-bottom: 14px;
+    max-width: 360px;
+}
+
+.tira-error-retry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: #c0392b;
+    border: none;
+    border-radius: var(--radius-sm, 6px);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.tira-error-retry-btn:hover {
+    background: #a93226;
+    transform: translateY(-1px);
+}
+
+/* 4. Universal High-Performance Tooltip System */
+.tira-tooltip-bubble {
+    position: fixed;
+    z-index: 100000;
+    pointer-events: none;
+    background: #23150e; /* Deep artisanal espresso */
+    color: #ffffff;
+    font-family: var(--font-body, inherit);
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 6px 10px;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.15);
+    line-height: 1.3;
+    max-width: 260px;
+    text-align: center;
+    white-space: nowrap;
+    opacity: 0;
+    transform: scale(0.92);
+    transition: opacity 0.14s cubic-bezier(0.16, 1, 0.3, 1), transform 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tira-tooltip-bubble.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.tira-tooltip-bubble::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: #23150e;
+    transform: rotate(45deg);
+}
+
+.tira-tooltip-bubble[data-placement="top"]::after {
+    bottom: -3px;
+    left: 50%;
+    margin-left: -3px;
+}
+
+.tira-tooltip-bubble[data-placement="bottom"]::after {
+    top: -3px;
+    left: 50%;
+    margin-left: -3px;
+}
+
+.tira-tooltip-bubble[data-placement="left"]::after {
+    right: -3px;
+    top: 50%;
+    margin-top: -3px;
+}
+
+.tira-tooltip-bubble[data-placement="right"]::after {
+    left: -3px;
+    top: 50%;
+    margin-top: -3px;
+}
+
+/* 5. Visual Polish, Layout Stability & Micro-Transitions */
+.admin-section {
+    display: none;
+    opacity: 0;
+}
+
+.admin-section.active {
+    display: block;
+    animation: adminSectionFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes adminSectionFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Prevent layout shift in metric cards */
+.metric-card {
+    min-height: 122px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md, 0 6px 16px rgba(0,0,0,0.08));
+}
+
+/* Accessible Focus States */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--color-caramel, #b7793d);
+    outline-offset: 2px;
+}
+
+/* Button Disabled & Loading Transitions */
+.btn:disabled,
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+

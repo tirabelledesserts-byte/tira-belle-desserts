@@ -226,6 +226,265 @@ function resetPasswordField(id) {
     }
 }
 
+// ==========================================================================
+// CONTEXTUAL SKELETON LOADERS & EMPTY / ERROR STATES ENGINE
+// Prevents layout shift (CLS), replaces spinners with structural skeletons.
+// ==========================================================================
+window.TiraUI = {
+    showDashboardMetricSkeletons: function() {
+        const metricIds = [
+            'dashTotalRevenue', 'dashCashCollection', 'dashOnlineCollection',
+            'dashTotalPaidCups', 'dashRewardsClaimed'
+        ];
+        metricIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = '<span class="skeleton-shimmer skeleton-metric-val"></span>';
+        });
+        const txnEl = document.getElementById('dashTxnCount');
+        if (txnEl) txnEl.innerHTML = '<span class="skeleton-shimmer skeleton-metric-sub"></span>';
+    },
+
+    showTableSkeleton: function(tbody, columns = 5, rows = 4) {
+        if (!tbody) return;
+        let html = '';
+        const widthPresets = ['75%', '50%', '60%', '40%', '80%', '55%', '45%', '70%'];
+        for (let r = 0; r < rows; r++) {
+            html += '<tr class="skeleton-table-row">';
+            for (let c = 0; c < columns; c++) {
+                const w = widthPresets[(r + c) % widthPresets.length];
+                html += `<td><span class="skeleton-shimmer skeleton-cell" style="width: ${w};"></span></td>`;
+            }
+            html += '</tr>';
+        }
+        tbody.innerHTML = html;
+    },
+
+    renderEmptyState: function(container, options = {}) {
+        if (!container) return;
+        const icon = options.icon || 'inbox';
+        const title = options.title || 'No data found';
+        const desc = options.desc || 'There are no records to display at this time.';
+        const actionHtml = options.actionText && options.actionClick 
+            ? `<button type="button" class="btn btn-caramel btn-sm tira-empty-state-action" onclick="${options.actionClick}" style="margin-top: 10px;">
+                   ${options.actionIcon ? `<i data-lucide="${options.actionIcon}" data-size="14"></i>` : ''}
+                   <span>${typeof escapeHtml === 'function' ? escapeHtml(options.actionText) : options.actionText}</span>
+               </button>` 
+            : '';
+
+        container.innerHTML = `
+            <div class="tira-empty-state">
+                <i data-lucide="${typeof escapeHtml === 'function' ? escapeHtml(icon) : icon}" class="tira-empty-state-icon"></i>
+                <div class="tira-empty-state-title">${typeof escapeHtml === 'function' ? escapeHtml(title) : title}</div>
+                <div class="tira-empty-state-desc">${typeof escapeHtml === 'function' ? escapeHtml(desc) : desc}</div>
+                ${actionHtml}
+            </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+    },
+
+    renderTableEmptyState: function(tbody, colSpan, options = {}) {
+        if (!tbody) return;
+        const icon = options.icon || 'inbox';
+        const title = options.title || 'No records found';
+        const desc = options.desc || 'No items match your filter criteria.';
+        const actionHtml = options.actionText && options.actionClick 
+            ? `<button type="button" class="btn btn-caramel btn-sm tira-empty-state-action" onclick="${options.actionClick}" style="margin-top: 10px;">
+                   ${options.actionIcon ? `<i data-lucide="${options.actionIcon}" data-size="14"></i>` : ''}
+                   <span>${typeof escapeHtml === 'function' ? escapeHtml(options.actionText) : options.actionText}</span>
+               </button>` 
+            : '';
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="${colSpan}" style="padding: 0;">
+                    <div class="tira-empty-state">
+                        <i data-lucide="${typeof escapeHtml === 'function' ? escapeHtml(icon) : icon}" class="tira-empty-state-icon"></i>
+                        <div class="tira-empty-state-title">${typeof escapeHtml === 'function' ? escapeHtml(title) : title}</div>
+                        <div class="tira-empty-state-desc">${typeof escapeHtml === 'function' ? escapeHtml(desc) : desc}</div>
+                        ${actionHtml}
+                    </div>
+                </td>
+            </tr>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+    },
+
+    renderTableErrorState: function(tbody, colSpan, message, retryCall) {
+        if (!tbody) return;
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="${colSpan}" style="padding: 16px;">
+                    <div class="tira-error-state">
+                        <i data-lucide="alert-circle" class="tira-error-state-icon"></i>
+                        <div class="tira-error-state-title">Unable to load data</div>
+                        <div class="tira-error-state-desc">${typeof escapeHtml === 'function' ? escapeHtml(message || 'A network error occurred while contacting the server.') : message}</div>
+                        ${retryCall ? `<button type="button" class="tira-error-retry-btn" onclick="${retryCall}">
+                            <i data-lucide="refresh-cw" data-size="14"></i>
+                            <span>Retry</span>
+                        </button>` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+    }
+};
+
+// ==========================================================================
+// UNIVERSAL HIGH-PERFORMANCE TOOLTIP SYSTEM
+// Accessible, responsive, zero-jitter tooltips with viewport auto-placement.
+// ==========================================================================
+window.TiraTooltip = (function() {
+    let bubble = null;
+    let activeTarget = null;
+    let hideTimer = null;
+
+    function createBubble() {
+        if (bubble) return bubble;
+        bubble = document.createElement('div');
+        bubble.className = 'tira-tooltip-bubble';
+        bubble.setAttribute('role', 'tooltip');
+        bubble.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(bubble);
+        return bubble;
+    }
+
+    function showTooltip(target, text, placement = 'top') {
+        if (!target || !text) return;
+        const b = createBubble();
+        b.textContent = text;
+        b.setAttribute('data-placement', placement);
+        b.classList.add('visible');
+        b.setAttribute('aria-hidden', 'false');
+
+        // Calculate positions
+        const rect = target.getBoundingClientRect();
+        const bRect = b.getBoundingClientRect();
+        const margin = 8;
+
+        let top = 0;
+        let left = 0;
+
+        if (placement === 'bottom') {
+            top = rect.bottom + margin;
+            left = rect.left + (rect.width / 2) - (bRect.width / 2);
+        } else if (placement === 'left') {
+            top = rect.top + (rect.height / 2) - (bRect.height / 2);
+            left = rect.left - bRect.width - margin;
+        } else if (placement === 'right') {
+            top = rect.top + (rect.height / 2) - (bRect.height / 2);
+            left = rect.right + margin;
+        } else {
+            // Default: 'top'
+            top = rect.top - bRect.height - margin;
+            left = rect.left + (rect.width / 2) - (bRect.width / 2);
+        }
+
+        // Viewport boundary flip protection
+        if (top < 6 && placement === 'top') {
+            top = rect.bottom + margin;
+            b.setAttribute('data-placement', 'bottom');
+        } else if (top + bRect.height > window.innerHeight - 6 && placement === 'bottom') {
+            top = rect.top - bRect.height - margin;
+            b.setAttribute('data-placement', 'top');
+        }
+
+        // Clamp horizontal bounds within screen
+        const maxLeft = window.innerWidth - bRect.width - 8;
+        left = Math.max(8, Math.min(maxLeft, left));
+
+        b.style.top = `${Math.round(top)}px`;
+        b.style.left = `${Math.round(left)}px`;
+        activeTarget = target;
+    }
+
+    function hideTooltip() {
+        if (bubble) {
+            bubble.classList.remove('visible');
+            bubble.setAttribute('aria-hidden', 'true');
+        }
+        activeTarget = null;
+    }
+
+    function init() {
+        if (typeof document === 'undefined') return;
+
+        // Global delegated event listeners
+        document.addEventListener('mouseover', (e) => {
+            const el = e.target.closest('[data-tooltip], [title]');
+            if (!el) return;
+            // Transfer native title attribute to data-tooltip to prevent double OS tooltips
+            if (el.hasAttribute('title') && el.getAttribute('title').trim()) {
+                const text = el.getAttribute('title').trim();
+                el.setAttribute('data-tooltip', text);
+                el.removeAttribute('title');
+                if (!el.getAttribute('aria-label')) {
+                    el.setAttribute('aria-label', text);
+                }
+            }
+            const tooltipText = el.getAttribute('data-tooltip');
+            if (tooltipText) {
+                const placement = el.getAttribute('data-tooltip-position') || 'top';
+                showTooltip(el, tooltipText, placement);
+            }
+        });
+
+        document.addEventListener('mouseout', (e) => {
+            if (activeTarget && (e.target === activeTarget || e.target.closest('[data-tooltip]'))) {
+                hideTooltip();
+            }
+        });
+
+        document.addEventListener('focusin', (e) => {
+            const el = e.target.closest('[data-tooltip]');
+            if (el) {
+                const tooltipText = el.getAttribute('data-tooltip');
+                const placement = el.getAttribute('data-tooltip-position') || 'top';
+                showTooltip(el, tooltipText, placement);
+            }
+        });
+
+        document.addEventListener('focusout', () => {
+            hideTooltip();
+        });
+
+        // Touch handling: brief display on tap, auto dismiss
+        document.addEventListener('touchstart', (e) => {
+            const el = e.target.closest('[data-tooltip]');
+            if (el) {
+                if (hideTimer) clearTimeout(hideTimer);
+                const tooltipText = el.getAttribute('data-tooltip');
+                const placement = el.getAttribute('data-tooltip-position') || 'top';
+                showTooltip(el, tooltipText, placement);
+                hideTimer = setTimeout(hideTooltip, 1600);
+            } else {
+                hideTooltip();
+            }
+        }, { passive: true });
+
+        // Hide on scroll, click, or Escape
+        window.addEventListener('scroll', hideTooltip, { passive: true });
+        window.addEventListener('resize', hideTooltip, { passive: true });
+        document.addEventListener('click', hideTooltip);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideTooltip();
+        });
+    }
+
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    }
+
+    return {
+        show: showTooltip,
+        hide: hideTooltip
+    };
+})();
+
 // ----------------- NAVIGATION -----------------
 window.switchAdminSection = function(sectionId) {
     activeSection = sectionId;
@@ -886,7 +1145,7 @@ window.loadDashboardMetrics = async function(filterDateParam) {
             // Consolidate any duplicate products by normalized name and weight
             const consolidatedMap = new Map();
             rawList.forEach(item => {
-                const cleanName = (item.name || '').replace(/[–—\ufffd]/g, '-').replace(/\s+/g, ' ').trim().toLowerCase();
+                const cleanName = (item.name || '').replace(/[–—�]/g, '-').replace(/\s+/g, ' ').trim().toLowerCase();
                 const cleanWeight = (item.weight || '').replace(/\s+/g, '').toLowerCase();
                 const key = `${cleanName}::${cleanWeight}`;
                 if (consolidatedMap.has(key)) {
@@ -904,7 +1163,11 @@ window.loadDashboardMetrics = async function(filterDateParam) {
             const prodList = Array.from(consolidatedMap.values());
 
             if (!prodList.length) {
-                summaryTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--color-text-muted);">No sales recorded for this period.</td></tr>`;
+                window.TiraUI.renderTableEmptyState(summaryTbody, 5, {
+                    icon: 'coffee',
+                    title: 'No sales for this period',
+                    desc: 'No desserts were sold during this period. New sales will appear here automatically.'
+                });
             } else {
                 prodList.forEach(item => {
                     const tr = document.createElement('tr');
@@ -928,7 +1191,14 @@ window.loadDashboardMetrics = async function(filterDateParam) {
             recentTbody.innerHTML = '';
             const salesList = metrics.recentSales || metrics.recent_sales || [];
             if (!salesList.length) {
-                recentTbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--color-text-muted);">No recent transactions found.</td></tr>`;
+                window.TiraUI.renderTableEmptyState(recentTbody, 8, {
+                    icon: 'receipt',
+                    title: 'No recent transactions',
+                    desc: 'Transactions for this date will appear here in real-time as orders are completed.',
+                    actionText: 'Record New Sale',
+                    actionClick: "switchAdminSection('pos')",
+                    actionIcon: 'plus-circle'
+                });
             } else {
                 salesList.forEach(sale => {
                     const tr = document.createElement('tr');
@@ -969,7 +1239,7 @@ window.loadDashboardMetrics = async function(filterDateParam) {
                             </span>
                         </td>
                         <td style="white-space: nowrap;">
-                            <button class="btn btn-outline btn-sm" onclick="viewReceipt('${safeId}')" style="display: inline-flex; align-items: center; gap: 4px;" title="View Receipt">
+                            <button class="btn btn-outline btn-sm" onclick="viewReceipt('${safeId}')" style="display: inline-flex; align-items: center; gap: 4px;" data-tooltip="View order receipt" aria-label="View receipt for ${safeId}">
                                 <i data-lucide="printer" data-size="14"></i>
                                 <span>Receipt</span>
                             </button>
@@ -982,17 +1252,40 @@ window.loadDashboardMetrics = async function(filterDateParam) {
         if (window.lucide) window.lucide.createIcons();
     }
 
-    // 1. Immediate local render
-    try {
-        const localMetrics = window.TiraDB.getDashboardMetrics(filter);
-        renderMetrics(localMetrics);
-    } catch (e) {
-        console.warn('Local metrics calculation error:', e);
+    const metricsUrl = '/sales/metrics?filter_date=' + encodeURIComponent(filter);
+
+    // 1. Check intelligent data cache for instant (0ms) render
+    const cached = window.TiraDB.cache ? window.TiraDB.cache.get(metricsUrl) : null;
+    let renderedFromCache = false;
+
+    if (cached && cached.data) {
+        renderMetrics(cached.data);
+        renderedFromCache = true;
+    } else {
+        // Fallback to local calculate if available
+        try {
+            const localMetrics = window.TiraDB.getDashboardMetrics(filter);
+            if (localMetrics && (localMetrics.transactionCount > 0 || (window.TiraDB.data.sales && window.TiraDB.data.sales.length > 0))) {
+                renderMetrics(localMetrics);
+                renderedFromCache = true;
+            }
+        } catch (e) {
+            console.warn('Local metrics calculation note:', e);
+        }
     }
 
-    // 2. Fetch fresh live metrics directly from backend
+    // 2. If nothing cached yet, show contextual skeleton loaders
+    if (!renderedFromCache) {
+        window.TiraUI.showDashboardMetricSkeletons();
+        const summaryTbody = document.getElementById('dashProductSummaryTbody');
+        const recentTbody = document.getElementById('dashRecentSalesTbody');
+        if (summaryTbody) window.TiraUI.showTableSkeleton(summaryTbody, 5, 3);
+        if (recentTbody) window.TiraUI.showTableSkeleton(recentTbody, 8, 4);
+    }
+
+    // 3. Fetch fresh live metrics directly from backend API
     try {
-        const res = await window.TiraDB.apiRequest('/sales/metrics?filter_date=' + encodeURIComponent(filter));
+        const res = await window.TiraDB.apiRequest(metricsUrl);
         if (res && res.ok && res.data) {
             renderMetrics(res.data);
 
@@ -1008,9 +1301,30 @@ window.loadDashboardMetrics = async function(filterDateParam) {
                 window.TiraDB.data.sales = Array.from(existingMap.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 window.TiraDB.save();
             }
+        } else if (!renderedFromCache) {
+            const recentTbody = document.getElementById('dashRecentSalesTbody');
+            if (recentTbody) {
+                window.TiraUI.renderTableErrorState(
+                    recentTbody,
+                    8,
+                    'Could not load live analytics from server.',
+                    `loadDashboardMetrics('${filter}')`
+                );
+            }
         }
     } catch (err) {
         console.warn('Live metrics fetch failed, fallback to local DB:', err);
+        if (!renderedFromCache) {
+            const recentTbody = document.getElementById('dashRecentSalesTbody');
+            if (recentTbody) {
+                window.TiraUI.renderTableErrorState(
+                    recentTbody,
+                    8,
+                    'Could not connect to live sales analytics.',
+                    `loadDashboardMetrics('${filter}')`
+                );
+            }
+        }
     }
 };
 
@@ -2023,15 +2337,43 @@ window.deleteCategory = async function(catId) {
     }) : window.confirm(`Are you sure you want to delete category "${catName}"?`);
 
     if (confirmed) {
-        window.TiraDB.deleteCategory(catId);
-        showToast('Category deleted successfully.', 'info');
+        const snapshot = window.TiraDB.optimisticDeleteCategory ? window.TiraDB.optimisticDeleteCategory(catId) : null;
+        showToast(`Removing category "${catName}"...`, 'info');
         renderCategoriesSection();
         renderProductsTable();
         renderPosCatalog();
+
+        try {
+            const apiRes = await window.TiraDB.apiRequest(`/categories/${catId}`, { method: 'DELETE' });
+            if (!apiRes.ok) {
+                if (snapshot && window.TiraDB.rollbackCategory) {
+                    window.TiraDB.rollbackCategory(snapshot.snapshot, snapshot.index);
+                    renderCategoriesSection();
+                    renderProductsTable();
+                    renderPosCatalog();
+                }
+                showToast(`Failed to delete category "${catName}". Restored.`, 'error');
+            } else {
+                showToast(`Category "${catName}" deleted successfully.`, 'success');
+            }
+        } catch (err) {
+            if (snapshot && window.TiraDB.rollbackCategory) {
+                window.TiraDB.rollbackCategory(snapshot.snapshot, snapshot.index);
+                renderCategoriesSection();
+                renderProductsTable();
+                renderPosCatalog();
+            }
+            showToast(`Network error. Category "${catName}" restored.`, 'error');
+        }
     }
 };
 
-window.saveCategorySubmit = function() {
+let isSubmittingCategory = false;
+window.saveCategorySubmit = async function(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    if (isSubmittingCategory) return;
+
+    const saveBtn = document.querySelector('#categoryModal button[type="submit"]');
     const id = document.getElementById('catEditId').value.trim();
     const name = document.getElementById('catName').value.trim();
     const description = document.getElementById('catDesc').value.trim();
@@ -2044,20 +2386,36 @@ window.saveCategorySubmit = function() {
         return;
     }
 
-    window.TiraDB.saveCategory({
-        id: id || undefined,
-        name,
-        description,
-        displayOrder,
-        isActive,
-        image
-    });
+    isSubmittingCategory = true;
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="skeleton-shimmer" style="width: 14px; height: 14px; border-radius: 50%; display: inline-block;"></span> <span>Saving...</span>';
+    }
 
-    closeCategoryModal();
-    showToast('Category saved successfully!', 'success');
-    renderCategoriesSection();
-    renderProductsTable();
-    renderPosCatalog();
+    try {
+        window.TiraDB.saveCategory({
+            id: id || undefined,
+            name,
+            description,
+            displayOrder,
+            isActive,
+            image
+        });
+
+        closeCategoryModal();
+        showToast(id ? 'Category updated successfully!' : 'Category created successfully!', 'success');
+        renderCategoriesSection();
+        renderProductsTable();
+        renderPosCatalog();
+    } catch (err) {
+        showToast('Error saving category: ' + (err.message || err), 'error');
+    } finally {
+        isSubmittingCategory = false;
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Save Category';
+        }
+    }
 };
 
 // ----------------- IMAGE UPLOAD CLIENT HELPERS -----------------
@@ -2279,14 +2637,14 @@ window.renderProductsTable = function() {
 
     tbody.innerHTML = '';
     if (!products.length) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" style="text-align: center; padding: 36px 10px; color: var(--color-text-muted);">
-                    <i data-lucide="package-search" data-size="28" style="margin-bottom: 6px; color: var(--color-caramel);"></i>
-                    <div>No products found matching the selected category.</div>
-                </td>
-            </tr>
-        `;
+        window.TiraUI.renderTableEmptyState(tbody, 8, {
+            icon: 'package-search',
+            title: 'No products found',
+            desc: 'No products match the selected category filter.',
+            actionText: 'Add Product',
+            actionClick: 'openProductModal()',
+            actionIcon: 'plus'
+        });
     } else {
         products.forEach(p => {
             const tr = document.createElement('tr');
@@ -2318,11 +2676,11 @@ window.renderProductsTable = function() {
                 </td>
                 <td style="text-align: right;">
                     <div style="display: inline-flex; gap: 6px;">
-                        <button class="btn btn-outline btn-sm" onclick="editProduct('${p.id}')" title="Edit Product" style="display: inline-flex; align-items: center; gap: 4px;">
+                        <button class="btn btn-outline btn-sm" onclick="editProduct('${p.id}')" data-tooltip="Edit product details" aria-label="Edit ${escapeHtml(p.name)}" style="display: inline-flex; align-items: center; gap: 4px;">
                             <i data-lucide="pencil" data-size="14"></i>
                             <span>Edit</span>
                         </button>
-                        <button class="btn btn-outline btn-sm" style="color: #c0392b;" onclick="deleteProduct('${p.id}')" title="Delete Product" style="display: inline-flex; align-items: center; gap: 4px;">
+                        <button class="btn btn-outline btn-sm" style="color: #c0392b;" onclick="deleteProduct('${p.id}')" data-tooltip="Delete product" aria-label="Delete ${escapeHtml(p.name)}" style="display: inline-flex; align-items: center; gap: 4px;">
                             <i data-lucide="trash-2" data-size="14"></i>
                             <span>Delete</span>
                         </button>
@@ -2416,15 +2774,45 @@ window.deleteProduct = async function(productId) {
     }) : window.confirm('Are you sure you want to delete this product?');
 
     if (confirmed) {
-        window.TiraDB.deleteProduct(productId);
-        showToast('Product removed.', 'info');
+        // Optimistic UI update: Remove product immediately from views
+        const snapshot = window.TiraDB.optimisticDeleteProduct ? window.TiraDB.optimisticDeleteProduct(productId) : null;
+        showToast(`Removing "${prodName}"...`, 'info');
         renderProductsTable();
         renderCategoriesSection();
         renderPosCatalog();
+
+        try {
+            const apiRes = await window.TiraDB.apiRequest(`/products/${productId}`, { method: 'DELETE' });
+            if (!apiRes.ok) {
+                // Roll back optimistic change on failure
+                if (snapshot && window.TiraDB.rollbackProduct) {
+                    window.TiraDB.rollbackProduct(snapshot.snapshot, snapshot.index);
+                    renderProductsTable();
+                    renderCategoriesSection();
+                    renderPosCatalog();
+                }
+                showToast(`Failed to delete "${prodName}". Product restored.`, 'error');
+            } else {
+                showToast(`"${prodName}" deleted successfully.`, 'success');
+            }
+        } catch (err) {
+            if (snapshot && window.TiraDB.rollbackProduct) {
+                window.TiraDB.rollbackProduct(snapshot.snapshot, snapshot.index);
+                renderProductsTable();
+                renderCategoriesSection();
+                renderPosCatalog();
+            }
+            showToast(`Network error. Product "${prodName}" restored.`, 'error');
+        }
     }
 };
 
-window.saveProductSubmit = function() {
+let isSubmittingProduct = false;
+window.saveProductSubmit = async function(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    if (isSubmittingProduct) return;
+
+    const saveBtn = document.querySelector('#productModal button[type="submit"]');
     const id = document.getElementById('prodEditId').value;
     const name = document.getElementById('prodName').value.trim();
     const categoryId = document.getElementById('prodCategory') ? document.getElementById('prodCategory').value : null;
@@ -2440,23 +2828,39 @@ window.saveProductSubmit = function() {
         return;
     }
 
-    window.TiraDB.saveProduct({
-        id: id || undefined,
-        categoryId: categoryId || undefined,
-        name,
-        weight,
-        price,
-        image,
-        description,
-        isActive,
-        countsTowardsLoyalty
-    });
+    isSubmittingProduct = true;
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="skeleton-shimmer" style="width: 14px; height: 14px; border-radius: 50%; display: inline-block;"></span> <span>Saving...</span>';
+    }
 
-    closeProductModal();
-    showToast('Product saved successfully!', 'success');
-    renderProductsTable();
-    renderCategoriesSection();
-    renderPosCatalog();
+    try {
+        window.TiraDB.saveProduct({
+            id: id || undefined,
+            categoryId: categoryId || undefined,
+            name,
+            weight,
+            price,
+            image,
+            description,
+            isActive,
+            countsTowardsLoyalty
+        });
+
+        closeProductModal();
+        showToast(id ? 'Product updated successfully!' : 'Product created successfully!', 'success');
+        renderProductsTable();
+        renderCategoriesSection();
+        renderPosCatalog();
+    } catch (err) {
+        showToast('Error saving product: ' + (err.message || err), 'error');
+    } finally {
+        isSubmittingProduct = false;
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Save Product';
+        }
+    }
 };
 
 // ----------------- SECTION 4: CUSTOMER DETAILS & FILTERS -----------------
@@ -2739,7 +3143,14 @@ window.renderCustomersTable = function() {
             };
             emptyMsg = `No customers found for filter: <strong>${filterLabelMap[activeCustomerFilter] || activeCustomerFilter}</strong>.`;
         }
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--color-text-muted); padding: 28px;">${emptyMsg}</td></tr>`;
+        window.TiraUI.renderTableEmptyState(tbody, 8, {
+            icon: 'users',
+            title: 'No customers found',
+            desc: emptyMsg ? emptyMsg.replace(/<[^>]+>/g, '') : 'No customers match your search or filter criteria.',
+            actionText: (query || activeCustomerFilter !== 'all') ? 'Reset Filters' : '',
+            actionClick: (query || activeCustomerFilter !== 'all') ? 'resetCustomerDateFilter()' : '',
+            actionIcon: 'refresh-cw'
+        });
         return;
     }
 
@@ -2781,7 +3192,7 @@ window.renderCustomersTable = function() {
                     : `<span style="color: var(--color-text-muted); font-size: 0.82rem;">0 claimed</span>`}
             </td>
             <td>
-                <button class="btn btn-outline btn-sm" onclick="viewCustomerHistory('${safePhone}')" style="display: inline-flex; align-items: center; gap: 4px;">
+                <button class="btn btn-outline btn-sm" onclick="viewCustomerHistory('${safePhone}')" style="display: inline-flex; align-items: center; gap: 4px;" data-tooltip="View purchase history" aria-label="View purchase history for ${safeName}">
                     <i data-lucide="history" data-size="14"></i>
                     <span>History</span>
                 </button>
@@ -2815,7 +3226,11 @@ window.viewCustomerHistory = function(phone) {
     const list = document.getElementById('custModalTxnList');
     list.innerHTML = '';
     if (loyalty.salesHistory.length === 0) {
-        list.innerHTML = `<p style="color: var(--color-text-muted); font-size: 0.9rem;">No transactions recorded for this customer yet.</p>`;
+        window.TiraUI.renderEmptyState(list, {
+            icon: 'history',
+            title: 'No purchase history',
+            desc: 'No transaction receipts recorded for this customer phone yet.'
+        });
     } else {
         loyalty.salesHistory.forEach(s => {
             const dateStr = new Date(s.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });

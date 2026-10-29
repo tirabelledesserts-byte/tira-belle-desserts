@@ -171,6 +171,81 @@ const DEFAULT_REDEMPTIONS = [];
 // Initial authentic customer reviews
 const DEFAULT_REVIEWS = [];
 
+/**
+ * Intelligent In-Memory Data Cache & In-Flight Request Deduplicator
+ * Delivers Stale-While-Revalidate (SWR) performance, granular cache invalidation,
+ * and eliminates duplicate concurrent requests across view switches.
+ */
+class TiraCacheManager {
+    constructor() {
+        this.cache = new Map();
+        this.inflight = new Map();
+        this.ttls = {
+            '/sales/metrics': { ttl: 60000, staleTtl: 180000 },
+            '/products': { ttl: 300000, staleTtl: 600000 },
+            '/categories': { ttl: 300000, staleTtl: 600000 },
+            '/customers': { ttl: 120000, staleTtl: 300000 },
+            '/reviews': { ttl: 180000, staleTtl: 360000 },
+            '/settings': { ttl: 300000, staleTtl: 600000 },
+            '/realtime/version': { ttl: 1500, staleTtl: 3000 },
+            '/health': { ttl: 2000, staleTtl: 4000 }
+        };
+        this.defaultTtl = { ttl: 45000, staleTtl: 120000 };
+    }
+
+    getTtl(endpoint) {
+        for (const [prefix, conf] of Object.entries(this.ttls)) {
+            if (endpoint.startsWith(prefix)) return conf;
+        }
+        return this.defaultTtl;
+    }
+
+    get(endpoint) {
+        const entry = this.cache.get(endpoint);
+        if (!entry) return null;
+        const now = Date.now();
+        const age = now - entry.timestamp;
+        if (age < entry.ttl) {
+            return { data: entry.data, isStale: false };
+        }
+        if (age < entry.staleTtl) {
+            return { data: entry.data, isStale: true };
+        }
+        this.cache.delete(endpoint);
+        return null;
+    }
+
+    set(endpoint, data) {
+        if (!data) return;
+        const conf = this.getTtl(endpoint);
+        this.cache.set(endpoint, {
+            data: JSON.parse(JSON.stringify(data)),
+            timestamp: Date.now(),
+            ttl: conf.ttl,
+            staleTtl: conf.staleTtl
+        });
+    }
+
+    invalidate(pattern) {
+        if (!pattern) {
+            this.cache.clear();
+            return;
+        }
+        for (const key of Array.from(this.cache.keys())) {
+            if (typeof pattern === 'string') {
+                if (key.includes(pattern)) {
+                    this.cache.delete(key);
+                }
+            } else if (pattern instanceof RegExp) {
+                if (pattern.test(key)) {
+                    this.cache.delete(key);
+                }
+            }
+        }
+    }
+}
+
+
 class TiraBelleDB {
     constructor() {
         this.isBackendOnline = false;
@@ -178,6 +253,7 @@ class TiraBelleDB {
         this.isSyncing = false;
         this.pollTimer = null;
         this.sseSource = null;
+        this.cache = new TiraCacheManager();
         this.data = this.getDefaultState();
 
         // Cross-tab broadcast channel for instant real-time settings synchronization
@@ -280,9 +356,14 @@ class TiraBelleDB {
         return '/api';
     }
 
-    // ----------------- HYBRID REST API CLIENT -----------------
+        invalidateCache(pattern) {
+        if (this.cache) this.cache.invalidate(pattern);
+    }
+
+    // ----------------- HYBRID REST API CLIENT WITH SWR CACHING -----------------
     async apiRequest(endpoint, options = {}) {
         let currentBase = this.getApiBase();
+        const method = (options.method || 'GET').toUpperCase();
         const headers = {
             'Content-Type': 'application/json',
             ...(options.headers || {})
@@ -292,7 +373,23 @@ class TiraBelleDB {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const method = (options.method || 'GET').toUpperCase();
+        // Caching & Request Deduplication for GET requests
+        if (method === 'GET' && options.cache !== 'no-cache' && options.cache !== 'no-store' && this.cache) {
+            const cached = this.cache.get(endpoint);
+            if (cached) {
+                // If stale, trigger non-blocking background revalidation (SWR)
+                if (cached.isStale && !this.cache.inflight.has(endpoint)) {
+                    this.apiRequest(endpoint, { ...options, cache: 'no-cache' }).catch(() => {});
+                }
+                return { ok: true, status: 200, data: cached.data, fromCache: true, isStale: cached.isStale };
+            }
+
+            // In-flight request deduplication
+            if (this.cache.inflight.has(endpoint)) {
+                return await this.cache.inflight.get(endpoint);
+            }
+        }
+
         // Give mutations (POST, PUT, PATCH, DELETE) a generous timeout (25s) to handle serverless cold starts & remote DB
         const defaultTimeout = (method === 'GET') ? 12000 : 25000;
         const timeoutMs = options.timeout || defaultTimeout;
@@ -333,21 +430,62 @@ class TiraBelleDB {
             }
         };
 
-        let result = await executeFetch(currentBase);
+        const executeWithFailover = async () => {
+            let result = await executeFetch(currentBase);
 
-        // Transparent failover for file:// or dev ports when local port 8001 is offline
-        const isFileOrDev = typeof window !== 'undefined' && window.location && (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port !== '8001' && window.location.port !== ''));
-        if (!result.ok && isFileOrDev && currentBase === LOCAL_API_BASE) {
-            const cloudResult = await executeFetch(CLOUD_API_BASE);
-            if (cloudResult.ok) {
-                this.preferredApiBase = CLOUD_API_BASE;
-                this.isBackendOnline = true;
-                try { sessionStorage.setItem('tira_preferred_api', CLOUD_API_BASE); } catch (e) {}
-                return cloudResult;
+            // Transparent failover for file:// or dev ports when local port 8001 is offline
+            const isFileOrDev = typeof window !== 'undefined' && window.location && (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port !== '8001' && window.location.port !== ''));
+            if (!result.ok && isFileOrDev && currentBase === LOCAL_API_BASE) {
+                const cloudResult = await executeFetch(CLOUD_API_BASE);
+                if (cloudResult.ok) {
+                    this.preferredApiBase = CLOUD_API_BASE;
+                    this.isBackendOnline = true;
+                    try { sessionStorage.setItem('tira_preferred_api', CLOUD_API_BASE); } catch (e) {}
+                    return cloudResult;
+                }
             }
-        }
 
-        return result;
+            return result;
+        };
+
+        if (method === 'GET' && this.cache) {
+            const reqPromise = executeWithFailover().then(res => {
+                this.cache.inflight.delete(endpoint);
+                if (res.ok && res.data) {
+                    this.cache.set(endpoint, res.data);
+                }
+                return res;
+            }).catch(err => {
+                this.cache.inflight.delete(endpoint);
+                throw err;
+            });
+            this.cache.inflight.set(endpoint, reqPromise);
+            return await reqPromise;
+        } else {
+            const res = await executeWithFailover();
+            // Automatically invalidate caches upon mutations
+            if (res.ok && this.cache) {
+                if (endpoint.startsWith('/sales')) {
+                    this.cache.invalidate('/sales');
+                    this.cache.invalidate('/customers');
+                } else if (endpoint.startsWith('/products')) {
+                    this.cache.invalidate('/products');
+                    this.cache.invalidate('/sales/metrics');
+                } else if (endpoint.startsWith('/categories')) {
+                    this.cache.invalidate('/categories');
+                    this.cache.invalidate('/products');
+                } else if (endpoint.startsWith('/settings')) {
+                    this.cache.invalidate('/settings');
+                } else if (endpoint.startsWith('/reviews')) {
+                    this.cache.invalidate('/reviews');
+                } else if (endpoint.startsWith('/redemptions')) {
+                    this.cache.invalidate('/redemptions');
+                    this.cache.invalidate('/sales/metrics');
+                    this.cache.invalidate('/customers');
+                }
+            }
+            return res;
+        }
     }
 
     async checkBackendOnline() {
@@ -1359,6 +1497,57 @@ class TiraBelleDB {
 
         return this.data.products;
     }
+    // ----------------- OPTIMISTIC UI ENGINE & ROLLBACK HELPERS -----------------
+    optimisticDeleteProduct(id) {
+        const snapshot = this.data.products.find(p => p.id === id);
+        if (!snapshot) return null;
+        const index = this.data.products.findIndex(p => p.id === id);
+        this.data.products = this.data.products.filter(p => p.id !== id);
+        this.save();
+        this.invalidateCache('/products');
+        this.invalidateCache('/sales/metrics');
+        return { snapshot: JSON.parse(JSON.stringify(snapshot)), index };
+    }
+
+    rollbackProduct(snapshot, index) {
+        if (!snapshot) return;
+        if (!this.data.products.some(p => p.id === snapshot.id)) {
+            if (typeof index === 'number' && index >= 0 && index <= this.data.products.length) {
+                this.data.products.splice(index, 0, snapshot);
+            } else {
+                this.data.products.push(snapshot);
+            }
+            this.save();
+            this.invalidateCache('/products');
+            this.invalidateCache('/sales/metrics');
+        }
+    }
+
+    optimisticDeleteCategory(id) {
+        const snapshot = this.data.categories.find(c => c.id === id);
+        if (!snapshot) return null;
+        const index = this.data.categories.findIndex(c => c.id === id);
+        this.data.categories = this.data.categories.filter(c => c.id !== id);
+        this.save();
+        this.invalidateCache('/categories');
+        this.invalidateCache('/products');
+        return { snapshot: JSON.parse(JSON.stringify(snapshot)), index };
+    }
+
+    rollbackCategory(snapshot, index) {
+        if (!snapshot) return;
+        if (!this.data.categories.some(c => c.id === snapshot.id)) {
+            if (typeof index === 'number' && index >= 0 && index <= this.data.categories.length) {
+                this.data.categories.splice(index, 0, snapshot);
+            } else {
+                this.data.categories.push(snapshot);
+            }
+            this.save();
+            this.invalidateCache('/categories');
+            this.invalidateCache('/products');
+        }
+    }
+
 
     deleteProduct(id) {
         this.data.products = this.data.products.filter(p => p.id !== id);

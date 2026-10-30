@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Review, Customer, utcnow_iso, today_date_str
 from backend.schemas import ReviewCreate, ReviewResponse
-from backend.security import require_admin
+from backend.security import require_admin, rate_limit_reviews
 from backend.routers.customers import clean_phone_number
 
 router = APIRouter(prefix="/api/reviews", tags=["Reviews"])
@@ -25,11 +25,19 @@ def get_reviews(db: Session = Depends(get_db)):
     return unique_reviews
 
 @router.post("", response_model=ReviewResponse)
-def submit_review(rev_in: ReviewCreate, db: Session = Depends(get_db)):
+def submit_review(
+    rev_in: ReviewCreate,
+    _rate: bool = Depends(rate_limit_reviews),
+    db: Session = Depends(get_db)
+):
     name_clean = rev_in.name.strip()
     comment_clean = rev_in.comment.strip()
     if not name_clean or not comment_clean:
         raise HTTPException(status_code=400, detail="Name and review comment are required")
+    if len(name_clean) > 100:
+        raise HTTPException(status_code=400, detail="Name cannot exceed 100 characters")
+    if len(comment_clean) > 1000:
+        raise HTTPException(status_code=400, detail="Review comment cannot exceed 1000 characters")
 
     clean_phone = clean_phone_number(rev_in.phone)
     today_str = today_date_str()
@@ -68,12 +76,7 @@ def submit_review(rev_in: ReviewCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_rev)
     from backend.routers.realtime import notify_change
-    notify_change("reviews", "created", {
-        "reviewId": new_rev.id,
-        "name": new_rev.name,
-        "rating": new_rev.rating,
-        "comment": new_rev.comment
-    })
+    notify_change("reviews", "created")
     return new_rev
 
 @router.delete("/{review_id}")

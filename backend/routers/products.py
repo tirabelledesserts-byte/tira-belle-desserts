@@ -55,8 +55,6 @@ def create_product(
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin)
 ):
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     prod_id = prod_in.id or f"prod-{int(time.time() * 1000)}"
     existing = db.query(Product).filter(Product.id == prod_id).first()
     if existing:
@@ -91,8 +89,6 @@ def update_product(
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin)
 ):
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     prod = db.query(Product).filter(Product.id == product_id).first()
     if not prod:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -131,8 +127,6 @@ def delete_product(
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin)
 ):
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     prod = db.query(Product).filter(Product.id == product_id).first()
     if not prod:
         raise HTTPException(status_code=404, detail="Product not found")

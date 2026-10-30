@@ -22,8 +22,6 @@ def update_settings(
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin)
 ):
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     settings = db.query(StoreSetting).filter(StoreSetting.id == 1).first()
     if not settings:
         settings = StoreSetting(id=1)

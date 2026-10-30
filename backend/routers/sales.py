@@ -8,7 +8,7 @@ from backend.database import get_db
 from backend.models import Sale, SaleItem, Customer, Product, Redemption, StoreSetting, utcnow_iso, today_date_str, ist_now
 from backend.schemas import SaleCreate, SalePatchCustomer, SaleResponse, DashboardMetricsResponse
 from backend.routers.customers import clean_phone_number, calculate_customer_loyalty
-from backend.security import require_admin
+from backend.security import require_admin, get_optional_admin, mask_phone_number, rate_limit_receipts
 
 router = APIRouter(prefix="/api/sales", tags=["Sales & POS"])
 
@@ -18,6 +18,7 @@ def get_sales(
     date: Optional[str] = Query(None, description="Filter sales by YYYY-MM-DD"),
     phone: Optional[str] = Query(None, description="Filter sales by customer phone"),
     payment_mode: Optional[str] = Query(None, description="Filter sales by Cash or Online"),
+    admin: dict = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     query = db.query(Sale)
@@ -64,7 +65,11 @@ def get_sales(
     return results
 
 @router.post("", response_model=dict)
-def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
+def create_sale(
+    sale_in: SaleCreate,
+    admin: dict = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     clean_phone = clean_phone_number(sale_in.customer_phone)
     if not clean_phone or len(clean_phone) < 7:
         raise HTTPException(status_code=400, detail="Valid customer phone number with at least 7 digits is required")
@@ -200,19 +205,10 @@ def create_sale(sale_in: SaleCreate, db: Session = Depends(get_db)):
         raise e
 
     from backend.routers.realtime import notify_change
-    notify_change("sales", "created", {
-        "saleId": sale.id,
-        "phone": clean_phone,
-        "customerName": customer.name,
-        "totalAmount": sale.total_amount,
-        "paymentMode": sale.payment_mode,
-        "paidCupsCount": sale.paid_cups_count,
-        "eligibleCupsCount": getattr(sale, "eligible_cups_count", None) if getattr(sale, "eligible_cups_count", None) is not None else sale.paid_cups_count,
-        "items": [it.product_name for it in sale.items]
-    })
-    notify_change("customers", "updated", {"phone": clean_phone})
+    notify_change("sales", "created")
+    notify_change("customers", "updated")
 
-    updated_loyalty = calculate_customer_loyalty(clean_phone, db)
+    updated_loyalty = calculate_customer_loyalty(clean_phone, db, is_admin=True)
 
     return {
         "success": True,
@@ -229,8 +225,6 @@ def patch_sale_customer(
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin)
 ):
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     clean_phone = clean_phone_number(data.customer_phone)
     if not clean_phone or len(clean_phone) < 7:
         raise HTTPException(status_code=400, detail="Valid customer phone number with at least 7 digits is required")
@@ -258,12 +252,8 @@ def patch_sale_customer(
         raise e
 
     from backend.routers.realtime import notify_change
-    notify_change("sales", "updated", {
-        "saleId": sale.id,
-        "phone": clean_phone,
-        "customerName": cust_name
-    })
-    notify_change("customers", "updated", {"phone": clean_phone})
+    notify_change("sales", "updated")
+    notify_change("customers", "updated")
 
     return {
         "success": True,
@@ -273,7 +263,11 @@ def patch_sale_customer(
     }
 
 @router.get("/metrics", response_model=DashboardMetricsResponse)
-def get_metrics(filter_date: str = "today", db: Session = Depends(get_db)):
+def get_metrics(
+    filter_date: str = "today",
+    admin: dict = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     today_str = today_date_str()
     sales_query = db.query(Sale)
     redemptions_query = db.query(Redemption)
@@ -405,17 +399,31 @@ def get_metrics(filter_date: str = "today", db: Session = Depends(get_db)):
     }
 
 @router.get("/{sale_id}", response_model=dict)
-def get_sale_by_id(sale_id: str, db: Session = Depends(get_db)):
+def get_sale_by_id(
+    sale_id: str,
+    _rate: bool = Depends(rate_limit_receipts),
+    admin: Optional[dict] = Depends(get_optional_admin),
+    db: Session = Depends(get_db)
+):
     sale = db.query(Sale).filter(Sale.id == sale_id).first()
     if not sale:
         raise HTTPException(status_code=404, detail="Receipt not found")
 
     settings = db.query(StoreSetting).filter(StoreSetting.id == 1).first()
-    loyalty = calculate_customer_loyalty(sale.customer_phone, db) if sale.customer_phone else None
+    is_admin = isinstance(admin, dict) and bool(admin.get("sub"))
+    phone_display = sale.customer_phone if is_admin else mask_phone_number(sale.customer_phone)
+
+    loyalty = None
+    if sale.customer_phone:
+        loyalty = calculate_customer_loyalty(sale.customer_phone, db, is_admin=is_admin)
+        if not is_admin and loyalty:
+            # Privacy guard: do not leak customer's historical orders on a single receipt view
+            loyalty["salesHistory"] = []
+            loyalty["redemptions"] = []
 
     return {
         "id": sale.id,
-        "customerPhone": sale.customer_phone,
+        "customerPhone": phone_display,
         "customerName": sale.customer_name,
         "subtotal": sale.subtotal,
         "discount": sale.discount,
@@ -427,7 +435,7 @@ def get_sale_by_id(sale_id: str, db: Session = Depends(get_db)):
         "eligibleCupsCount": getattr(sale, "eligible_cups_count", None) if getattr(sale, "eligible_cups_count", None) is not None else sale.paid_cups_count,
         "timestamp": sale.timestamp,
         "date": sale.date,
-        "notes": sale.notes,
+        "notes": sale.notes if is_admin else "",
         "rewardRedeemedInSale": sale.reward_redeemed_in_sale,
         "items": [
             {

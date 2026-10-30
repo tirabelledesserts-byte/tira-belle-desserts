@@ -18,10 +18,20 @@ def get_current_version() -> int:
 def get_last_updated() -> str:
     return _last_updated
 
+def sanitize_realtime_payload(payload: Optional[dict]) -> dict:
+    if not payload or not isinstance(payload, dict):
+        return {}
+    sensitive_keys = {
+        "phone", "customer_phone", "customerPhone", 
+        "name", "customerName", "customer_name", 
+        "notes", "amount", "totalAmount", "subtotal"
+    }
+    return {k: v for k, v in payload.items() if k not in sensitive_keys}
+
 def notify_change(entity: str, action: str = "updated", payload: Optional[dict] = None):
     """
-    Broadcasts a data change notification to all active SSE subscribers across all devices,
-    and increments the global synchronization version.
+    Broadcasts a sanitized data change notification to active SSE subscribers.
+    Omits any PII (phone numbers, customer names, financial details) to protect privacy.
     """
     global _data_version, _last_updated
     _data_version += 1
@@ -35,7 +45,7 @@ def notify_change(entity: str, action: str = "updated", payload: Optional[dict] 
         "entity": entity,
         "action": action,
         "timestamp": _last_updated,
-        "payload": payload or {}
+        "payload": sanitize_realtime_payload(payload)
     }
 
     # Dispatch to all connected in-memory subscriber queues

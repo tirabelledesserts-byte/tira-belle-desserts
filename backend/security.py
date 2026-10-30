@@ -1,13 +1,60 @@
 import hashlib
 import time
+import collections
+import re
 from typing import Optional
 import hmac
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from backend.config import SECRET_KEY, CREDENTIAL_SALT, ACCESS_TOKEN_EXPIRE_MINUTES
 
 # Bearer security scheme (auto_error=False to allow optional authentication endpoints)
 security_scheme = HTTPBearer(auto_error=False)
+
+# In-memory sliding window rate limiter
+class SlidingWindowRateLimiter:
+    """
+    Sliding window rate limiter tracking request timestamps per client IP.
+    Returns HTTP 429 with standard Retry-After header upon violation.
+    """
+    def __init__(self, limit: int, window_seconds: int, name: str = "resource"):
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self.name = name
+        self.requests = collections.defaultdict(list)
+
+    def __call__(self, request: Request = None) -> bool:
+        client_ip = "127.0.0.1"
+        if request and request.client and request.client.host:
+            client_ip = request.client.host
+            # Check forwarded header if behind trusted reverse proxy
+            x_forwarded = request.headers.get("x-forwarded-for")
+            if x_forwarded:
+                client_ip = x_forwarded.split(",")[0].strip()
+
+        now = time.time()
+        window_start = now - self.window_seconds
+
+        # Prune expired timestamps
+        timestamps = [t for t in self.requests[client_ip] if t > window_start]
+        if len(timestamps) >= self.limit:
+            retry_after = int(self.window_seconds - (now - timestamps[0]))
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Rate limit exceeded for {self.name}. Please wait {max(1, retry_after)} seconds before trying again.",
+                headers={"Retry-After": str(max(1, retry_after))}
+            )
+
+        timestamps.append(now)
+        self.requests[client_ip] = timestamps
+        return True
+
+# Pre-configured endpoint rate limiters
+rate_limit_login = SlidingWindowRateLimiter(limit=10, window_seconds=60, name="login")
+rate_limit_tracker = SlidingWindowRateLimiter(limit=30, window_seconds=60, name="loyalty tracker")
+rate_limit_reviews = SlidingWindowRateLimiter(limit=5, window_seconds=60, name="review submissions")
+rate_limit_receipts = SlidingWindowRateLimiter(limit=40, window_seconds=60, name="receipt lookup")
+rate_limit_uploads = SlidingWindowRateLimiter(limit=15, window_seconds=60, name="image uploads")
 
 # In-memory rate limiter for failed login attempts to prevent brute-force attacks (CWE-307)
 _login_failures = {}
@@ -40,9 +87,20 @@ def reset_login_failures(client_ip: str):
     if client_ip in _login_failures:
         del _login_failures[client_ip]
 
+def mask_phone_number(phone: str) -> str:
+    """
+    Masks a phone number for privacy preservation (e.g. 9876543210 -> 98765 •••• 10)
+    """
+    if not phone:
+        return ""
+    digits = re.sub(r"\D", "", str(phone))
+    if len(digits) < 6:
+        return "••••"
+    return f"{digits[:5]} •••• {digits[-2:]}"
+
 def hash_credential(value: str, salt: str = CREDENTIAL_SALT) -> str:
     """
-    Computes SHA-256(value + salt) to match the frontend Web Crypto hashing.
+    Computes SHA-256(value + salt) for secure password verification.
     """
     if not value:
         return ""
@@ -76,6 +134,8 @@ def create_access_token(data: dict, expires_in_seconds: Optional[int] = None) ->
 def verify_access_token(token: str) -> Optional[dict]:
     import base64
     import json
+    if not token or not isinstance(token, str):
+        return None
     try:
         parts = token.split(".")
         if len(parts) != 2:
@@ -96,7 +156,7 @@ def verify_access_token(token: str) -> Optional[dict]:
     except Exception:
         return None
 
-def require_admin(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme)):
+def require_admin(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme)) -> dict:
     if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -111,3 +171,18 @@ def require_admin(credentials: Optional[HTTPAuthorizationCredentials] = Depends(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return payload
+
+def get_optional_admin(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme)) -> Optional[dict]:
+    """
+    Returns verified admin payload if present and valid, otherwise None without throwing 401.
+    Used for endpoints that provide public views with masked PII and elevated views for admins.
+    """
+    if not credentials or not credentials.credentials:
+        return None
+    try:
+        payload = verify_access_token(credentials.credentials)
+        if payload and payload.get("sub"):
+            return payload
+    except Exception:
+        pass
+    return None

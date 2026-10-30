@@ -12,7 +12,11 @@ from backend.security import require_admin
 router = APIRouter(prefix="/api/redemptions", tags=["Reward Redemptions"])
 
 @router.get("", response_model=List[RedemptionResponse])
-def get_redemptions(limit: int = 200, db: Session = Depends(get_db)):
+def get_redemptions(
+    limit: int = 200,
+    admin: dict = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     redemptions = db.query(Redemption).order_by(Redemption.redeemed_at.desc()).limit(limit).all()
     return [
         {
@@ -34,8 +38,6 @@ def redeem_reward(
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin)
 ):
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     clean_phone = clean_phone_number(redemption_in.customer_phone)
     if not clean_phone:
         raise HTTPException(status_code=400, detail="Valid customer phone number required")
@@ -45,7 +47,7 @@ def redeem_reward(
         if db.bind and db.bind.dialect.name == "postgresql":
             db.query(Customer).filter(Customer.phone == clean_phone).with_for_update().first()
 
-        loyalty = calculate_customer_loyalty(clean_phone, db)
+        loyalty = calculate_customer_loyalty(clean_phone, db, is_admin=True)
         if not loyalty["isEligible"]:
             raise HTTPException(
                 status_code=400,
@@ -76,15 +78,10 @@ def redeem_reward(
         raise e
 
     from backend.routers.realtime import notify_change
-    notify_change("redemptions", "created", {
-        "redemptionId": redemption.id,
-        "phone": clean_phone,
-        "customerName": cust_name,
-        "rewardItem": reward_name
-    })
-    notify_change("customers", "updated", {"phone": clean_phone})
+    notify_change("redemptions", "created")
+    notify_change("customers", "updated")
 
-    updated_loyalty = calculate_customer_loyalty(clean_phone, db)
+    updated_loyalty = calculate_customer_loyalty(clean_phone, db, is_admin=True)
 
     return {
         "success": True,

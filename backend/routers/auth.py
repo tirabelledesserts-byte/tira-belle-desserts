@@ -11,13 +11,19 @@ from backend.security import (
     require_admin,
     check_login_rate_limit,
     record_login_failure,
-    reset_login_failures
+    reset_login_failures,
+    rate_limit_login
 )
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.post("/login", response_model=TokenResponse)
-def login(req: LoginRequest, request: Request = None, db: Session = Depends(get_db)):
+def login(
+    req: LoginRequest,
+    request: Request = None,
+    _rate: bool = Depends(rate_limit_login),
+    db: Session = Depends(get_db)
+):
     client_ip = request.client.host if (request and request.client) else "127.0.0.1"
     check_login_rate_limit(client_ip)
 

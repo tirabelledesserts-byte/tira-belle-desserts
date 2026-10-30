@@ -63,10 +63,7 @@ const DEFAULT_SETTINGS = {
     currency: '₹',
     loyaltyThreshold: 5,
     rewardItemName: '1 Free 150g Tiramisu Cup',
-    logo: 'assets/tira-belle-logo.png',
-    adminUsername: 'tirabelle.desserts@gmail.com',
-    // SHA-256('tira-123' + 'TIRABELLE_SALT_2026')
-    adminPasswordHash: '2dbedb0613a00450077568d21baa5661ae3fba47257723b15627ba46b7cff28a'
+    logo: 'assets/tira-belle-logo.png'
 };
 
 const DEFAULT_CATEGORIES = [
@@ -709,19 +706,32 @@ class TiraBelleDB {
                 return false;
             }
 
-            // Sync any local pending offline records first
-            await this.syncPendingSales().catch(() => {});
-            await this.syncPendingRedemptions().catch(() => {});
+            const isAdmin = typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('TIRA_ADMIN_TOKEN');
 
-            const [settRes, prodRes, catRes, revRes, custRes, salesRes, rdmRes] = await Promise.all([
+            // Sync any local pending offline records first if authenticated admin
+            if (isAdmin) {
+                await this.syncPendingSales().catch(() => {});
+                await this.syncPendingRedemptions().catch(() => {});
+            }
+
+            const [settRes, prodRes, catRes, revRes] = await Promise.all([
                 this.apiRequest('/settings'),
                 this.apiRequest('/products'),
                 this.apiRequest('/categories'),
-                this.apiRequest('/reviews'),
-                this.apiRequest('/customers'),
-                this.apiRequest('/sales'),
-                this.apiRequest('/redemptions')
+                this.apiRequest('/reviews')
             ]);
+
+            let custRes = null;
+            let salesRes = null;
+            let rdmRes = null;
+
+            if (isAdmin) {
+                [custRes, salesRes, rdmRes] = await Promise.all([
+                    this.apiRequest('/customers'),
+                    this.apiRequest('/sales'),
+                    this.apiRequest('/redemptions')
+                ]);
+            }
 
             let changed = false;
 
@@ -750,11 +760,11 @@ class TiraBelleDB {
                 });
                 changed = true;
             }
-            if (custRes.ok && Array.isArray(custRes.data)) {
+            if (custRes && custRes.ok && Array.isArray(custRes.data)) {
                 this.data.customers = custRes.data;
                 changed = true;
             }
-            if (salesRes.ok && Array.isArray(salesRes.data)) {
+            if (salesRes && salesRes.ok && Array.isArray(salesRes.data)) {
                 const backendSales = salesRes.data;
                 const backendIds = new Set(backendSales.map(s => s.id));
                 const localUnsynced = (this.data.sales || []).filter(s => s.synced === false && !backendIds.has(s.id));
@@ -762,7 +772,7 @@ class TiraBelleDB {
                 this.save();
                 changed = true;
             }
-            if (rdmRes.ok && Array.isArray(rdmRes.data)) {
+            if (rdmRes && rdmRes.ok && Array.isArray(rdmRes.data)) {
                 const backendRdms = rdmRes.data;
                 const backendRdmIds = new Set(backendRdms.map(r => r.id));
                 const localUnsyncedRdms = (this.data.redemptions || []).filter(r => r.synced === false && !backendRdmIds.has(r.id));
@@ -1220,12 +1230,12 @@ class TiraBelleDB {
         const cleanUser = user.trim();
         const cleanSecret = secret.trim();
 
-        // 1. Try Backend Authentication if online
+        // Strictly enforce backend server authentication with secure JWT issuance
         try {
             const apiRes = await this.apiRequest('/auth/login', {
                 method: 'POST',
                 body: JSON.stringify({ username: cleanUser, secret: cleanSecret }),
-                timeout: 3000
+                timeout: 5000
             });
             if (apiRes.ok && apiRes.data && apiRes.data.access_token) {
                 if (typeof sessionStorage !== 'undefined') {
@@ -1234,21 +1244,11 @@ class TiraBelleDB {
                 this.isBackendOnline = true;
                 return true;
             }
+            return false;
         } catch (e) {
-            console.warn('[TIRA Belle] Remote auth failed or offline, falling back to local credentials');
+            console.error('[TIRA Belle] Remote auth failed or offline:', e);
+            return false;
         }
-
-        // 2. Fallback to local cryptographic hash comparison
-        const settings = this.getSettings();
-        const currentAdminUser = (settings.adminUsername || 'tirabelle.desserts@gmail.com').toLowerCase();
-        const isUserMatch = (cleanUser.toLowerCase() === currentAdminUser);
-        if (!isUserMatch) return false;
-
-        const secretHash = await hashCredential(cleanSecret);
-
-        // Check strictly against the currently configured admin password hash only
-        const isPassMatch = !!(settings.adminPasswordHash && secretHash === settings.adminPasswordHash);
-        return isPassMatch;
     }
 
     // ----------------- CATEGORIES -----------------

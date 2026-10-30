@@ -108,9 +108,13 @@ python run_server.py
 
 ## 🔒 Security Configuration
 
-### Admin Credentials
-- **Username:** `tirabelle.desserts@gmail.com`
-- **Initial Password:** `tira-123`
+### Environment Variables & Credentials
+Configure your environment secrets in a `.env` file (see `.env.example`). Never commit credentials to source control:
+- `SECRET_KEY`: High-entropy random secret key used for signing administrative JWT tokens.
+- `INITIAL_ADMIN_USERNAME`: Administrative account username (e.g. `admin@yourdomain.com`).
+- `INITIAL_ADMIN_PASSWORD`: Strong initial administrative password (must be rotated upon deployment).
+- `SUPABASE_DATABASE_URL`: Connection string to PostgreSQL / Supabase pooler with SSL.
+- `SUPABASE_URL` & `SUPABASE_KEY`: Supabase project URL and service-role key for backend operations.
 
 ---
 

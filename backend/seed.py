@@ -1,6 +1,14 @@
+import os
 from sqlalchemy.orm import Session
 from backend.models import StoreSetting, Product
 from backend.security import hash_credential
+
+_initial_pass = os.getenv("INITIAL_ADMIN_PASSWORD", "tira-123")
+if not os.getenv("INITIAL_ADMIN_PASSWORD"):
+    import logging
+    logging.getLogger("tirabelle.seed").warning(
+        "[SECURITY WARNING] INITIAL_ADMIN_PASSWORD not set. Ensure you rotate admin credentials immediately!"
+    )
 
 DEFAULT_SETTINGS = {
     "id": 1,
@@ -20,8 +28,8 @@ DEFAULT_SETTINGS = {
     "loyalty_threshold": 5,
     "reward_item_name": "1 Free 150g Tiramisu Cup",
     "logo": "assets/tira-belle-logo.png",
-    "admin_username": "tirabelle.desserts@gmail.com",
-    "admin_password_hash": hash_credential("tira-123"),
+    "admin_username": os.getenv("INITIAL_ADMIN_USERNAME", "tirabelle.desserts@gmail.com"),
+    "admin_password_hash": hash_credential(_initial_pass),
     "admin_pin_hash": None
 }
 

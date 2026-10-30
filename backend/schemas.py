@@ -186,7 +186,6 @@ class ReviewCreate(CamelModel):
 class ReviewResponse(CamelModel):
     id: str
     name: str
-    phone: Optional[str] = ""
     rating: int
     favorite_item: str = Field(alias="favoriteItem")
     comment: str
@@ -212,7 +211,6 @@ class SettingsSchema(CamelModel):
     loyalty_threshold: Optional[int] = Field(default=5, alias="loyaltyThreshold")
     reward_item_name: Optional[str] = Field(default="1 Free 150g Tiramisu Cup", alias="rewardItemName")
     logo: Optional[str] = "assets/tira-belle-logo.png"
-    admin_username: Optional[str] = Field(default="admin", alias="adminUsername")
 
 class DashboardMetricsResponse(CamelModel):
     total_revenue: float = Field(alias="totalRevenue")

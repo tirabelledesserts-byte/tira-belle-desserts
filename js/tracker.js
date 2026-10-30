@@ -121,56 +121,10 @@ window.searchLoyalty = async function(specifiedPhone = null) {
             }
         }
     } else {
-        // Search by name or partial phone
-        let matches = [];
-        // 1. Search remote backend if available
-        if (window.TiraDB) {
-            const remoteSearch = await window.TiraDB.apiRequest(`/customers?search=${encodeURIComponent(query.trim())}`);
-            if (remoteSearch.ok && Array.isArray(remoteSearch.data) && remoteSearch.data.length > 0) {
-                matches = remoteSearch.data;
-            }
-        }
-        // 2. Fall back to local search if remote returned nothing
-        if (matches.length === 0 && window.TiraDB) {
-            matches = window.TiraDB.searchCustomer(query.trim());
-        }
-
-        if (matches.length === 1) {
-            matchedPhone = matches[0].phone;
-        } else if (matches.length > 1) {
-            // Multiple customers found with this name -> Show prompt to select phone
-            if (ambiguousContainer && ambiguousCards) {
-                ambiguousCards.innerHTML = '';
-                matches.forEach(c => {
-                    const cLoyalty = window.TiraDB ? window.TiraDB.getCustomerLoyalty(c.phone) : null;
-                    const safeName = typeof escapeHtml === 'function' ? escapeHtml(c.name) : c.name;
-                    const safePhone = typeof escapeHtml === 'function' ? escapeHtml(maskPhone(c.phone)) : maskPhone(c.phone);
-                    const btn = document.createElement('div');
-                    btn.className = 'history-item';
-                    btn.style.cursor = 'pointer';
-                    btn.style.border = '1px solid var(--color-border)';
-                    const isElig = cLoyalty ? cLoyalty.isEligible : false;
-                    const prog = cLoyalty ? `${cLoyalty.currentCycleProgress}/${cLoyalty.threshold} Cups` : 'Registered';
-                    btn.innerHTML = `
-                        <div>
-                            <strong>${safeName}</strong> • 
-                            <span style="color: var(--color-text-muted); font-size: 0.85rem;">${safePhone}</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="badge ${isElig ? 'badge-success' : 'badge-warning'}">
-                                ${isElig ? 'Eligible for Free Reward' : prog}
-                            </span>
-                            <span class="btn btn-sm btn-outline">Select</span>
-                        </div>
-                    `;
-                    btn.onclick = () => window.searchLoyalty(c.phone);
-                    ambiguousCards.appendChild(btn);
-                });
-                if (skeleton) skeleton.style.display = 'none';
-                ambiguousContainer.style.display = 'block';
-                return;
-            }
-        }
+        // Enforce 10-digit mobile number input to protect customer privacy and prevent user enumeration
+        if (skeleton) skeleton.style.display = 'none';
+        showToast('Please enter your 10-digit registered mobile number to check your loyalty stamps.', 'warning');
+        return;
     }
 
     if (!matchedPhone) {

@@ -62,8 +62,6 @@ def create_category(
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin)
 ):
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     clean_name = cat_in.name.strip()
     if not clean_name:
         raise HTTPException(status_code=400, detail="Category name is required")
@@ -98,8 +96,6 @@ def update_category(
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin)
 ):
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -132,8 +128,6 @@ def delete_category(
     db: Session = Depends(get_db),
     admin: dict = Depends(require_admin)
 ):
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")

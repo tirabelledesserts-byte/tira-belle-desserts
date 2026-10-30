@@ -15,6 +15,7 @@ desktop.ini
 tira_belle_database_*.json
 customers_export_*.csv
 *.sql
+!supabase/migrations/*.sql
 *.sqlite
 *.db
 data/

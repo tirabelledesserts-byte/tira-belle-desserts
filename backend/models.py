@@ -38,8 +38,8 @@ class StoreSetting(Base):
     reward_item_name = Column(String(100), default="1 Free 150g Tiramisu Cup")
     logo = Column(String(255), default="assets/tira-belle-logo.png")
     admin_username = Column(String(100), default="tirabelle.desserts@gmail.com")
-    # SHA-256('tira-123' + 'TIRABELLE_SALT_2026')
-    admin_password_hash = Column(String(128), default="2dbedb0613a00450077568d21baa5661ae3fba47257723b15627ba46b7cff28a")
+    # Stored as salted cryptographic hash
+    admin_password_hash = Column(String(128), nullable=False)
     admin_pin_hash = Column(String(128), default=None, nullable=True)
 
 class Category(Base):

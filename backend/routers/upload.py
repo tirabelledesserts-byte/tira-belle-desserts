@@ -5,7 +5,7 @@ import requests
 from pathlib import Path
 from typing import List, Optional
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, status
-from backend.security import require_admin
+from backend.security import require_admin, rate_limit_uploads
 from backend.config import (
     UPLOAD_DIR,
     MAX_UPLOAD_SIZE,
@@ -46,10 +46,9 @@ def sanitize_filename(name: str) -> str:
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def upload_image(
     file: UploadFile = File(...),
+    _rate: bool = Depends(rate_limit_uploads),
     admin: dict = Depends(require_admin)
 ):
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     """
     Secure Image Upload Handler:
     1. Validates content-type header
@@ -145,8 +144,6 @@ def list_uploaded_images(admin: dict = Depends(require_admin)):
     """
     Returns list of all uploaded images in assets/uploads/
     """
-    if hasattr(admin, "dependency"):
-        admin = {"sub": "admin", "role": "admin"}
     if not UPLOAD_DIR.exists():
         return []
     

@@ -93,12 +93,7 @@ def normalize_database_url(url: str) -> str:
     supabase_match = re.match(r"^db\.([a-zA-Z0-9_-]+)\.supabase\.co$", host)
     if supabase_match:
         project_ref = supabase_match.group(1)
-        region = os.getenv("SUPABASE_REGION")
-        if not region:
-            if project_ref == "nqdcbhfmomoascbfbnef":
-                region = "ap-southeast-2"
-            else:
-                region = "ap-southeast-2"
+        region = os.getenv("SUPABASE_REGION", "ap-southeast-2")
         host = f"aws-0-{region}.pooler.supabase.com"
         # Always use port 6543 (Transaction Mode) for serverless to bypass the 15-client session limit
         port = 6543
@@ -138,11 +133,18 @@ def normalize_database_url(url: str) -> str:
 DATABASE_URL = normalize_database_url(raw_db_url)
 
 # Security
-SECRET_KEY = os.getenv("SECRET_KEY", "tirabelle_super_secret_jwt_key_2026_artisan_desserts")
+_DEFAULT_INSECURE_SECRET = "tirabelle_super_secret_jwt_key_2026_artisan_desserts"
+SECRET_KEY = os.getenv("SECRET_KEY", _DEFAULT_INSECURE_SECRET)
+if SECRET_KEY == _DEFAULT_INSECURE_SECRET:
+    import logging
+    logging.getLogger("tirabelle.security").warning(
+        "[SECURITY WARNING] Using default fallback SECRET_KEY. In production, configure SECRET_KEY in your environment!"
+    )
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
-# Credential salt matching existing frontend sha-256 hashing
+# Credential salt matching backend password hashing
 CREDENTIAL_SALT = os.getenv("CREDENTIAL_SALT", "TIRABELLE_SALT_2026")
 
 # Server Config
@@ -155,7 +157,7 @@ CORS_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:3000",
     "http://localhost:5500",
-    "*"
+    "https://tirabelledesserts-byte-mubd.vercel.app"
 ]
 
 # Supabase Storage Integration (for persistent cloud uploads)

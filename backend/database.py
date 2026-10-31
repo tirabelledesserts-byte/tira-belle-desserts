@@ -47,33 +47,11 @@ def apply_database_migrations_and_indexes(connection):
     """
     from sqlalchemy import text
 
-    # 1. Non-destructive column additions
-    try:
-        connection.execute(text("ALTER TABLE settings ADD COLUMN instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj'"))
-        connection.commit()
-    except Exception:
-        pass
-
-    try:
-        connection.execute(text("ALTER TABLE sales ADD COLUMN discount_type VARCHAR(20) DEFAULT 'flat'"))
-        connection.commit()
-    except Exception:
-        pass
-
-    try:
-        connection.execute(text("ALTER TABLE sales ADD COLUMN discount_value FLOAT DEFAULT 0.0"))
-        connection.commit()
-    except Exception:
-        pass
-
-    try:
-        connection.execute(text("ALTER TABLE sales ADD COLUMN eligible_cups_count INTEGER DEFAULT 0"))
-        connection.commit()
-    except Exception:
-        pass
-
-    # 2. Performance indexes across high-frequency filtered / joined foreign keys
-    index_statements = [
+    statements = [
+        "ALTER TABLE settings ADD COLUMN IF NOT EXISTS instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj'",
+        "ALTER TABLE sales ADD COLUMN IF NOT EXISTS discount_type VARCHAR(20) DEFAULT 'flat'",
+        "ALTER TABLE sales ADD COLUMN IF NOT EXISTS discount_value FLOAT DEFAULT 0.0",
+        "ALTER TABLE sales ADD COLUMN IF NOT EXISTS eligible_cups_count INTEGER DEFAULT 0",
         "CREATE INDEX IF NOT EXISTS ix_sales_customer_phone ON sales(customer_phone)",
         "CREATE INDEX IF NOT EXISTS ix_sales_date_timestamp ON sales(date, timestamp DESC)",
         "CREATE INDEX IF NOT EXISTS ix_sales_timestamp ON sales(timestamp DESC)",
@@ -89,12 +67,21 @@ def apply_database_migrations_and_indexes(connection):
         "CREATE INDEX IF NOT EXISTS ix_reviews_timestamp ON reviews(timestamp DESC)",
         "CREATE INDEX IF NOT EXISTS ix_reviews_phone ON reviews(phone)"
     ]
-    for stmt in index_statements:
+
+    is_sqlite = "sqlite" in str(connection.engine.url)
+
+    for stmt in statements:
+        sql_stmt = stmt
+        if is_sqlite and "ADD COLUMN IF NOT EXISTS" in stmt:
+            sql_stmt = stmt.replace("ADD COLUMN IF NOT EXISTS", "ADD COLUMN")
         try:
-            connection.execute(text(stmt))
+            connection.execute(text(sql_stmt))
             connection.commit()
         except Exception:
-            pass
+            try:
+                connection.rollback()
+            except Exception:
+                pass
 
 def init_tables_if_needed():
     global _tables_initialized

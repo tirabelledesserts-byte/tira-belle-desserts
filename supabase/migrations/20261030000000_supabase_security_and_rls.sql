@@ -4,6 +4,12 @@
 -- Goal: Stop unauthorized users from reading or changing database records.
 -- ==============================================================================
 
+-- 0. Ensure all required columns exist
+ALTER TABLE IF EXISTS public.settings ADD COLUMN IF NOT EXISTS instagram_url VARCHAR(255) DEFAULT 'https://instagram.com/tirabelle.desserts?obrf=MzhsZG04Ymc3NXBj';
+ALTER TABLE IF EXISTS public.sales ADD COLUMN IF NOT EXISTS discount_type VARCHAR(20) DEFAULT 'flat';
+ALTER TABLE IF EXISTS public.sales ADD COLUMN IF NOT EXISTS discount_value FLOAT DEFAULT 0.0;
+ALTER TABLE IF EXISTS public.sales ADD COLUMN IF NOT EXISTS eligible_cups_count INTEGER DEFAULT 0;
+
 -- 1. Enable and Force Row Level Security (RLS) on all tables
 ALTER TABLE IF EXISTS public.settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.settings FORCE ROW LEVEL SECURITY;

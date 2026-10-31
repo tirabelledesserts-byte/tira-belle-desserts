@@ -42,7 +42,7 @@ if __name__ == "__main__":
         print("=" * 72)
         print(f" - Storefront:       http://localhost:{PORT}/index.html")
         print(f" - Loyalty Tracker:  http://localhost:{PORT}/tracker.html")
-        print(f" - Admin POS Panel:  http://localhost:{PORT}/admin.html")
+        print(f" - Staff POS Desk:   http://localhost:{PORT}/tira-desk.html")
         print(f" - API Swagger Docs: http://localhost:{PORT}/docs")
         print("=" * 72)
         sys.exit(0)

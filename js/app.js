@@ -986,7 +986,7 @@ function initScrollProgressBar() {
 
 /**
  * Navigation Prefetch Optimizer
- * Prefetches key destinations (tracker.html, admin.html) on idle or link hover.
+ * Prefetches key destinations (tracker.html) on idle or link hover.
  */
 function initNavigationPrefetch() {
     const prefetchUrl = (url) => {

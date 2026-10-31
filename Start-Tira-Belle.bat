@@ -15,7 +15,7 @@ echo.
 echo Quick Shortcuts:
 echo - Storefront:       http://localhost:8001/index.html
 echo - Loyalty Tracker:  http://localhost:8001/tracker.html
-echo - Admin POS Panel:  http://localhost:8001/admin.html
+echo - Staff POS Desk:   http://localhost:8001/tira-desk.html
 echo - API Docs:         http://localhost:8001/docs
 echo.
 echo Press any key to exit this launcher window (Server will remain running)...

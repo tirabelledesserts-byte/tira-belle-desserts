@@ -17,7 +17,7 @@
    - Live Customer Loyalty Checker with real-time visual stamp card.
    - Enterprise Technical SEO: Schema.org `Bakery` & `Product` structured data, Open Graph, and Twitter Cards.
 
-2. **Counter Sales & POS Management (`admin.html`)**
+2. **Counter Sales & POS Management (`tira-desk.html`)**
    - Instant POS order entry for rapid physical counter service.
    - Supports Cash and UPI/Online payment reconciliation.
    - Dynamic real-time revenue analytics (Today, Yesterday, All Time).
@@ -74,7 +74,7 @@ python run_server.py
 ```
 - **Storefront:** [http://localhost:8001/index.html](http://localhost:8001/index.html)
 - **Loyalty Tracker:** [http://localhost:8001/tracker.html](http://localhost:8001/tracker.html)
-- **Admin Panel:** [http://localhost:8001/admin.html](http://localhost:8001/admin.html)
+- **Staff POS Desk:** [http://localhost:8001/tira-desk.html](http://localhost:8001/tira-desk.html)
 - **Interactive Swagger Docs:** [http://localhost:8001/docs](http://localhost:8001/docs)
 
 ---

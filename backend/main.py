@@ -20,7 +20,7 @@ if "backend" not in sys.modules:
     _backend_pkg.__file__ = str(_this_dir / "__init__.py")
     sys.modules["backend"] = _backend_pkg
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -172,9 +172,13 @@ def get_index():
 def get_tracker():
     return FileResponse(BASE_DIR / "tracker.html")
 
+@app.get("/tira-desk.html")
+def get_tira_desk():
+    return FileResponse(BASE_DIR / "tira-desk.html")
+
 @app.get("/admin.html")
-def get_admin():
-    return FileResponse(BASE_DIR / "admin.html")
+def get_admin_disabled():
+    raise HTTPException(status_code=404, detail="Page not found")
 
 @app.get("/receipt.html")
 def get_receipt():

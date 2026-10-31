@@ -36,13 +36,6 @@
       "description": "Track your 5-stamp loyalty reward card",
       "url": "./tracker.html",
       "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Admin Point of Sale",
-      "short_name": "POS Admin",
-      "description": "Counter sales register and loyalty redemption",
-      "url": "./admin.html",
-      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

@@ -313,7 +313,7 @@ class TestTiraBelleBusinessLogic(unittest.TestCase):
         root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         essential_files = [
             'index.html',
-            'admin.html',
+            'tira-desk.html',
             'tracker.html',
             'css/style.css',
             'manifest.json',

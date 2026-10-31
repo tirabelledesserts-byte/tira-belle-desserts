@@ -38,7 +38,7 @@ jobs:
     - name: Verify HTML & Assets Integrity
       run: |
         test -f index.html
-        test -f admin.html
+        test -f tira-desk.html
         test -f tracker.html
         test -f robots.txt
         test -f sitemap.xml

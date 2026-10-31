@@ -1,7 +1,8 @@
 # Robots.txt for TIRA Belle
-# Disallow private admin dashboard from indexing and crawling
+# Disallow private staff desk and customer tracker from indexing and crawling
 User-agent: *
 Disallow: /admin.html
+Disallow: /tira-desk.html
 Disallow: /tracker.html
 
 # Allow all public storefront pages and assets

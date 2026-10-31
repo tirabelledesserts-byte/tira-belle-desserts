@@ -96,7 +96,7 @@ def calculate_customer_loyalty(phone: str, db: Session, is_admin: bool = False) 
             "adminUser": r.admin_user if is_admin else "staff",
             "notes": r.notes if is_admin else "Redeemed over counter"
         }
-        for r in sorted(redemptions, key=lambda x: x.redeemed_at, reverse=True)
+        for r in sorted(redemptions, key=lambda x: str(x.redeemed_at or ""), reverse=True)
     ]
 
     sales_data = [
@@ -123,7 +123,7 @@ def calculate_customer_loyalty(phone: str, db: Session, is_admin: bool = False) 
                 for it in s.items
             ]
         }
-        for s in sorted(sales, key=lambda x: x.timestamp, reverse=True)
+        for s in sorted(sales, key=lambda x: str(x.timestamp or ""), reverse=True)
     ]
 
     cust_dict = {

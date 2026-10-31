@@ -65,7 +65,15 @@ def apply_database_migrations_and_indexes(connection):
         "CREATE INDEX IF NOT EXISTS ix_products_is_active ON products(is_active)",
         "CREATE INDEX IF NOT EXISTS ix_reviews_date ON reviews(date)",
         "CREATE INDEX IF NOT EXISTS ix_reviews_timestamp ON reviews(timestamp DESC)",
-        "CREATE INDEX IF NOT EXISTS ix_reviews_phone ON reviews(phone)"
+        "CREATE INDEX IF NOT EXISTS ix_reviews_phone ON reviews(phone)",
+        "ALTER TABLE settings NO FORCE ROW LEVEL SECURITY",
+        "ALTER TABLE categories NO FORCE ROW LEVEL SECURITY",
+        "ALTER TABLE products NO FORCE ROW LEVEL SECURITY",
+        "ALTER TABLE customers NO FORCE ROW LEVEL SECURITY",
+        "ALTER TABLE sales NO FORCE ROW LEVEL SECURITY",
+        "ALTER TABLE sale_items NO FORCE ROW LEVEL SECURITY",
+        "ALTER TABLE redemptions NO FORCE ROW LEVEL SECURITY",
+        "ALTER TABLE reviews NO FORCE ROW LEVEL SECURITY"
     ]
 
     is_sqlite = "sqlite" in str(connection.engine.url)

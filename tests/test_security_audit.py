@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from backend.main import app
 from backend.database import Base, get_db
-from backend.models import Customer, Sale, SaleItem, Redemption, StoreSetting, Product, Review
+from backend.models import Customer, Sale, SaleItem, Redemption, StoreSetting, Product, Review, today_date_str
 from backend.security import hash_credential, create_access_token, SlidingWindowRateLimiter
 
 # File-based SQLite test DB to ensure tables persist across connections during tests
@@ -156,8 +156,8 @@ class SecurityAuditTestSuite(unittest.TestCase):
             payment_mode="Cash",
             paid_cups_count=2,
             eligible_cups_count=2,
-            timestamp="2026-10-30T10:00:00Z",
-            date="2026-10-30",
+            timestamp=f"{today_date_str()}T10:00:00Z",
+            date=today_date_str(),
             notes="Confidential Cashier Note for Alice"
         )
         self.db.add(self.sale_a)
@@ -180,8 +180,8 @@ class SecurityAuditTestSuite(unittest.TestCase):
             customer_phone="9876543210",
             customer_name="Alice Customer",
             reward_item="Free Tiramisu Test",
-            redeemed_at="2026-10-30T11:00:00Z",
-            date="2026-10-30",
+            redeemed_at=f"{today_date_str()}T11:00:00Z",
+            date=today_date_str(),
             admin_user="privileged_admin_root",
             notes="Privileged Internal Redemption Note"
         )
